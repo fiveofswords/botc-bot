@@ -8,6 +8,7 @@ import discord
 import os
 bggid = '421432788894482434'
 publicchannel = '430792054683992074'
+gamemasterrole = 'Storyteller'
 with open(os.path.dirname(os.path.realpath(__file__))+'/token.txt') as tokenfile:
     TOKEN = tokenfile.readline().strip()
 
@@ -16,7 +17,7 @@ client = discord.Client()
 async def sendGMpublic(frm, to, content, server):
     master = None
     for role in server.roles:
-        if role.name == "Game Master":
+        if role.name == gamemasterrole:
             master = role
             break
 
