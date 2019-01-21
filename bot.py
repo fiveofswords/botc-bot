@@ -20,7 +20,7 @@ async def sendGMpublic(frm, to, content, server):
             break
 
     for member in server.members:
-        if master in member.roles:
+        if master in member.roles and member != frm and member != to:
             gmcopy = await client.send_message(member, "Message sent from {0} to {1}: ".format(frm.name,to.name)+content)
 
     pubcopy = await client.send_message(client.get_channel(publicchannel), "**{0}** > **{1}**".format(frm.name,to.name))
