@@ -5,9 +5,10 @@ class UserNotFoundException(Exception):
         Exception.__init__(self,*args,**kwargs)
 
 import discord
+import os
 bggid = '421432788894482434'
 publicchannel = '430792054683992074'
-with open('../token.txt') as tokenfile:
+with open(os.path.dirname(os.path.realpath(__file__))+'/token.txt') as tokenfile:
     TOKEN = tokenfile.readline().strip()
 
 client = discord.Client()
@@ -61,6 +62,11 @@ async def on_message(message):
     if message.author == client.user or message.server != None:
         return
 
+    # if message.content.startswith('!clear'):
+    #     try:
+    #         await client.purge_from(message.channel,limit=int(message.content[6:].strip()))
+    #     except Exception:
+    #         await client.purge_from(message.channel)
     if message.content.startswith('!message'):
         try:
             name = message.content[8:].strip()
