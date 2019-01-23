@@ -23,14 +23,14 @@ async def sendGMpublic(frm, to, content, server):
 
     for member in server.members:
         if master in member.roles and member != frm and member != to:
-            gmcopy = await client.send_message(member, "Message sent from {0} to {1}: ".format(frm.name,to.name)+content)
+            gmcopy = await client.send_message(member, "Message sent from {0} to {1}: ".format(server.get_member(frm.id).nick if server.get_member(frm.id).nick else frm.name, to.nick if to.nick else to.name)+content)
 
-    pubcopy = await client.send_message(client.get_channel(publicchannel), "**{0}** > **{1}**".format(frm.name,to.name))
+    pubcopy = await client.send_message(client.get_channel(publicchannel), "**{0}** > **{1}**".format(server.get_member(frm.id).nick if server.get_member(frm.id).nick else frm.name,to.nick if to.nick else to.name))
 
 async def choices(possibilities,message):
     pickone = await client.send_message(message.author,"Which user would you like to send the message to?")
     for index,u in enumerate(possibilities):
-        await client.send_message(message.author,"({0}). {1}".format(index+1,u.name))
+        await client.send_message(message.author,"({0}). {1}".format(index+1,u.nick if u.nick else u.name))
     choice = await client.wait_for_message(timeout=200, author=message.author, channel=pickone.channel)
     if choice == None:
         await client.send_message(message.author,"Timed out.")
@@ -91,7 +91,7 @@ async def on_message(message):
             elif len(possibilities) == 1:
                 person = possibilities[0]
 
-            replytxt = "Messaging {}. What would you like to send?".format(person.name)
+            replytxt = "Messaging {0}. What would you like to send?".format(person.nick if person.nick else person.name)
             reply = await client.send_message(message.author, replytxt)
             userresponse = await client.wait_for_message(timeout=200, author=message.author, channel=reply.channel)
             if userresponse == None:
@@ -100,7 +100,7 @@ async def on_message(message):
             if userresponse.content.lower() == 'cancel':
                 end = await client.send_message(message.author, "Message cancelled!")
                 return
-            send = await client.send_message(person, "Message from {}: ".format(message.author.name)+userresponse.content)
+            send = await client.send_message(person, "Message from {0}: ".format(bggserver.get_member(message.author.id).nick if bggserver.get_member(message.author.id).nick else message.author.name)+userresponse.content)
             await sendGMpublic(message.author,person,userresponse.content,bggserver)
             end = await client.send_message(message.author, "Message sent!")
             return
