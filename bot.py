@@ -64,7 +64,7 @@ async def on_message(message):
         return
 
     if message.content.startswith('!clear'):
-        await client.send_message(message.author,"Clearing"+"\n"*45+"\~"*100)
+        await client.send_message(message.author,"\~"*48+"~\r\n"*22+"Clearing\n"+"~\r\n"*22+"\~"*49)
     # if message.content.startswith('!clear'):
     #     try:
     #         await client.purge_from(message.channel,limit=int(message.content[6:].strip()))
