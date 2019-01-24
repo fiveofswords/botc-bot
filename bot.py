@@ -16,7 +16,7 @@ import os
 
 bggid = '421432788894482434'
 
-publicchannel = '430792054683992074'
+publicchannel = '510551306361110535'
 
 gamemasterrole = 'Storyteller'
 
@@ -142,6 +142,7 @@ async def on_message(message):
 
         pmsopen = True
         await client.send_message(message.author,'PMs are now open.')
+        #await client.send_message(publicchannel, 'PMs are now open.')
 
     elif message.content.startswith(',closepms') or message.content.startswith('@closepms'):
 
@@ -152,6 +153,7 @@ async def on_message(message):
 
         pmsopen = False
         await client.send_message(message.author, 'PMs are now closed.')
+        #await client.send_message(publicchannel, 'PMs are now closed.')
 
 
     elif message.content.startswith(',clear') or message.content.startswith('@clear'):
