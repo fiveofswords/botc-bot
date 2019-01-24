@@ -23,7 +23,7 @@ async def sendGMpublic(frm, to, content, server):
 
     for member in server.members:
         if master in member.roles and member != frm and member != to:
-            gmcopy = await client.send_message(member, "Message sent from {0} to {1}: ".format(server.get_member(frm.id).nick if server.get_member(frm.id).nick else frm.name, to.nick if to.nick else to.name)+content)
+            gmcopy = await client.send_message(member, "**[**{0} **>** {1}**]** ".format(server.get_member(frm.id).nick if server.get_member(frm.id).nick else frm.name, to.nick if to.nick else to.name)+content)
 
     pubcopy = await client.send_message(client.get_channel(publicchannel), "**{0}** > **{1}**".format(server.get_member(frm.id).nick if server.get_member(frm.id).nick else frm.name,to.nick if to.nick else to.name))
 
@@ -63,12 +63,14 @@ async def on_message(message):
     if message.author == client.user or message.server != None:
         return
 
+    if message.content.startswith('!clear'):
+        await client.send_message(message.author,"Clearing"+"\n"*45+"\~"*100)
     # if message.content.startswith('!clear'):
     #     try:
     #         await client.purge_from(message.channel,limit=int(message.content[6:].strip()))
     #     except Exception:
     #         await client.purge_from(message.channel)
-    if message.content.startswith('!message'):
+    elif message.content.startswith('!message'):
         try:
             name = message.content[8:].strip()
             possibilities = []
