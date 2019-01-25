@@ -62,13 +62,14 @@ async def sendGMpublic(frm, to, content, server):
 
 
 async def choices(possibilities,message):
-
-    pickone = await client.send_message(message.author,"Which user would you like to send the message to?")
+    messagetext = "Which user would you like to send the message to?\n"
+    # pickone = await client.send_message(message.author,"Which user would you like to send the message to?")
 
     for index,u in enumerate(possibilities):
+        messagetext += "({0}). {1}\n".format(index+1,u.nick if u.nick else u.name)
+        # await client.send_message(message.author,"({0}). {1}".format(index+1,u.nick if u.nick else u.name))
 
-        await client.send_message(message.author,"({0}). {1}".format(index+1,u.nick if u.nick else u.name))
-
+    pickone = await client.send_message(message.author,messagetext)
     choice = await client.wait_for_message(timeout=200, author=message.author, channel=pickone.channel)
 
     if choice == None:
