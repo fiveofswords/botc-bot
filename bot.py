@@ -244,7 +244,7 @@ async def on_message(message):
 
                 return
 
-            send = await client.send_message(person, "Message from {0}: ".format(bggserver.get_member(message.author.id).nick if bggserver.get_member(message.author.id).nick else message.author.name)+userresponse.content)
+            send = await client.send_message(person, "Message from {0}: **".format(bggserver.get_member(message.author.id).nick if bggserver.get_member(message.author.id).nick else message.author.name)+userresponse.content+"**")
 
             await sendGMpublic(message.author,person,userresponse.content,bggserver)
 
