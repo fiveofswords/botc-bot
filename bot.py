@@ -12,7 +12,7 @@ class UserNotFoundException(Exception):
 
 import discord
 
-import os
+import os, time
 
 bggid = '421432788894482434'
 
@@ -274,4 +274,8 @@ async def on_ready():
 
 
 
-client.run(TOKEN)
+while True:
+    try:
+        client.loop.run_until_complete(client.start(TOKEN))
+    except BaseException:
+            time.sleep(5)
