@@ -276,7 +276,6 @@ async def on_ready():
 
 
 while True:
-    try:
-        client.loop.run_until_complete(client.start(TOKEN))
-    except BaseException:
-            time.sleep(5)
+    client.run(TOKEN)
+    print('end')
+    time.sleep(5)
