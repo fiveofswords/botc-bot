@@ -143,7 +143,10 @@ async def on_message(message):
             return
 
         pmsopen = True
-        await client.send_message(message.author,'PMs are now open.')
+        for user in bggserver.members:
+            if gamemasterrole in [r.name for r in user.roles]:
+                await client.send_message(user,'PMs are now open.')
+        # await client.send_message(message.author,'PMs are now open.')
         #await client.send_message(publicchannel, 'PMs are now open.')
 
     elif message.content.startswith(',closepms') or message.content.startswith('@closepms'):
@@ -154,7 +157,10 @@ async def on_message(message):
             return
 
         pmsopen = False
-        await client.send_message(message.author, 'PMs are now closed.')
+        for user in bggserver.members:
+            if gamemasterrole in [r.name for r in user.roles]:
+                await client.send_message(user,'PMs are now closed.')
+        # await client.send_message(message.author, 'PMs are now closed.')
         #await client.send_message(publicchannel, 'PMs are now closed.')
 
 
