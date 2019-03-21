@@ -80,10 +80,11 @@ async def choices(possibilities,message):
 
     if choice.content.lower() == 'cancel':
 
-        await client.send_message(message.author,"Cancelled.")
+        await client.send_message(message.author,"Message cancelled!")
 
         return
-
+    if choice.content.lower().startswith(',message') or choice.content.lower().startswith('@message'):
+        return
     try:
 
         a = possibilities[int(choice.content)-1]
@@ -243,6 +244,9 @@ async def on_message(message):
 
                 end = await client.send_message(message.author, "Message cancelled!")
 
+                return
+
+            if userresponse.content.lower().startswith(',message') or userresponse.content.lower().startswith('@message'):
                 return
 
             send = await client.send_message(person, "Message from {0}: **".format(bggserver.get_member(message.author.id).nick if bggserver.get_member(message.author.id).nick else message.author.name)+userresponse.content+"**")
