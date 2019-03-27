@@ -34,7 +34,6 @@ with open(os.path.dirname(os.path.realpath(__file__))+'/token.txt') as tokenfile
 client = discord.Client()
 
 
-
 async def sendGMpublic(frm, to, content, server):
 
     master = None
@@ -143,6 +142,7 @@ async def on_message(message):
             return
 
         pmsopen = True
+        await client.change_presence(game=discord.Game(name="PMs Open!"))
         for user in bggserver.members:
             if gamemasterrole in [r.name for r in user.roles]:
                 await client.send_message(user,'PMs are now open.')
@@ -157,6 +157,7 @@ async def on_message(message):
             return
 
         pmsopen = False
+        await client.change_presence(game=discord.Game(name="PMs Closed!"))
         for user in bggserver.members:
             if gamemasterrole in [r.name for r in user.roles]:
                 await client.send_message(user,'PMs are now closed.')
@@ -282,6 +283,10 @@ async def on_ready():
     print(client.user.id)
 
     print('------')
+    if pmsopen == True:
+        await client.change_presence(game=discord.Game(name="PMs Open!"))
+    else:
+        await client.change_presence(game=discord.Game(name="PMs Closed!"))
 
 
 
