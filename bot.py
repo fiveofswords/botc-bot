@@ -183,7 +183,7 @@ async def on_message(message):
 
         if not pmsopen:
 
-            await client.send_message(message.author, "PMs are closed.")
+            await client.send_message(message.author, "I didn't implement the status message for you to do this.")
 
             return
 
