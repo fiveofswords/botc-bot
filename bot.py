@@ -183,7 +183,7 @@ async def on_message(message):
 
         if not pmsopen:
 
-            await client.send_message(message.author, "I didn't implement the status message only for you to do this.")
+            await client.send_message(message.author, "Hydra wanted me to put a passive-aggressive message here, but I decided to be nice. PMs are closed, by the way.")
 
             return
 
