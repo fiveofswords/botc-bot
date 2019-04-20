@@ -323,7 +323,7 @@ async def on_message(message):
                     roleobj = rl
                     break
             await client.send_message(client.get_channel(publicchannel),roleobj.mention+" wake up!")
-            notactive = [player for player in bggserver.members if playerrole in [rll.name for rll in player.roles]]
+            notactive = [player for player in bggserver.members if ((playerrole in [rll.name for rll in player.roles]) and (gamemasterrole not in [rll.name for rll in player.roles]))]
 
     elif message.content.startswith(",endday") or message.content.startswith("@endday"):
         if gamemasterrole not in [role.name for role in bggserver.get_member(message.author.id).roles]:
