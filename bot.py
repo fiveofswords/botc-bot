@@ -362,22 +362,23 @@ async def on_message_edit(before, after):
     global isday
     bggserver = client.get_server(bggid)
     if after.channel == client.get_channel(publicchannel) and before.pinned == False and after.pinned == True and playerrole in [roll.name for roll in after.author.roles]:
-        if after.content.strip().lower().startswith("nominate") and nomsopen:
-            users = []
-            for user in bggserver.members:
-                if ((user.nick != None and after.content.strip()[8:].strip().lower() == user.nick.lower()[:len(after.content.strip()[8:].strip().lower())]) or after.content.strip()[8:].strip().lower() == user.name.lower()[:len(after.content.strip()[8:].strip().lower())])  and (playerrole in [role.name for role in user.roles]):
-                    users.append(user)
-            if len(users) == 1:
-                await client.send_message(client.get_channel(publicchannel), users[0].mention + " has been nominated.")
-                nomsopen = False
-                pmsopen = False
-                await update_presence(client)
+        if after.content.strip().lower().startswith("nominate"):
+            if nomsopen:
+                users = []
+                for user in bggserver.members:
+                    if ((user.nick != None and after.content.strip()[8:].strip().lower() == user.nick.lower()[:len(after.content.strip()[8:].strip().lower())]) or after.content.strip()[8:].strip().lower() == user.name.lower()[:len(after.content.strip()[8:].strip().lower())])  and (playerrole in [role.name for role in user.roles]):
+                        users.append(user)
+                if len(users) == 1:
+                    await client.send_message(client.get_channel(publicchannel), users[0].mention + " has been nominated.")
+                    nomsopen = False
+                    pmsopen = False
+                    await update_presence(client)
+                else:
+                    await client.send_message(client.get_channel(publicchannel), "User not found. Try again.")
+                    await client.unpin_message(after)
             else:
-                await client.send_message(client.get_channel(publicchannel), "User not found. Try again.")
+                await client.send_message(client.get_channel(publicchannel), "Nominations are closed.")
                 await client.unpin_message(after)
-        else:
-            await client.send_message(client.get_channel(publicchannel), "Nominations are closed.")
-            await client.unpin_message(after)
 
 
 while True:
