@@ -362,11 +362,12 @@ async def on_message_edit(before, after):
     global isday
     bggserver = client.get_server(bggid)
     if after.channel == client.get_channel(publicchannel) and before.pinned == False and after.pinned == True and playerrole in [roll.name for roll in after.author.roles]:
-        if after.content.strip().lower().startswith("nominate"):
+        if "nominate" in after.content.strip().lower():
             if nomsopen:
                 users = []
+                name = after.content.strip().lower().split("nominate")[-1].strip()
                 for user in bggserver.members:
-                    if ((user.nick != None and after.content.strip()[8:].strip().lower() == user.nick.lower()[:len(after.content.strip()[8:].strip().lower())]) or after.content.strip()[8:].strip().lower() == user.name.lower()[:len(after.content.strip()[8:].strip().lower())])  and (playerrole in [role.name for role in user.roles]):
+                    if ((user.nick != None and name == user.nick.lower()[:len(name)]) or name == user.name.lower()[:len(name)])  and (playerrole in [role.name for role in user.roles]):
                         users.append(user)
                 if len(users) == 1:
                     await client.send_message(client.get_channel(publicchannel), users[0].mention + " has been nominated.")
