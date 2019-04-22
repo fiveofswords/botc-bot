@@ -339,6 +339,15 @@ async def on_message(message):
                     roleobj = rl
                     break
             await client.send_message(client.get_channel(publicchannel),roleobj.mention+" go to sleep!")
+    elif message.content.startswith(",notactive") or message.content.startswith("@notactive"):
+        send = "These players have not spoken:\n"
+        for user in notactive:
+            send += (user.nick or user.name) + "\n"
+
+        if len(send)>31:
+            await client.send_message(message.author, send)
+        else:
+            await client.send_message(message.author, "Everyone has spoken!")
 
 @client.event
 
