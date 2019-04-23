@@ -373,7 +373,7 @@ async def on_message_edit(before, after):
     global isday
     bggserver = client.get_server(bggid)
     if after.channel == client.get_channel(publicchannel) and before.pinned == False and after.pinned == True and playerrole in [roll.name for roll in after.author.roles]:
-        if "nominate" in after.content.strip().lower():
+        if "nominate " in after.content.strip().lower():
             if nomsopen:
                 users = []
                 name = after.content.strip().lower().split("nominate")[-1].strip()
