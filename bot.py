@@ -344,7 +344,9 @@ async def on_message(message):
         for user in notactive:
             send += (user.nick or user.name) + "\n"
 
-        if len(send)>31:
+        if not isday:
+            await client.send_message(message.author, "It's not day right now!")
+        elif len(send)>31:
             await client.send_message(message.author, send)
         else:
             await client.send_message(message.author, "Everyone has spoken!")
