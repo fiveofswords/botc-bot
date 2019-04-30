@@ -167,7 +167,7 @@ async def on_message(message):
         # await client.send_message(message.author,'PMs are now open.')
         #await client.send_message(publicchannel, 'PMs are now open.')
 
-    elif message.content.startswith(',opennoms') or message.content.startswith('@opennoms'):
+    elif message.content.startswith(', ') or message.content.startswith('@opennoms'):
         if gamemasterrole not in [g.name for g in bggserver.get_member(message.author.id).roles]:
             await client.send_message(message.author, 'You don\'t have permission to open nominations.')
 
@@ -358,7 +358,6 @@ async def on_message(message):
             pmsopen = True
             nomsopen = True
             await update_presence(client)
-            await client.send_message(message.author)
             for user in bggserver.members:
                 if gamemasterrole in [r.name for r in user.roles]:
                     await client.send_message(user,'Nominations and PMs are now open.')
