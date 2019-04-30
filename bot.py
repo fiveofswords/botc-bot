@@ -151,7 +151,7 @@ async def on_message(message):
 
         return
 
-    if message.content.startswith(',openpms') or message.content.startswith('@openpms'):
+    elif message.content.startswith(',openpms') or message.content.startswith('@openpms'):
 
         if gamemasterrole not in [g.name for g in bggserver.get_member(message.author.id).roles]:
 
@@ -167,7 +167,7 @@ async def on_message(message):
         # await client.send_message(message.author,'PMs are now open.')
         #await client.send_message(publicchannel, 'PMs are now open.')
 
-    elif message.content.startswith(',opennominations') or message.content.startswith('@opennominations'):
+    elif message.content.startswith(',opennoms') or message.content.startswith('@opennoms'):
         if gamemasterrole not in [g.name for g in bggserver.get_member(message.author.id).roles]:
             await client.send_message(message.author, 'You don\'t have permission to open nominations.')
 
@@ -178,7 +178,7 @@ async def on_message(message):
         for user in bggserver.members:
             if gamemasterrole in [r.name for r in user.roles]:
                 await client.send_message(user,'Nominations are now open.')
-    elif message.content.startswith(',closenominations') or message.content.startswith('@closenominations'):
+    elif message.content.startswith(',closenoms') or message.content.startswith('@closenoms'):
         if gamemasterrole not in [g.name for g in bggserver.get_member(message.author.id).roles]:
             await client.send_message(message.author, 'You don\'t have permission to close nominations.')
 
@@ -350,6 +350,18 @@ async def on_message(message):
             await client.send_message(message.author, send)
         else:
             await client.send_message(message.author, "Everyone has spoken!")
+
+    elif message.content.startswith('@open') or message.content.startswith(',open'):
+        if gamemasterrole not in [role.name for role in bggserver.get_member(message.author.id).roles]:
+            await client.send_message(message.author, "You do not have permission to open nominations and PMs.")
+        else:
+            pmsopen = True
+            nomsopen = True
+            await update_presence(client)
+            await client.send_message(message.author)
+            for user in bggserver.members:
+                if gamemasterrole in [r.name for r in user.roles]:
+                    await client.send_message(user,'Nominations and PMs are now open.')
 
 @client.event
 
