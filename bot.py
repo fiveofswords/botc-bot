@@ -300,6 +300,7 @@ async def on_message(message):
 
             await sendGMpublic(message.author,person,userresponse.content,bggserver)
 
+            # Updates notactive
             if message.author in notactive:
                 notactive.remove(message.author)
                 if len(notactive) == 1:
