@@ -1,3 +1,4 @@
+### fix @nominate permissions qne qee pin argument
 import discord, os, time
 
 from config import *
@@ -212,13 +213,14 @@ async def start_day(user):
     canNominate = [player for player in notActive if ghostrole not in [g.name for g in bggserver.get_member(nominator.id).roles]] # generate canNominate
     return
 
-    # Inform public server
+    # Announce morning
     role = None
-    for rl in bggserver.roles:
+    for rl in bggserver.roles: # find player role
         if rl.name == playerrole:
             role = rl
             break
-    await client.send_message(client.get_channel(publicchannel),"{} wake up!".format(role.mention))
+    announcement = await client.send_message(client.get_channel(publicchannel),"{} wake up!".format(role.mention)) # announcement
+    await announcememt.pin() # pin
     return
 
 async def end_day(user):
@@ -231,14 +233,14 @@ async def end_day(user):
 
     isDay = False # end the day
 
-    # Inform public server
+    # Announce night
     role = None
-    for rl in bggserver.roles:
+    for rl in bggserver.roles: # find player role
         if rl.name == playerrole:
             role = rl
             break
-
-    await client.send_message(client.get_channel(publicchannel),"{} go to sleep!".format(role.mention))
+    announcement = await client.send_message(client.get_channel(publicchannel),"{} go to sleep!".format(role.mention)) # announcement
+    await announcement.pin() # pin
 
 async def clear():
     # Creates whitespace in message history
@@ -357,7 +359,7 @@ async def pm(to, frm):
         if is_gamemaster(user) and user != frm and user != person:
                 await client.send_message(member, '**[**{} **>** {}**]** {}'.format(server.get_member(frm.id).nick if server.get_member(frm.id).nick else frm.name, person.nick if person.nick else person.name,intendedMessage.content))
 
-    # Inform public server
+    # Announce message
     await client.send_message(client.get_channel(publicchannel), '**{}** > **{}**'.format(server.get_member(frm.id).nick if server.get_member(frm.id).nick else frm.name, person.nick if person.nick else person.name))
 
     # Update activity
@@ -368,7 +370,7 @@ async def pm(to, frm):
     await client.send_message(frm, 'Message sent!')
     return
 
-async def nominate(nominator, argument, location=None):
+async def nominate(nominator, argument, pin=False, location=None):
     # nominates a player found in argument
 
     # Generate location
@@ -432,13 +434,18 @@ async def nominate(nominator, argument, location=None):
         await client.unpin_message(after)
 
     # Nomination
-    if not travelerrole not in [g.name for g in bggserver.get_member(nominee.id).roles]:
+    if not travelerrole not in [g.name for g in bggserver.get_member(nominee.id).roles]: # update canNominate
         canNominate.remove(nominator)
-    canbeNominated.remove(moninee)
-    isPmsOpen == False
-    isNomsOpen == False
-    await update_presence(client)
-    await client.send_message(client.get_channel(publicchannel), '{} has been nominated by {}.'.format(nominee.mention, nominator.mention))
+    canbeNominated.remove(moninee) # update canBeNominated
+    isPmsOpen == False # update pms
+    isNomsOpen == False # update noms
+    await update_presence(client) # update presence
+    announcement = await client.send_message(client.get_channel(publicchannel), '{} has been nominated by {}.'.format(nominee.mention, nominator.mention)) # send announcement
+
+    # Pin
+    if pin:
+        await announcement.pin()
+
     return
 
 async def kill(user, argument):
@@ -485,8 +492,9 @@ async def kill(user, argument):
     # Add roles
     person.add_roles(role, role2)
 
-    # Inform public server
-    await client.send_message(client.get_channel(publicchannel), '{} has died.'.format(person.nick if person.nick else person.name))
+    # Announce death
+    announcement = await client.send_message(client.get_channel(publicchannel), '{} has died.'.format(person.nick if person.nick else person.name)) # announcement
+    await announcement.pin() # pin
 
 async def execute(user, argument):
     # Executes a player
@@ -517,7 +525,8 @@ async def execute(user, argument):
     day_end = await yes_no(user,'Does the day end?')
 
     # Announce execution
-    await client.send_message(client.get_channel(publicchannel), '{} has been executed.'.format(person.nick if person.nick else person.name))
+    announcement = await client.send_message(client.get_channel(publicchannel), '{} has been executed.'.format(person.nick if person.nick else person.name)) # announcement
+    await announcement.pin() # pin
 
     # Resolve death
     if death:
@@ -557,8 +566,9 @@ async def exile(user, argument):
     # Check if person dies
     death = await yes_no(user,'Does {} die?'.format(person.nick if person.nick else person.name))
 
-    # Announce execution
-    await client.send_message(client.get_channel(publicchannel), '{} has been executed.'.format(person.nick if person.nick else person.name))
+    # Announce exile
+    announcement = await client.send_message(client.get_channel(publicchannel), '{} has been executed.'.format(person.nick if person.nick else person.name)) # announcement
+    await announcement.pin() # pin
 
     # Resolve death
     if death:
@@ -613,7 +623,7 @@ async def on_message(message):
 
         # Opens pms
         if command == 'openpms':
-            if not is_gamemaster(message.author): # Check permissions
+            if not is_gamemaster(message.author): # check permissions
                 await client.send_message(message.author, 'You don\'t have permission to open PMs.')
                 return
             await open_pms(message.author)
@@ -621,7 +631,7 @@ async def on_message(message):
 
         # Opens nominations
         elif command == 'opennoms':
-            if not is_gamemaster(message.author): # Check permissions
+            if not is_gamemaster(message.author): # check permissions
                 await client.send_message(message.author, 'You don\'t have permission to open nominations.')
                 return
             await open_noms(message.author)
@@ -629,7 +639,7 @@ async def on_message(message):
 
         # Opens pms and nominations
         elif command == 'open':
-            if not is_gamemaster(message.author): # Check permissions
+            if not is_gamemaster(message.author): # check permissions
                 await client.send_message(message.author, 'You don\'t have permission to open PMs and nominations.')
                 return
             await open_pms(message.author)
@@ -638,7 +648,7 @@ async def on_message(message):
 
         # Closes pms
         elif command == 'closepms':
-            if not is_gamemaster(message.author): #Check permissions
+            if not is_gamemaster(message.author): #check permissions
                 await client.send_message(message.author, 'You don\'t have permission to close PMs.')
                 return
             await close_pms(message.author)
@@ -646,7 +656,7 @@ async def on_message(message):
 
         # Closes nominations
         elif command == 'closenoms':
-            if not is_gamemaster(message.author): # Check permissions
+            if not is_gamemaster(message.author): # check permissions
                 await client.send_message(message.author, 'You don\'t have permission to close nominations.')
                 return
             await close_noms(message.author)
@@ -654,7 +664,7 @@ async def on_message(message):
 
         # Closes pms and nominations
         elif command == 'close':
-            if not is_gamemaster(message.author): # Check permissions
+            if not is_gamemaster(message.author): # check permissions
                 await client.send_message(message.author, 'You don\'t have permission to close PMs and nominations.')
                 return
             await close_pms(message.author)
@@ -663,7 +673,7 @@ async def on_message(message):
 
         # Starts day
         elif command == 'startday':
-            if not is_gamemaster(message.author): # Check permissions
+            if not is_gamemaster(message.author): # check permissions
                 await client.send_message(message.author, 'You don\'t have permission to start the day.')
                 return
             await open_pms(message.author)
@@ -704,6 +714,14 @@ async def on_message(message):
             await exile(message.author, argument)
             return
 
+        # Nominates
+        elif command == 'nominate':
+            if not is_gamemaster(message.author): # check permissions
+                await client.send_message(message.author, 'You don\'t have permission to use @nominate.')
+                return
+            await nominate(message.author, argument)
+            return
+
         # Clears history
         elif command == 'clear':
             await clear(message.author)
@@ -724,11 +742,6 @@ async def on_message(message):
             await can_be_nominated(message.author)
             return
 
-        # Nominates
-        elif command == 'nominate':
-            await nominate(message.author, argument)
-            return
-
         # Sends pm
         elif command == 'pm' or command == 'message':
             if not isPmsOpen: # Check if PMs open
@@ -743,7 +756,7 @@ async def on_message(message):
             return
 
         elif command == 'help':
-            await client.send_message(message.author, '**Commands:**\nopenpms: Opens pms\nopennoms: Opens noms\nopen: Opens pms and noms\nclosepms: Closes pms\nclosenoms: Closes noms\nclose: Closes pms and noms\nstartday: Starts the day\nendday: Ends the day\nkill <<player>>: Kills player\nexecute <<player>>: Executes player\nexile <<traveler>>: Exiles traveler\n\nclear: Clears previous messages\nnotactive: Lists players yet to speak\ncannominate: Lists who can nominate today\ncanbenominated: Lists who can be nominated today\nnominate <<player>>: Nominates player\nmessage <<player>>: Privately messages player\npm <<player>>: Privately messages player\nhelp: Displays this dialogue')
+            await client.send_message(message.author, '**Commands:**\nopenpms: Opens pms\nopennoms: Opens noms\nopen: Opens pms and noms\nclosepms: Closes pms\nclosenoms: Closes noms\nclose: Closes pms and noms\nstartday: Starts the day\nendday: Ends the day\nkill <<player>>: Kills player\nexecute <<player>>: Executes player\nexile <<traveler>>: Exiles traveler\nnominate <<player>>: Nominates player\n\nclear: Clears previous messages\nnotactive: Lists players yet to speak\ncannominate: Lists who can nominate today\ncanbenominated: Lists who can be nominated today\nmessage <<player>>: Privately messages player\npm <<player>>: Privately messages player\nhelp: Displays this dialogue')
             return
 
         else:
