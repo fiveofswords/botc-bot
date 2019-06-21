@@ -122,7 +122,7 @@ async def choices(possibilities, user, origin = ''):
             await client.send_message(user,'User not found. Try again.')
             return await choices(possibilities,user,message)
 
-        elif len(temp) == 1:
+        elif len(new_possibilities) == 1:
             return new_possibilities[0]
 
         else:
@@ -247,23 +247,32 @@ async def start_day(user, argument):
         await client.send_message(user, 'It is already day.')
         return
 
-    # Deaths
-    await client.send_message(user, 'Killing:')
+    # Argument Handling
     people = argument.split(', ')
-    deaths = []
-    players = [player for player in bggserver.members if is_player(player)]
-    for player in people:
-        person = select_player(user, player, players, origin = 'kill')
-        deaths.append(person)
-        client.send_message(user, person.nick if person.nick else person.name)
 
-    # Confirm deaths
-    confirm = await yes_no(user,'Confirm deaths?')
-    if confirm == None or confirm == False:
-        return
+    # If deaths
+    if not (len(people) == 1 and (people[0] == '' or people[0].lower() == 'none')):
+        await client.send_message(user, 'Killing:')
+        deaths = []
+        players = [player for player in bggserver.members if is_player(player)]
+        for player in people:
+            person = select_player(user, player, players, origin = 'kill')
+            if person == None:
+                return
+            deaths.append(person)
+            client.send_message(user, person.nick if person.nick else person.name)
 
-    for player in deaths:
-        kill(user, player.name)
+        # Confirm deaths
+        confirm = await yes_no(user,'Confirm deaths?')
+        if confirm == None or confirm == False:
+            return
+
+        for player in deaths:
+            kill(user, player.name)
+
+    # If no deaths
+    else:
+        await client.send_message(client.get_channel(publicchannel), 'Noone has died.')
 
     isDay = True # start the day
     notActive = [player for player in bggserver.members if (is_player(player) and not is_role(player, inactiverole) and not is_gamemaster(player))] # generate notActive
@@ -369,9 +378,11 @@ async def can_be_nominated(user):
 async def pm(to, frm):
     # Sends a pm
 
-    # Possible matches
+    # Determine player
     players = [player for player in bggserver.members if is_player(player)]
     person = select_player(frm, to, players, origin = 'message')
+    if person == None:
+        return
 
     # Request content
     messageText = 'Messaging {}. What would you like to send?'.format(person.nick if person.nick else person.name)
@@ -504,24 +515,11 @@ async def nominate(nominator, argument, message=None, location=None, pin=False):
 async def kill(user, argument):
     # Kills a player
 
-    # Possible matches
+    # Determine player
     players = [player for player in bggserver.members if is_player(player)]
-    possibilities = generate_possibilities(argument,players)
-
-    # If no users found
-    if len(possiblities) == 0:
-        await client.send_message(user, 'User not found. Try again!')
+    person = select_player(user, argument, players, origin = 'kill')
+    if person == None:
         return
-
-    # If too many users found
-    elif len(possiblities) > 1:
-        person = await choices(possibilities, user, 'kill')
-        if person == None: # means no choice was selected
-            return
-
-    # If exactly one user found
-    elif len(possiblities) == 1:
-        person = possibilities[0]
 
     # Check if dead
     if is_role(person, ghostrole):
@@ -552,24 +550,11 @@ async def kill(user, argument):
 async def execute(user, argument):
     # Executes a player
 
-    # Possible matches
+    # Determine player
     players = [player for player in bggserver.members if is_player(player)]
-    possibilities = generate_possibilities(argument,players)
-
-    # If no users found
-    if len(possiblities) == 0:
-        await client.send_message(user, 'User not found. Try again!')
+    person = select_player(user, argument, players, origin = 'execute')
+    if person == None:
         return
-
-    # If too many users found
-    elif len(possiblities) > 1:
-        person = await choices(possibilities, user, 'execute')
-        if person == None: # means no choice was selected
-            return
-
-    # If exactly one user found
-    elif len(possiblities) == 1:
-        person = possibilities[0]
 
     # Check if person dies
     death = await yes_no(user,'Does {} die?'.format(person.nick if person.nick else person.name))
@@ -596,24 +581,11 @@ async def execute(user, argument):
 async def exile(user, argument):
     # Exiles a player
 
-    # Possible matches
+    # Determine player
     players = [player for player in bggserver.members if is_player(player)]
-    possibilities = generate_possibilities(argument,players)
-
-    # If no users found
-    if len(possiblities) == 0:
-        await client.send_message(user, 'User not found. Try again!')
+    person = select_player(user, argument, players, origin = 'exile')
+    if person == None:
         return
-
-    # If too many users found
-    elif len(possiblities) > 1:
-        person = await choices(possibilities, user, 'exile')
-        if person == None: # means no choice was selected
-            return
-
-    # If exactly one user found
-    elif len(possiblities) == 1:
-        person = possibilities[0]
 
     # Check is person is traveler
     if not is_role(person, travelerrole):
@@ -636,24 +608,11 @@ async def exile(user, argument):
 async def revive(user, argument):
     # Revives a player
 
-    # Possible matches
+    # Determine player
     players = [player for player in bggserver.members if is_player(player)]
-    possibilities = generate_possibilities(argument,players)
-
-    # If no users found
-    if len(possiblities) == 0:
-        await client.send_message(user, 'User not found. Try again!')
+    person = select_player(user, argument, players, origin = 'revive')
+    if person == None:
         return
-
-    # If too many users found
-    elif len(possiblities) > 1:
-        person = await choices(possibilities, user, 'revive')
-        if person == None: # means no choice was selected
-            return
-
-    # If exactly one user found
-    elif len(possiblities) == 1:
-        person = possibilities[0]
 
     # Check if dead
     if not is_role(person, ghostrole):
@@ -684,24 +643,11 @@ async def revive(user, argument):
 async def make_inactive(user, argument):
     # Marks a player as inactive.
 
-    # Possible matches
+    # Determine player
     players = [player for player in bggserver.members if is_player(player)]
-    possibilities = generate_possibilities(argument,players)
-
-    # If no users found
-    if len(possiblities) == 0:
-        await client.send_message(user, 'User not found. Try again!')
+    person = select_player(user, argument, players, origin = 'makeinactive')
+    if person == None:
         return
-
-    # If too many users found
-    elif len(possiblities) > 1:
-        person = await choices(possibilities, user, 'makeinactive')
-        if person == None: # means no choice was selected
-            return
-
-    # If exactly one user found
-    elif len(possiblities) == 1:
-        person = possibilities[0]
 
     # Find inactive role
     role = None
@@ -720,24 +666,11 @@ async def make_inactive(user, argument):
 async def undo_inactive(user, argument):
     # Marks a player as active.
 
-    # Possible matches
+    # Determine player
     players = [player for player in bggserver.members if is_player(player)]
-    possibilities = generate_possibilities(argument,players)
-
-    # If no users found
-    if len(possiblities) == 0:
-        await client.send_message(user, 'User not found. Try again!')
+    person = select_player(user, argument, players, origin = 'undoinactive')
+    if person == None:
         return
-
-    # If too many users found
-    elif len(possiblities) > 1:
-        person = await choices(possibilities, user, 'undoinactive')
-        if person == None: # means no choice was selected
-            return
-
-    # If exactly one user found
-    elif len(possiblities) == 1:
-        person = possibilities[0]
 
     # Find inactive role
     role = None
