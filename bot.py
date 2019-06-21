@@ -746,6 +746,10 @@ async def on_message(message):
             await client.send_message(message.author, '**Commands:**\nopenpms: Opens pms\nopennoms: Opens noms\nopen: Opens pms and noms\nclosepms: Closes pms\nclosenoms: Closes noms\nclose: Closes pms and noms\nstartday: Starts the day\nendday: Ends the day\nkill <<player>>: Kills player\nexecute <<player>>: Executes player\nexile <<traveler>>: Exiles traveler\n\nclear: Clears previous messages\nnotactive: Lists players yet to speak\ncannominate: Lists who can nominate today\ncanbenominated: Lists who can be nominated today\nnominate <<player>>: Nominates player\nmessage <<player>>: Privately messages player\npm <<player>>: Privately messages player\nhelp: Displays this dialogue')
             return
 
+        else:
+            await client.send_message(message.author, 'Command {} not recognized. For a list of commands, type @help.'.format(command))
+
+
 @client.event
 async def on_message_edit(before, after):
     # Handles messages on modification
