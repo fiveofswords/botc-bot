@@ -545,6 +545,10 @@ async def on_message(message):
             await can_be_nominated(message.author)
             return
 
+        # Nominates
+        elif command == 'nominate'
+            await nominate(message.author, argument[0])
+
         # Sends pm
         elif command == 'pm' or command == 'message':
             if not isPmsOpen: # Check if PMs open
