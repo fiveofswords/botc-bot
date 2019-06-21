@@ -489,7 +489,7 @@ async def nominate(nominator, argument, message=None, location=None, pin=False):
 
     # Announcement for exile call
     if is_role(nominee, travelerrole):
-        announcement = await client.send_message(client.get_channel(publicchannel), '{} has called for {}\'s exile'.'.format(moninator.mention, nominee.mention)) # send announcement
+        announcement = await client.send_message(client.get_channel(publicchannel), '{} has called for {}\'s exile'.format(moninator.mention, nominee.mention)) # send announcement
 
     # Announcement for nomination
     else:
@@ -980,10 +980,21 @@ async def on_message_edit(before, after):
     if after.channel == client.get_channel(publicchannel) and before.pinned == False and after.pinned == True:
 
         # Nomination
-        if 'nominate ' in after.content.lower(): # -1 to ensure there's something after the nomination
-
-            # Check if nominations are open
+        if 'nominate ' in after.content.lower():
             await nominate(after.author, after.content[after.content.lower().index('nominate ') + 1:], message=after, location=client.get_channel(publicchannel))
+            return
+
+        # Skip
+        elif 'skip' in after.content.lower():
+            await cannot_nominate(after.author)
+            return
+
+    # On unpin
+    elif after.channel == client.get_channel(publicchannel) and before.pinned == True and after.pinned == False:
+
+        # Unskip
+        if 'skip' in after.content.lower():
+            canNominate.append(after.author)
             return
 
 
