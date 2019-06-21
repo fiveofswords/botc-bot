@@ -546,7 +546,7 @@ async def on_message(message):
             return
 
         # Nominates
-        elif command == 'nominate'
+        elif command == 'nominate':
             await nominate(message.author, argument[0])
 
         # Sends pm
@@ -561,6 +561,9 @@ async def on_message(message):
 
             await message_dialogue(argument[0],message.author)
             return
+
+        elif command == 'help':
+            await client.send_message(message.author, '**Commands:**\nopenpms: Opens pms\nopennoms: Opens noms\nopen: Opens pms and noms\nclosepms: Closes pms\nclosenoms: Closes noms\nclose: Closes pms and noms\nstartday: Starts the day\nendday: Ends the day\n\nclear: Clears previous messages\nnotactive: Lists players yet to speak\ncannominate: Lists who can nominate today\ncanbenominated: Lists who can be nominated today\nnominate <<player>>: Nominates player\nmessage <<player>>: Privately messages player\npm <<player>>: Privately messages player\nhelp: Displays this dialogue')
 
 @client.event
 async def on_message_edit(before, after):
