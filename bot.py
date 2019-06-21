@@ -544,7 +544,7 @@ async def execute(user, argument):
 
     # If too many users found
     elif len(possiblities) > 1:
-        person = await choices(possibilities, user, 'kill')
+        person = await choices(possibilities, user, 'execute')
         if person == None: # means no choice was selected
             return
 
@@ -588,7 +588,7 @@ async def exile(user, argument):
 
     # If too many users found
     elif len(possiblities) > 1:
-        person = await choices(possibilities, user, 'kill')
+        person = await choices(possibilities, user, 'exile')
         if person == None: # means no choice was selected
             return
 
@@ -613,6 +613,54 @@ async def exile(user, argument):
     # Resolve death
     if death:
         await kill(user, person.name)
+
+async def revive(user, argument):
+    # Revives a player
+
+    # Possible matches
+    players = [player for player in bggserver.members if is_player(player)]
+    possibilities = generate_possibilities(argument,players)
+
+    # If no users found
+    if len(possiblities) == 0:
+        await client.send_message(user, 'User not found. Try again!')
+        return
+
+    # If too many users found
+    elif len(possiblities) > 1:
+        person = await choices(possibilities, user, 'revive')
+        if person == None: # means no choice was selected
+            return
+
+    # If exactly one user found
+    elif len(possiblities) == 1:
+        person = possibilities[0]
+
+    # Check if dead
+    if ghostrole not in [g.name for g in bggserver.get_member(nominator.id).roles]:
+        await client.send_message(user, '{} is already alive.'.format(person.nick if person.nick else person.name))
+        return
+
+    # Find dead role
+    role = None
+    for rl in bggserver.roles:
+        if rl.name == ghostrole:
+            role = rl
+            break
+
+    # Find dead vote role
+    role2 = None
+    for rl in bggserver.roles:
+        if rl.name == deadvoterole:
+            role = rl
+            break
+
+    # Remove roles
+    person.remove_roles(role, role2)
+
+    # Announce ressurection
+    announcement = await client.send_message(client.get_channel(publicchannel), '{} has come back to life.'.format(person.nick if person.nick else person.name)) # announcement
+    await announcement.pin() # pin
 
 
 ### Event Handling
@@ -722,7 +770,7 @@ async def on_message(message):
 
         # Ends day
         elif command == 'endday':
-            if not is_gamemaster(message.author):
+            if not is_gamemaster(message.author): # check permissions
                 await client.send_message(message.author, 'You don\'t have permission to end the day.')
                 return
             await close_pms(message.author)
@@ -732,7 +780,7 @@ async def on_message(message):
 
         # Kills a player
         elif command == 'kill':
-            if not is_gamemaster(message.author):
+            if not is_gamemaster(message.author): # check permissions
                 await client.send_message(message.author, 'You don\'t have permission to kill players.')
                 return
             await kill(message.author, argument)
@@ -740,7 +788,7 @@ async def on_message(message):
 
         # Executes a player
         elif command == 'execute':
-            if not is_gamemaster(message.author):
+            if not is_gamemaster(message.author): # check permissions
                 await client.send_message(message.author, 'You don\'t have permission to execute players.')
                 return
             await execute(message.author, argument)
@@ -748,10 +796,18 @@ async def on_message(message):
 
         # Exiles a traveler
         elif command == 'exile':
-            if not is_gamemaster(message.author):
+            if not is_gamemaster(message.author): # check permissions
                 await client.send_message(message.author, 'You don\'t have permission to exile travelers.')
                 return
             await exile(message.author, argument)
+            return
+
+        # Revives a player
+        elif command == 'revive':
+            if not is_gamemaster(message.author): # check permissions
+                await client.send_message(message.author, 'You don\'t have permission to revive players.')
+                return
+            await revive(message.author, argument)
             return
 
         # Nominates
@@ -797,7 +853,7 @@ async def on_message(message):
 
         # Help dialogue
         elif command == 'help':
-            await client.send_message(message.author, '**Commands:**\nopenpms: Opens pms\nopennoms: Opens noms\nopen: Opens pms and noms\nclosepms: Closes pms\nclosenoms: Closes noms\nclose: Closes pms and noms\nstartday: Starts the day\nendday: Ends the day\nkill <<player>>: Kills player\nexecute <<player>>: Executes player\nexile <<traveler>>: Exiles traveler\nnominate <<player>>: Nominates player\n\nclear: Clears previous messages\nnotactive: Lists players yet to speak\ncannominate: Lists who can nominate today\ncanbenominated: Lists who can be nominated today\nmessage <<player>>: Privately messages player\npm <<player>>: Privately messages player\nhelp: Displays this dialogue')
+            await client.send_message(message.author, '**Commands:**\nopenpms: Opens pms\nopennoms: Opens noms\nopen: Opens pms and noms\nclosepms: Closes pms\nclosenoms: Closes noms\nclose: Closes pms and noms\nstartday <<players>>: Starts the day, killing players\nendday: Ends the day\nkill <<player>>: Kills player\nexecute <<player>>: Executes player\nexile <<traveler>>: Exiles traveler\nRevive <<player>>: revives player\nnominate <<player>>: Nominates player\n\nclear: Clears previous messages\nnotactive: Lists players yet to speak\ncannominate: Lists who can nominate today\ncanbenominated: Lists who can be nominated today\nmessage <<player>>: Privately messages player\npm <<player>>: Privately messages player\nhelp: Displays this dialogue\n\nCommand keys: @ and ,\nArgument separator: \', \'')
             return
 
         # Command unrecognized
