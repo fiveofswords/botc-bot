@@ -199,13 +199,47 @@ async def close_noms(user):
             await client.send_message(user, 'Nominations are now closed.')
     return
 
-async def start_day(user):
+async def start_day(user, argument):
     # Starts the day
 
     # Check if it is already day
     if isDay:
         await client.send_message(user, 'It is already day.')
         return
+
+    # Deaths
+    await client.send_message(user, 'Killing:')
+    people = argument.split(', ')
+    deaths = []
+    players = [player for player in bggserver.members if is_player(player)]
+    for player in people:
+        possibilities = generate_possibilities(player, players)
+
+        # If no users found
+        if len(possiblities) == 0:
+            await client.send_message(user, 'User {} not found. Try again!'.format(player))
+            return
+
+        # If too many users found
+        elif len(possiblities) > 1:
+            person = await choices(possibilities, frm, 'message')
+            if person == None: # means no choice was selected
+                return
+
+        # If exactly one user found
+        elif len(possiblities) == 1:
+            person = possibilities[0]
+
+        deaths.append(person)
+        client.send_message(user, person.nick if person.nick else person.name)
+
+    # Confirm deaths
+    confirm = await yes_no(user,'Confirm deaths?')
+    if confirm == None or confirm == False:
+        return
+
+    for player in deaths:
+        kill(user, player.name)
 
     isDay = True # start the day
     notActive = [player for player in bggserver.members if is_player(player)] # generate notActive
@@ -520,9 +554,13 @@ async def execute(user, argument):
 
     # Check if person dies
     death = await yes_no(user,'Does {} die?'.format(person.nick if person.nick else person.name))
+    if death == None:
+        return
 
     # Check if day ends
     day_end = await yes_no(user,'Does the day end?')
+    if day_end == None:
+        return
 
     # Announce execution
     announcement = await client.send_message(client.get_channel(publicchannel), '{} has been executed.'.format(person.nick if person.nick else person.name)) # announcement
@@ -565,6 +603,8 @@ async def exile(user, argument):
 
     # Check if person dies
     death = await yes_no(user,'Does {} die?'.format(person.nick if person.nick else person.name))
+    if death == None:
+        return
 
     # Announce exile
     announcement = await client.send_message(client.get_channel(publicchannel), '{} has been executed.'.format(person.nick if person.nick else person.name)) # announcement
@@ -677,7 +717,7 @@ async def on_message(message):
                 await client.send_message(message.author, 'You don\'t have permission to start the day.')
                 return
             await open_pms(message.author)
-            await start_day(message.author)
+            await start_day(message.author, argument)
             return
 
         # Ends day
@@ -755,10 +795,12 @@ async def on_message(message):
             await pm(argument,message.author)
             return
 
+        # Help dialogue
         elif command == 'help':
             await client.send_message(message.author, '**Commands:**\nopenpms: Opens pms\nopennoms: Opens noms\nopen: Opens pms and noms\nclosepms: Closes pms\nclosenoms: Closes noms\nclose: Closes pms and noms\nstartday: Starts the day\nendday: Ends the day\nkill <<player>>: Kills player\nexecute <<player>>: Executes player\nexile <<traveler>>: Exiles traveler\nnominate <<player>>: Nominates player\n\nclear: Clears previous messages\nnotactive: Lists players yet to speak\ncannominate: Lists who can nominate today\ncanbenominated: Lists who can be nominated today\nmessage <<player>>: Privately messages player\npm <<player>>: Privately messages player\nhelp: Displays this dialogue')
             return
 
+        # Command unrecognized
         else:
             await client.send_message(message.author, 'Command {} not recognized. For a list of commands, type @help.'.format(command))
 
