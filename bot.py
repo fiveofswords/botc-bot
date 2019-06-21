@@ -474,9 +474,9 @@ async def on_message(message):
 @client.event
 async def on_message_edit(before, after):
     # Handles messages on modification
-    global pmsopen
-    global nomsopen
-    global isday
+    global isPmsOpen
+    global isNomsOpen
+    global isDay
     global bggserver
     bggserver = client.get_server(bggid)
 
