@@ -300,6 +300,17 @@ async def on_message(message):
 
             await sendGMpublic(message.author,person,userresponse.content,bggserver)
 
+            if message.author in notactive:
+                notactive.remove(message.author)
+                if len(notactive) == 1:
+                    for memb in bggserver.members:
+                        if gamemasterrole in [role.name for role in memb.roles]:
+                            await client.send_message(memb, "Just waiting on "+notactive[0].name+" to speak.")
+                if len(notactive) == 0:
+                    for memb in bggserver.members:
+                        if gamemasterrole in [role.name for role in memb.roles]:
+                            await client.send_message(memb, "Everyone has spoken!")
+
             end = await client.send_message(message.author, "Message sent!")
 
             return
