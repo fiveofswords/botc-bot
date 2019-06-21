@@ -37,13 +37,17 @@ async def generate_possibilities(text, people):
             possibilities.append(i)
     return possibilities
 
-async def is_gamemaster(user):
-    # Checks if user has gammasterrole
-    return gamemasterrole in [g.name for g in bggserver.get_member(user.id).roles]
+async def is_role(user, role):
+    # Checks if user has role
+    return role in [g.name for g in bggserver.get_member(user.id).roles]
 
 async def is_player(user):
     # Checks if user has playerrole
-    return playerrole in [g.name for g in bggserver.get_member(user.id).roles]
+    return is_role(user, playerrole)
+
+async def is_gamemaster(user):
+    # Checks if user has gamemasterrole
+    return is_role(user, gamemasterrole)
 
 async def make_active(user):
     # Removes user from notActive
@@ -57,6 +61,20 @@ async def make_active(user):
         for memb in bggserver.members:
             if gamemasterrole in [role.name for role in memb.roles]:
                 await client.send_message(memb, 'Everyone has spoken!')
+    return
+
+async def cannot_nominate(user):
+    # Removes user from canNominate
+
+    canNominate.remove(user)
+    if len(canNominate) == 1:
+        for memb in bggserver.members:
+            if gamemasterrole in [role.name for role in memb.roles]:
+                await client.send_message(memb, 'Just waiting on {} to nominate or skip.'.format(str(canNominate[0])))
+    if len(canNominate) == 0:
+        for memb in bggserver.members:
+            if gamemasterrole in [role.name for role in memb.roles]:
+                await client.send_message(memb, 'Everyone has nominated or skipped!')
     return
 
 async def update_presence(client):
@@ -248,9 +266,9 @@ async def start_day(user, argument):
         kill(user, player.name)
 
     isDay = True # start the day
-    notActive = [player for player in bggserver.members if is_player(player)] # generate notActive
+    notActive = [player for player in bggserver.members if (is_player(player) and not is_role(player, inactiverole) and not is_gamemaster(player))] # generate notActive
     canBeNominated = notActive # generate canBeNominated
-    canNominate = [player for player in notActive if ghostrole not in [g.name for g in bggserver.get_member(nominator.id).roles]] # generate canNominate
+    canNominate = [player for player in notActive if not is_role(player, ghostrole)] # generate canNominate
     return
 
     # Announce morning
@@ -444,13 +462,13 @@ async def nominate(nominator, argument, message=None, location=None, pin=False):
             nominee = names[0]
 
     # Check if nominator is dead
-    if ghostrole in [g.name for g in bggserver.get_member(nominator.id).roles] and travelerrole not in [g.name for g in bggserver.get_member(nominee.id).roles]:
+    if is_role(nominator, ghostrole) and not is_role(nominee, travelerrole):
         await client.send_message(location, '{}, you are dead and cannot nominate.'.format(nominator.mention))
         await client.unpin_message(message)
         return
 
     # Check if nominator has nominated today
-    elif nominator not in canNominate and travelerrole not in [g.name for g in bggserver.get_member(nominee.id).roles] and not is_gamemaster(nominator):
+    elif nominator not in canNominate and not is_role(nominee, travelerrole) and not is_gamemaster(nominator):
         await client.send_message(location, '{}, you have nominated already today.'.format(nominator.mention))
         await client.unpin_message(message)
         return
@@ -461,15 +479,16 @@ async def nominate(nominator, argument, message=None, location=None, pin=False):
         await client.unpin_message(after)
 
     # Nomination
-    if not travelerrole not in [g.name for g in bggserver.get_member(nominee.id).roles]: # update canNominate
-        canNominate.remove(nominator)
+    if not is_role(nominee, travelerrole): # update canNominate
+        await cannot_nominate(nominator)
+
     canbeNominated.remove(moninee) # update canBeNominated
     isPmsOpen == False # update pms
     isNomsOpen == False # update noms
     await update_presence(client) # update presence
 
     # Announcement for exile call
-    if travelerrole in [g.name for g in bggserver.get_member(nominee.id).roles]:
+    if is_role(nominee, travelerrole):
         announcement = await client.send_message(client.get_channel(publicchannel), '{} has called for {}\'s exile'.'.format(moninator.mention, nominee.mention)) # send announcement
 
     # Announcement for nomination
@@ -505,7 +524,7 @@ async def kill(user, argument):
         person = possibilities[0]
 
     # Check if dead
-    if ghostrole in [g.name for g in bggserver.get_member(nominator.id).roles]:
+    if is_role(person, ghostrole):
         await client.send_message(user, '{} is already dead.'.format(person.nick if person.nick else person.name))
         return
 
@@ -597,7 +616,7 @@ async def exile(user, argument):
         person = possibilities[0]
 
     # Check is person is traveler
-    if travelerrole not in [g.name for g in bggserver.get_member(person.id).roles]:
+    if not is_role(person, travelerrole):
         await client.send_message(user, '{} is not a traveler.'.format(person.nick if person.nick else person.name))
         return
 
@@ -637,7 +656,7 @@ async def revive(user, argument):
         person = possibilities[0]
 
     # Check if dead
-    if ghostrole not in [g.name for g in bggserver.get_member(nominator.id).roles]:
+    if not is_role(person, ghostrole):
         await client.send_message(user, '{} is already alive.'.format(person.nick if person.nick else person.name))
         return
 
@@ -694,6 +713,8 @@ async def make_inactive(user, argument):
     # Mark as inactive
     await person.add_roles(role)
     await cliend.send_message(user, '{} has been marked as inactive.'.format(person.nick if person.nick else person.name))
+    notActive.remove(person)
+    canNominate.remove(person)
     return
 
 async def undo_inactive(user, argument):
