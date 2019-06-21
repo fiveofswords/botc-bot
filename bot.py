@@ -1,424 +1,510 @@
-# Work with Python 3.6
-
-
-
-class UserNotFoundException(Exception):
-
-    def __init__(self,*args,**kwargs):
-
-        Exception.__init__(self,*args,**kwargs)
-
-
-
-import discord
-
-import os, time
+import discord, os, time
 
 from config import *
 
-global pmsopen
-global nomsopen
-global isday
-global notactive
-notactive = []
-pmsopen = False
-nomsopen = False
-isday = False
 
+### Global Variables
+global isPmsOpen # bool - are pms open
+global isNomsOpen # bool - are nominations open
+global isDay # bool - is it the day
+global notActive # list - players who have not spoken
+isPmsOpen = False
+isNomsOpen = False
+isDay = False
+notActive = []
+
+
+### API Stuff
+client = discord.Client() # discord client
+
+# Read API Token
 with open(os.path.dirname(os.path.realpath(__file__))+'/token.txt') as tokenfile:
-
     TOKEN = tokenfile.readline().strip()
 
 
+### Utility Functions
+async def generate_possibilities(text, people):
+    # Generates possible users with name or nickname matching text
 
-client = discord.Client()
+    possibilities = []
+    for i in people:
+        if ((i.nick != None and choice.content.lower() in i.nick.lower()) or choice.content.lower() in i.name.lower())  and playerrole in [g.name for g in i.roles]:
+            possibilities.append(i)
+    return possibilities
+
+async def is_gamemaster(user):
+    # Checks if user has gammasterrole
+    return gamemasterrole in [g.name for g in bggserver.get_member(user.id).roles]
+
+async def is_player(user):
+    # Checks if user has playerrole
+    return playerrole in [g.name for g in bggserver.get_member(user.id).roles]
+
+async def make_active(user):
+    # Removes user from notActive
+
+    notActive.remove(user)
+    if len(notActive) == 1:
+        for memb in bggserver.members:
+            if gamemasterrole in [role.name for role in memb.roles]:
+                await client.send_message(memb, 'Just waiting on {} to speak.'.format(str(notActive[0])))
+    if len(notActive) == 0:
+        for memb in bggserver.members:
+            if gamemasterrole in [role.name for role in memb.roles]:
+                await client.send_message(memb, 'Everyone has spoken!')
+    return
 
 async def update_presence(client):
-    clopen = ["Closed","Open"]
-    await client.change_presence(game=discord.Game(name="PMs "+clopen[pmsopen]+", Nominations "+clopen[nomsopen]+"!"))
-async def sendGMpublic(frm, to, content, server):
+    # Updates Discord Presence
 
-    master = None
+    clopen = ['Closed','Open']
+    await client.change_presence(game = discord.Game(name = 'PMs {}, Nominations {}!'.format(clopen[isPmsOpen],clopen[isNomsOpen])))
 
-    for role in server.roles:
+async def choices(possibilities, message, origin = ''):
+    # Clarifies which user is indended when there are multiple matches
 
-        if role.name == gamemasterrole:
-
-            master = role
-
-            break
-
-
-
-    for member in server.members:
-
-        if master in member.roles and member != frm and member != to:
-
-            gmcopy = await client.send_message(member, "**[**{0} **>** {1}**]** ".format(server.get_member(frm.id).nick if server.get_member(frm.id).nick else frm.name, to.nick if to.nick else to.name)+content)
-
-
-
-    pubcopy = await client.send_message(client.get_channel(publicchannel), "**{0}** > **{1}**".format(server.get_member(frm.id).nick if server.get_member(frm.id).nick else frm.name,to.nick if to.nick else to.name))
-
-
-
-async def choices(possibilities,message):
-    messagetext = "Which user would you like to send the message to?\n"
-    # pickone = await client.send_message(message.author,"Which user would you like to send the message to?")
-
+    # Generate clarification message
+    messageText = 'Which user do you mean to {}?\n'.format(origin)
     for index,u in enumerate(possibilities):
-        messagetext += "({0}). {1}\n".format(index+1,u.nick if u.nick else u.name)
-        # await client.send_message(message.author,"({0}). {1}".format(index+1,u.nick if u.nick else u.name))
+        messageText += '({0}). {1}\n'.format(index+1,u.nick if u.nick else u.name)
 
-    pickone = await client.send_message(message.author,messagetext)
+    # Request clarifciation from user
+    await client.send_message(message.author,messageText)
     choice = await client.wait_for_message(timeout=200, author=message.author, channel=pickone.channel)
 
+    # Timeout
     if choice == None:
-
-        await client.send_message(message.author,"Timed out.")
-
+        await client.send_message(message.author,'Timed out.')
         return
 
+    # Cancel
     if choice.content.lower() == 'cancel':
-
-        await client.send_message(message.author,"Message cancelled!")
-
+        await client.send_message(message.author,'Message cancelled!')
         return
-    if choice.content.lower().startswith(',message') or choice.content.lower().startswith('@message'):
+
+    # Restart
+    if choice.content.lower()[1:].startswith(origin):
         return
+
+    # If a is an int
     try:
-
         a = possibilities[int(choice.content)-1]
-
         return possibilities[int(choice.content)-1]
 
+    # If a is a name
     except Exception:
+        new_possibilities = generate_possibilities(choice.content, possibilities)
 
-        temp = []
-
-        for i in possibilities:
-
-            if ((i.nick != None and choice.content.lower() in i.nick.lower()) or choice.content.lower() in i.name.lower())  and playerrole in [g.name for g in i.roles]:
-
-                temp.append(i)
-
-        if len(temp) == 0:
-
-            await client.send_message(message.author,"User not found. Try again.")
-
+        if len(new_possibilities) == 0:
+            await client.send_message(message.author,'User not found. Try again.')
             return await choices(possibilities,message)
 
         elif len(temp) == 1:
-
             return temp[0]
 
         else:
-
             return await choices(temp,message)
 
 
+### Commands
+
+async def open_pms(user):
+    # Opens pms
+
+    # Check if pms are already open
+    if isPmsOpen:
+        await client.send_message(user, 'PMs are already open.')
+        return
+
+    isPmsOpen = True # open pms
+    await update_presence(client) # update presence
+    for user in bggserver.members: # send gamemasters update
+        if is_gamemaster(user):
+            await client.send_message(user, 'PMs are now open.')
+    return
+
+async def open_noms(user):
+    # Opens nominations
+
+    # Check if nominations are already open
+    if isNomsOpen:
+        await client.send_message(user, 'Nominations are already open.')
+        return
+
+    isNomsOpen = True # open noms
+    await update_presence(client) # update presence
+    for user in bggserver.members: # send gamemasters update
+        if is_gamemaster(user):
+            await client.send_message(user, 'Nominations are now open.')
+    return
+
+async def close_pms(user):
+    # Closes pms
+
+    # Check if pms are already closed
+    if not isPmsOpen:
+        await client.send_message(user, 'PMs are already closed.')
+        return
+
+    isPmsOpen = False # close pms
+    await update_presence(client) # update presence
+    for user in bggserver.members: # send gamemasters update
+        if is_gamemaster(user):
+            await client.send_message(user, 'PMs are now closed.')
+    return
+
+async def close_noms(user):
+    # Closes nominations
+
+    # Check if nominations are already closed
+    if not isNomsOpen:
+        await client.send_message(user, 'Nominations are already closed.')
+        return
+
+    isNomsOpen = False # close noms
+    await update_presence(client) # update presence
+    for user in bggserver.members:
+        if is_gamemaster(user):
+            await client.send_message(user, 'Nominations are now closed.')
+    return
+
+async def start_day(user):
+    # Starts the day
+
+    # Check if it is already day
+    if isDay:
+        await client.send_message(user, 'It is already day.')
+        return
+
+    isDay = True # start the day
+    notActive = [player for player in bggserver.members if is_player(player)] # generate notActive
+    return
+
+    # Inform public server
+    role = None
+    for rl in bggserver.roles:
+        if rl.name == playerrole:
+            role = rl
+            break
+    await client.send_message(client.get_channel(publicchannel),"{} wake up!".format(role.mention))
+    return
+
+async def end_day():
+    # Ends the day
+
+    # Check if it is already night
+    if not isDay:
+        await client.send_message(user, 'It is already night.')
+        return
+
+    isDay = False # end the day
+
+    # Inform public server
+    role = None
+    for rl in bggserver.roles:
+        if rl.name == playerrole:
+            role = rl
+            break
+
+    await client.send_message(client.get_channel(publicchannel),"{} go to sleep!".format(role.mention))
+
+async def clear():
+    # Creates whitespace in message history
+
+    await client.send_message(message.author,'{}Clearing\n{}'.format('\u200B\n' * 25, '\u200B\n' * 25))
+    return
+
+async def not_active(user):
+    # Lists inactive users
+
+    # If not day
+    if not isDay:
+        await client.send_message(user, 'It\'s not day right now!')
+
+    # If no inactive users
+    if not notActive:
+        await client.send_message(user, 'Everyone has spoken!')
+        return
+
+    # Create message
+    messageText = 'These players have not spoken:\n'
+    for user in notActive:
+        messageText += '{}\n'.format(user.nick if user.nick else user.name)
+
+    await client.send_message(user, messageText) # send message
+
+async def pm(to, frm):
+    # Sends a pm
+
+    # Possible matches
+    possibilities = generate_possibilities(to,bggserver.members)
+
+    # If no users found
+    if len(possiblities) == 0:
+        await client.send_message(message.author, 'User not found. Try again!')
+        return
+
+    # If too many users found
+    elif len(possiblities) > 1:
+        person = await choices(possibilities, bggserver.members, 'message')
+        if person == None: # means no choice was selected
+            return
+
+    # If exactly one user found
+    elif len(possiblities) == 1:
+        person = possibilities[0]
+
+    # Request content
+    messageText = 'Messaging {}. What would you like to send?'.format(person.nick if person.nick else person.name)
+    await client.send_message(frm,messageText)
+
+    # Process reply
+    intendedMessage = await client.wait_for_message(timeout=200, author=message.author, channel=reply.channel)
+
+    # Timeout
+    if intendedMessage == None:
+        await client.send_message(message.author, 'Message timed out!')
+        return
+
+    # Cancel
+    if intendedMessage.content.lower() == 'cancel':
+        await client.send_message(message.author, 'Message canceled!')
+        return
+
+    # Restart
+    if intendedMessage.content.lower()[1:].startswith('message'):
+        return
+
+    # Send message
+    await client.send_message(person, 'Message from {}: **{}**'.format(bggserver.get_member(frm.id).nick if bggserver.get_member(frm.id).nick else frm.name, intendedMessage.content))
+
+    # Inform gamemasters
+    for user in bggserver.members:
+        if is_gamemaster(user) and user != frm and user != person:
+                await client.send_message(member, '**[**{} **>** {}**]** {}'.format(server.get_member(frm.id).nick if server.get_member(frm.id).nick else frm.name, person.nick if person.nick else person.name,intendedMessage.content))
+
+    # Inform public server
+    await client.send_message(client.get_channel(publicchannel), '**{}** > **{}**'.format(server.get_member(frm.id).nick if server.get_member(frm.id).nick else frm.name, person.nick if person.nick else person.name))
+
+    # Update activity
+    if message.author in notActive:
+        make_active(message.author)
+
+    # Confirm success
+    await client.send_message(frm, 'Message sent!')
+    return
+
+async def nominate(nominator, argument, location=None):
+    # nominates a player found in argument
+
+    # Generate location
+    if location == None:
+        location = nominator # will send response messages in dm
+
+    # Determine nominee
+    # Self-nomination
+    if 'me' in argument or 'myself' in argument:
+        nominee = after.author
+
+    # Storyteller nomination
+    elif 'storyteller' in argument:
+        role = None
+        for rl in bggserver.roles:
+            if rl.name == gamemasterrole:
+                role = rl
+                break
+        nominee = role
+
+    # Other nominations
+    else:
+        players = [player for player in bggserver.members if is_player(player)]
+        names = generate_possibilities(argument, players)
+        if len(name) > 1:
+            await client.send_message(location, '{}, there are multiple matching players: {}. Please try again.'.format(nominator.mention, names))
+            return
+        elif len(name) == 0:
+            await client.send_message(location, '{}. there are no matching players. Please try again.'.format(nominator.mention))
+            return
+        else:
+            nominee = names[0]
+
+    # Nomination
+    isPmsOpen == False
+    isNomsOpen == False
+    await update_presence(client)
+    await client.send_message(client.get_channel(publicchannel), '{} has been nominated by {}.'.format(nominee.mention, nominator.mention))
+    return
 
 
 
-
-
+### Event Handling
 @client.event
-
-async def on_message(message):
-    global pmsopen
-    global nomsopen
-    global isday
-    global notactive
-    bggserver = client.get_server(bggid)
-    if message.author == client.user:
-
-        return
-    # we do not want the bot to reply to itself
-    if message.channel.id == publicchannel:
-        if (message.author in notactive) and isday:
-            notactive.remove(message.author)
-            if len(notactive) == 1:
-                for memb in bggserver.members:
-                    if gamemasterrole in [role.name for role in memb.roles]:
-                        await client.send_message(memb, "Just waiting on "+notactive[0].name+" to speak.")
-            if len(notactive) == 0:
-                for memb in bggserver.members:
-                    if gamemasterrole in [role.name for role in memb.roles]:
-                        await client.send_message(memb, "Everyone has spoken!")
-        return
-
-    if message.server != None:
-
-        return
-
-    elif message.content.startswith(',openpms') or message.content.startswith('@openpms'):
-
-        if gamemasterrole not in [g.name for g in bggserver.get_member(message.author.id).roles]:
-
-            await client.send_message(message.author,'You don\'t have permission to open PMs.')
-
-            return
-
-        pmsopen = True
-        await update_presence(client)
-        for user in bggserver.members:
-            if gamemasterrole in [r.name for r in user.roles]:
-                await client.send_message(user,'PMs are now open.')
-        # await client.send_message(message.author,'PMs are now open.')
-        #await client.send_message(publicchannel, 'PMs are now open.')
-
-    elif message.content.startswith(', ') or message.content.startswith('@opennoms'):
-        if gamemasterrole not in [g.name for g in bggserver.get_member(message.author.id).roles]:
-            await client.send_message(message.author, 'You don\'t have permission to open nominations.')
-
-            return
-
-        nomsopen = True
-        await update_presence(client)
-        for user in bggserver.members:
-            if gamemasterrole in [r.name for r in user.roles]:
-                await client.send_message(user,'Nominations are now open.')
-    elif message.content.startswith(',closenoms') or message.content.startswith('@closenoms'):
-        if gamemasterrole not in [g.name for g in bggserver.get_member(message.author.id).roles]:
-            await client.send_message(message.author, 'You don\'t have permission to close nominations.')
-
-            return
-
-        nomsopen = False
-        await update_presence(client)
-        for user in bggserver.members:
-            if gamemasterrole in [r.name for r in user.roles]:
-                await client.send_message(user,'Nominations are now closed.')
-    elif message.content.startswith(',closepms') or message.content.startswith('@closepms'):
-
-        if gamemasterrole not in [g.name for g in bggserver.get_member(message.author.id).roles]:
-            await client.send_message(message.author, 'You don\'t have permission to close PMs.')
-
-            return
-
-        pmsopen = False
-        await update_presence(client)
-        for user in bggserver.members:
-            if gamemasterrole in [r.name for r in user.roles]:
-                await client.send_message(user,'PMs are now closed.')
-        # await client.send_message(message.author, 'PMs are now closed.')
-        #await client.send_message(publicchannel, 'PMs are now closed.')
-
-
-    elif message.content.startswith(',clear') or message.content.startswith('@clear'):
-
-        await client.send_message(message.author,"\u200B\n"*25+  "Clearing\n"+"\u200B\n"*25)
-
-    # if message.content.startswith('!clear'):
-
-    #     try:
-
-    #         await client.purge_from(message.channel,limit=int(message.content[6:].strip()))
-
-    #     except Exception:
-
-    #         await client.purge_from(message.channel)
-
-    elif message.content.startswith(',message') or message.content.startswith('@message'):
-
-        if not pmsopen:
-
-            await client.send_message(message.author, "PMs are closed.")
-
-            return
-
-        if playerrole not in [g.name for g in bggserver.get_member(message.author.id).roles]:
-            await client.send_message(message.author, "You are not in the game. You may not send messages.")
-            return
-
-        try:
-
-            name = message.content[8:].strip()
-
-            possibilities = []
-
-            for person in bggserver.members:
-
-                if ((person.nick != None and name.lower() == person.nick.lower()[:len(name)]) or name.lower() == person.name.lower()[:len(name)]) and playerrole in [g.name for g in person.roles]:
-
-                    possibilities.append(person)
-
-
-
-            if len(possibilities) == 0:
-
-                notfound = await client.send_message(message.author, "User not found. Try again!")
-
-                return
-
-
-
-            elif len(possibilities) > 1:
-
-                person = await choices(possibilities,message)
-
-                if person == None:
-
-                    return
-
-
-
-
-
-
-
-
-
-            elif len(possibilities) == 1:
-
-                person = possibilities[0]
-
-
-
-            replytxt = "Messaging {0}. What would you like to send?".format(person.nick if person.nick else person.name)
-
-            reply = await client.send_message(message.author, replytxt)
-
-            userresponse = await client.wait_for_message(timeout=200, author=message.author, channel=reply.channel)
-
-            if userresponse == None:
-
-                end = await client.send_message(message.author, "Message timed out!")
-
-                return
-
-            if userresponse.content.lower() == 'cancel':
-
-                end = await client.send_message(message.author, "Message cancelled!")
-
-                return
-
-            if userresponse.content.lower().startswith(',message') or userresponse.content.lower().startswith('@message'):
-                return
-
-            send = await client.send_message(person, "Message from {0}: **".format(bggserver.get_member(message.author.id).nick if bggserver.get_member(message.author.id).nick else message.author.name)+userresponse.content+"**")
-
-            await sendGMpublic(message.author,person,userresponse.content,bggserver)
-
-            # Updates notactive
-            if message.author in notactive:
-                notactive.remove(message.author)
-                if len(notactive) == 1:
-                    for memb in bggserver.members:
-                        if gamemasterrole in [role.name for role in memb.roles]:
-                            await client.send_message(memb, "Just waiting on "+notactive[0].name+" to speak.")
-                if len(notactive) == 0:
-                    for memb in bggserver.members:
-                        if gamemasterrole in [role.name for role in memb.roles]:
-                            await client.send_message(memb, "Everyone has spoken!")
-
-            end = await client.send_message(message.author, "Message sent!")
-
-            return
-
-        except UserNotFoundException:
-
-            await client.send_message(message.author, "User not found. Try again.")
-
-
-
-    elif message.content.startswith(",startday") or message.content.startswith("@startday"):
-        if gamemasterrole not in [role.name for role in bggserver.get_member(message.author.id).roles]:
-            await client.send_message(message.author, "You do not have permission to start the day.")
-        else:
-            pmsopen = True
-            isday = True
-            roleobj = None
-            await update_presence(client)
-            for rl in bggserver.roles:
-                if rl.name == playerrole:
-                    roleobj = rl
-                    break
-            await client.send_message(client.get_channel(publicchannel),roleobj.mention+" wake up!")
-            notactive = [player for player in bggserver.members if ((playerrole in [rll.name for rll in player.roles]) and (gamemasterrole not in [rll.name for rll in player.roles]))]
-
-    elif message.content.startswith(",endday") or message.content.startswith("@endday"):
-        if gamemasterrole not in [role.name for role in bggserver.get_member(message.author.id).roles]:
-            await client.send_message(message.author, "You do not have permission to end the day.")
-        else:
-            pmsopen = False
-            isday = False
-            nomsopen = False
-            roleobj = None
-            await update_presence(client)
-            for rl in bggserver.roles:
-                if rl.name == playerrole:
-                    roleobj = rl
-                    break
-            await client.send_message(client.get_channel(publicchannel),roleobj.mention+" go to sleep!")
-    elif message.content.startswith(",notactive") or message.content.startswith("@notactive"):
-        send = "These players have not spoken:\n"
-        for user in notactive:
-            send += (user.nick or user.name) + "\n"
-
-        if not isday:
-            await client.send_message(message.author, "It's not day right now!")
-        elif len(send)>31:
-            await client.send_message(message.author, send)
-        else:
-            await client.send_message(message.author, "Everyone has spoken!")
-
-    elif message.content.startswith('@open') or message.content.startswith(',open'):
-        if gamemasterrole not in [role.name for role in bggserver.get_member(message.author.id).roles]:
-            await client.send_message(message.author, "You do not have permission to open nominations and PMs.")
-        else:
-            pmsopen = True
-            nomsopen = True
-            await update_presence(client)
-            for user in bggserver.members:
-                if gamemasterrole in [r.name for r in user.roles]:
-                    await client.send_message(user,'Nominations and PMs are now open.')
-
-@client.event
-
 async def on_ready():
+    # On login
 
     print('Logged in as')
-
     print(client.user.name)
-
     print(client.user.id)
-
     print('------')
     await update_presence(client)
 
+@client.event
+async def on_message(message):
+    # Handles messages on reception
+    global isPmsOpen
+    global isNomsOpen
+    global isDay
+    global notActive
+    global bggserver
+    bggserver = client.get_server(bggid)
+
+    # Don't respond to self
+    if message.author == client.user:
+        return
+
+    # Public Channel
+    if message.channel.id == publicchannel:
+
+        # Update activity
+        if (message.author in notActive) and isDay:
+            make_active(message.author)
+        return
+
+    # Check if not dm
+    if message.server != None:
+        return
+
+    # Check if command
+    elif message.content.startswith(',') or message.content.startswith('@'):
+
+        # Generate command and arguments
+        command = message.content[1:message.content.index(' ')]
+        arguments = message.content[message.content.index(' ') + 1:].split(', ')
+
+        # Opens pms
+        if command == 'openpms':
+            if not is_gamemaster(message.author): # Check permissions
+                await client.send_message(message.author, 'You don\'t have permission to open PMs.')
+                return
+            await open_pms(message.author)
+            return
+
+        # Opens nominations
+        elif command == 'opennoms':
+            if not is_gamemaster(message.author): # Check permissions
+                await client.send_message(message.author, 'You don\'t have permission to open nominations.')
+                return
+            await open_noms(message.author)
+            return
+
+        # Opens pms and nominations
+        elif command == 'open':
+            if not is_gamemaster(message.author): # Check permissions
+                await client.send_message(message.author, 'You don\'t have permission to open PMs and nominations.')
+                return
+            await open_pms(message.author)
+            await open_noms(message.author)
+            return
+
+        # Closes pms
+        elif command == 'closepms':
+            if not is_gamemaster(message.author): #Check permissions
+                await client.send_message(message.author, 'You don\'t have permission to close PMs.')
+                return
+            await close_pms(message.author)
+            return
+
+        # Closes nominations
+        elif command == 'closenoms':
+            if not is_gamemaster(message.author): # Check permissions
+                await client.send_message(message.author, 'You don\'t have permission to close nominations.')
+                return
+            await close_noms(message.author)
+            return
+
+        # Closes pms and nominations
+        elif command == 'close':
+            if not is_gamemaster(message.author): # Check permissions
+                await client.send_message(message.author, 'You don\'t have permission to close PMs and nominations.')
+                return
+            await close_pms(message.author)
+            await close_noms(message.author)
+            return
+
+        # Starts day
+        elif command == 'startday':
+            if not is_gamemaster(message.author): # Check permissions
+                await client.send_message(message.author, 'You don\'t have permission to start the day.')
+                return
+            await open_pms(message.author)
+            await start_day(message.author)
+
+        # Ends day
+        elif command == 'endday':
+            if not is_gamemaster(message.author):
+                await client.send_message(message.author, 'You don\'t have permission to end the day.')
+                return
+            await close_pms(message.author)
+            await close_noms(message.author)
+            await end_day(message.author)
+
+        # Clears history
+        elif command == 'clear':
+            await clear(message.author)
+            return
+
+        # Checks active players
+        elif command == 'notactive':
+            await not_active(message.author)
+            return
+
+        # Sends pm
+        elif command == 'pm' or command == 'message':
+            if not isPmsOpen: # Check if PMs open
+                await client.send_message(message.author, 'PMs are closed.')
+                return
+
+            if not is_player(message.author): # Check permissions
+                await client.send_message(message.author, 'You are not in the game. You may not send messages.')
+                return
+
+            await message_dialogue(argument[0],message.author)
+            return
 
 @client.event
-
 async def on_message_edit(before, after):
+    # Handles messages on modification
     global pmsopen
     global nomsopen
     global isday
+    global bggserver
     bggserver = client.get_server(bggid)
-    if after.channel == client.get_channel(publicchannel) and before.pinned == False and after.pinned == True and playerrole in [roll.name for roll in after.author.roles]:
-        if "nominate " in after.content.strip("!.?, ").lower():
-            if nomsopen:
-                users = []
-                name = after.content.strip("!.?, ").lower().split("nominate")[-1].strip("!.?, ")
-                if name in ["myself","me"]:
-                    users.append(after.author)
-                else:
-                    for user in bggserver.members:
-                        if ((user.nick != None and name == user.nick.lower()[:len(name)]) or name == user.name.lower()[:len(name)])  and (playerrole in [role.name for role in user.roles]):
-                            users.append(user)
-                if len(users) == 1:
-                    await client.send_message(client.get_channel(publicchannel), users[0].mention + " has been nominated.")
-                    nomsopen = False
-                    pmsopen = False
-                    await update_presence(client)
-                else:
-                    await client.send_message(client.get_channel(publicchannel), "User not found. Try again.")
-                    await client.unpin_message(after)
-            else:
-                await client.send_message(client.get_channel(publicchannel), "Nominations are closed.")
+
+    # On pin
+    if after.channel == client.get_channel(publicchannel) and before.pinned == False and after.pinned == True:
+
+        # Nomination
+        if 'nominate ' in after.content.lower(): # -1 to ensure there's something after the nomination
+
+            # Check if nominations are open
+            if not nomsopen:
+                await client.send_message(client.get_channel(publicchannel), 'Nominations are closed.')
                 await client.unpin_message(after)
+                return
+
+            # Check if the author is a player
+            if not is_player(after.author):
+                await client.send_message(client.get_channel(publicchannel), '{}, you are not in the game and do not have permission to nominate.'.format(after.author.mention))
+                await client.unpin_message(after)
+                return
+
+            # TODO: Check if the author is alive and still can nominate
+
+            await nominate(after.author, after.content[after.content.lower().index('nominate ') + 1:], client.get_channel(publicchannel))
+            return
 
 
+### Loop
 while True:
     client.run(TOKEN)
     print('end')
