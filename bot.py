@@ -32,7 +32,7 @@ async def generate_possibilities(text, people):
 
     possibilities = []
     for i in people:
-        if ((i.nick != None and choice.content.lower() in i.nick.lower()) or choice.content.lower() in i.name.lower())  and playerrole in [g.name for g in i.roles]:
+        if ((i.nick != None and choice.content.lower() in i.nick.lower()) or choice.content.lower() in i.name.lower()) and playerrole in [g.name for g in i.roles]:
             possibilities.append(i)
     return possibilities
 
@@ -132,7 +132,7 @@ async def yes_no(user, text):
             return False
 
         else:
-            return client.send_message(user,'Your answer must be \'yes\' or \'no\'. Try again.')
+            return client.send_message(user,'Your answer must be \'yes\' or \'no\' exactly. Try again.')
             return await yes_no(user, text)
 
 
@@ -263,7 +263,8 @@ async def not_active(user):
     for user in notActive:
         messageText += '{}\n'.format(user.nick if user.nick else user.name)
 
-    await client.send_message(user, messageText) # send message
+    # Send message
+    await client.send_message(user, messageText)
 
 async def can_nominate(user):
     # Lists who can nominate
@@ -282,7 +283,8 @@ async def can_nominate(user):
     for user in canNominate:
         messageText += '{}\n'.format(user.nick if user.nick else user.name)
 
-    await client.send_message(user, messageText) # send message
+    # Send message
+    await client.send_message(user, messageText)
 
 async def can_be_nominated(user):
     # Lists users who can be nominated
@@ -301,7 +303,8 @@ async def can_be_nominated(user):
     for user in canBeNominated:
         messageText += '{}\n'.format(user.nick if user.nick else user.name)
 
-    await client.send_message(user, messageText) # send message
+        # Send message
+    await client.send_message(user, messageText)
 
 async def pm(to, frm):
     # Sends a pm
@@ -462,7 +465,7 @@ async def kill(user, argument):
 
     # Check if dead
     if ghostrole in [g.name for g in bggserver.get_member(nominator.id).roles]:
-        await client.send_message(user, '{} is already dead.'.format(person.name))
+        await client.send_message(user, '{} is already dead.'.format(person.nick if person.nick else person.name))
         return
 
     # Find dead role
@@ -483,7 +486,7 @@ async def kill(user, argument):
     person.add_roles(role, role2)
 
     # Inform public server
-    await client.send_message(client.get_channel(publicchannel), '{} has died.'.format(person.name))
+    await client.send_message(client.get_channel(publicchannel), '{} has died.'.format(person.nick if person.nick else person.name))
 
 async def execute(user, argument):
     # Executes a player
@@ -508,13 +511,13 @@ async def execute(user, argument):
         person = possibilities[0]
 
     # Check if person dies
-    death = await yes_no(user,'Does {} die?'.format(person.name))
+    death = await yes_no(user,'Does {} die?'.format(person.nick if person.nick else person.name))
 
     # Check if day ends
     day_end = await yes_no(user,'Does the day end?')
 
     # Announce execution
-    await client.send_message(client.get_channel(publicchannel), '{} has been executed.'.format(person.name))
+    await client.send_message(client.get_channel(publicchannel), '{} has been executed.'.format(person.nick if person.nick else person.name))
 
     # Resolve death
     if death:
@@ -548,14 +551,14 @@ async def exile(user, argument):
 
     # Check is person is traveler
     if travelerrole not in [g.name for g in bggserver.get_member(person.id).roles]:
-        await client.send_message(user, '{} is not a traveler.'.format(person.name))
+        await client.send_message(user, '{} is not a traveler.'.format(person.nick if person.nick else person.name))
         return
 
     # Check if person dies
-    death = await yes_no(user,'Does {} die?'.format(person.name))
+    death = await yes_no(user,'Does {} die?'.format(person.nick if person.nick else person.name))
 
     # Announce execution
-    await client.send_message(client.get_channel(publicchannel), '{} has been executed.'.format(person.name))
+    await client.send_message(client.get_channel(publicchannel), '{} has been executed.'.format(person.nick if person.nick else person.name))
 
     # Resolve death
     if death:
@@ -736,7 +739,7 @@ async def on_message(message):
                 await client.send_message(message.author, 'You are not in the game. You may not send messages.')
                 return
 
-            await message_dialogue(argument,message.author)
+            await pm(argument,message.author)
             return
 
         elif command == 'help':
