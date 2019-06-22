@@ -61,11 +61,11 @@ async def cannot_nominate(user):
     global canNominate
 
     canNominate.remove(user)
-    if len(canNominate) == 1:
+    if len([x for x in canNominate if x not in hasSkipped]) == 1:
         for memb in bggserver.members:
             if await is_gamemaster(memb):
-                await memb.send('Just waiting on {} to nominate or skip.'.format(str(canNominate[0])))
-    if len(canNominate) == 0:
+                await memb.send('Just waiting on {} to nominate or skip.'.format(str([x for x in canNominate if x not in hasSkipped][0])))
+    if len([x for x in canNominate if x not in hasSkipped]) == 0:
         for memb in bggserver.members:
             if await is_gamemaster(memb):
                 await memb.send('Everyone has nominated or skipped!')
@@ -245,6 +245,7 @@ async def start_day(user, argument):
     global notActive
     global canBeNominated
     global canNominate
+    global hasSkipped
 
     if not argument == '':
         if not await kill(user, argument):
@@ -265,6 +266,7 @@ async def start_day(user, argument):
     notActive = [player for player in bggserver.members if (await is_player(player) and not await is_role(player, inactiverole) and not await is_gamemaster(player))] # generate notActive
     canBeNominated = [player for player in bggserver.members if (await is_player(player) and not await is_role(player, inactiverole) and not await is_gamemaster(player))] # generate canBeNominated
     canNominate = [player for player in bggserver.members if (not await is_role(player, ghostrole) and await is_player(player) and not await is_role(player, inactiverole) and not await is_gamemaster(player))] # generate canNominate
+    hasSkipped = [] # reset hasSkipped
 
     # Announce morning
     role = None
@@ -346,13 +348,13 @@ async def can_nominate(user):
         return
 
     # If noone can nominate
-    if not canNominate:
-        await user.send('No one can still nominate!')
+    if not ([x for x in canNominate if x not in hasSkipped]):
+        await user.send('Everyone has nominated or skipped!')
         return
 
     # Create message
     messageText = 'These players may still nominate:\n'
-    for player in canNominate:
+    for player in ([x for x in canNominate if x not in hasSkipped]):
         messageText += '{}\n'.format(await common_name(player))
 
     # Send message
@@ -456,17 +458,17 @@ async def nominate(nominator, argument, message=None, location=None, pin=False):
 
     # Determine nominee
     # Self-nomination
-    if 'me' in argument or 'myself' in argument:
+    if argument == 'me' or argument == 'myself':
         nominee = nominator
 
     # Storyteller nomination
-    elif 'storyteller' in argument:
-        role = None
-        for rl in bggserver.roles:
-            if rl.name == gamemasterrole:
-                role = rl
-                break
-        nominee = role
+    #elif 'storyteller' in argument:
+    #    role = None
+    #    for rl in bggserver.roles:
+    #        if rl.name == gamemasterrole:
+    #            role = rl
+    #            break
+    #    nominee = role
 
     # Other nominations
     else:
@@ -650,7 +652,7 @@ async def exile(user, argument):
         await announcement.pin() # pin
         await kill(user, person.name, suppress=True)
     else:
-        announcement = await client.get_channel(publicchannel).send('{} has been exiled, but does not die.'.format(await common_name(person))) # announcement
+        announcement = await client.get_channel(publicchannel).send('{} has been exiled, but does not die.'.format(await common_name(person)))
 
 async def revive(user, argument):
     # Revives a player
@@ -685,7 +687,7 @@ async def revive(user, argument):
 
     # Announce ressurection
     announcement = await client.get_channel(publicchannel).send('{} has come back to life.'.format(await common_name(person))) # announcement
-    await announcement.pin() # pin
+    await announcement.pin()
 
 async def make_inactive(user, argument):
     # Marks a player as inactive.
@@ -734,6 +736,8 @@ async def undo_inactive(user, argument):
     # Mark as inactive
     await person.remove_roles(role)
     await user.send('{} has been marked as active.'.format(await common_name(person)))
+    if person not in canNominate:
+        canNominate.append(person)
     return
 
 
@@ -750,6 +754,7 @@ async def on_ready():
     global notActive # list - players who have not spoken today
     global canNominate # list - players who can nominate today
     global canBeNominated # list - players who can be nominated today
+    global hasSkipped # list - players who have skipped today
     global bggserver # abc - the main server object
     isPmsOpen = False
     isNomsOpen = False
@@ -758,6 +763,7 @@ async def on_ready():
     notActive = []
     canNominate = []
     canBeNominated = []
+    hasSkipped = []
     bggserver = client.get_guild(bggid)
     print(bggserver)
 
@@ -954,7 +960,7 @@ async def on_message(message):
 
         # Help dialogue
         elif command == 'help':
-            await message.author.send('**Commands:**\nopenpms: Opens pms\nopennoms: Opens noms\nopen: Opens pms and noms\nclosepms: Closes pms\nclosenoms: Closes noms\nclose: Closes pms and noms\nstartday <<players>>: Starts the day, killing players\nendday: Ends the day\nkill <<players>>: Kills players\nexecute <<player>>: Executes player\nexile <<traveler>>: Exiles traveler\nRevive <<player>>: revives player\nnominate <<player>>: Nominates player\nmakeinactive <<player>>: Considers player as automatically active for opening nominations.\nundoinactive: Undoes makeinactive.\n\nclear: Clears previous messages\nnotactive: Lists players yet to speak\ncannominate: Lists who can nominate today\ncanbenominated: Lists who can be nominated today\nmessage <<player>>: Privately messages player\npm <<player>>: Privately messages player\nhelp: Displays this dialogue\n\nCommand keys: @ and ,\nArgument separator: \', \'')
+            await message.author.send('**Commands:**\nopenpms: Opens pms\nopennoms: Opens noms\nopen: Opens pms and noms\nclosepms: Closes pms\nclosenoms: Closes noms\nclose: Closes pms and noms\nstartday <<players>>: Starts the day, killing players\nendday: Ends the day\nkill <<players>>: Kills players\nexecute <<player>>: Executes player\nexile <<traveler>>: Exiles traveler\nrevive <<player>>: revives player\nnominate <<player>>: Nominates player\nmakeinactive <<player>>: Considers player as automatically active for opening nominations.\nundoinactive: Undoes makeinactive.\n\nclear: Clears previous messages\nnotactive: Lists players yet to speak\ncannominate: Lists who can nominate today\ncanbenominated: Lists who can be nominated today\nmessage <<player>>: Privately messages player\npm <<player>>: Privately messages player\nhelp: Displays this dialogue\n\nCommand keys: @ and ,\nArgument separator: \', \'')
             return
 
         # Command unrecognized
@@ -964,6 +970,7 @@ async def on_message(message):
 @client.event
 async def on_message_edit(before, after):
     # Handles messages on modification
+    global hasSkipped
 
     # On pin
     if after.channel == client.get_channel(publicchannel) and before.pinned == False and after.pinned == True:
@@ -975,7 +982,16 @@ async def on_message_edit(before, after):
 
         # Skip
         elif 'skip' in after.content.lower():
-            await cannot_nominate(after.author)
+            hasSkipped.append(after.author)
+            if len([x for x in canNominate if x not in hasSkipped]) == 1:
+                for memb in bggserver.members:
+                    if await is_gamemaster(memb):
+                        await memb.send('Just waiting on {} to nominate or skip.'.format(str([x for x in canNominate if x not in hasSkipped][0])))
+            if len([x for x in canNominate if x not in hasSkipped]) == 0:
+                print('test')
+                for memb in bggserver.members:
+                    if await is_gamemaster(memb):
+                        await memb.send('Everyone has nominated or skipped!')
             return
 
     # On unpin
@@ -983,7 +999,8 @@ async def on_message_edit(before, after):
 
         # Unskip
         if 'skip' in after.content.lower():
-            canNominate.append(after.author)
+            if after.author in hasSkipped:
+                hasSkipped.remove(after.author)
             return
 
 
