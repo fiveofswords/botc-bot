@@ -439,6 +439,11 @@ async def nominate(nominator, argument, message=None, location=None, pin=False):
     # nominates a player found in argument
     global canNominate
     global canBeNominated
+    global isDay
+
+    # Check if day
+    if not isDay:
+        await location.send('{}, it\'s not the day right now. Try again later.'.format(nominator.mention))
 
     # Generate location
     if location == None:
@@ -503,7 +508,7 @@ async def nominate(nominator, argument, message=None, location=None, pin=False):
 
     # Check if nominee has been nominated today
     elif nominee not in canBeNominated:
-        await location.send('{}, {} has already been nominated today.'.format(nominator.mention, common_name(nominee)))
+        await location.send('{}, {} has already been nominated today.'.format(nominator.mention, await common_name(nominee)))
         await message.unpin()
         return
 
