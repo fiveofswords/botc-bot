@@ -54,6 +54,8 @@ async def make_active(user):
         for memb in bggserver.members:
             if await is_gamemaster(memb):
                 await memb.send('Everyone has spoken!')
+
+    await store_people(notActive, "notActive.pckl")
     return
 
 async def cannot_nominate(user):
@@ -69,6 +71,7 @@ async def cannot_nominate(user):
         for memb in bggserver.members:
             if await is_gamemaster(memb):
                 await memb.send('Everyone has nominated or skipped!')
+    await store_people(canNominate, "canNominate.pckl")
     return
 
 async def update_presence(client):
@@ -178,6 +181,10 @@ async def store_status():
     pickle.dump((isPmsOpen, isNomsOpen, isDay, isExecutionToday), file)
     file.close()
 
+async def store_people(list, filename):
+    with open(filename, "wb") as storage:
+        pickle.dump([user.id for user in list],storage)
+
 
 ### Commands
 async def open_pms(user):
@@ -257,16 +264,19 @@ async def start_day(user, argument):
     global canNominate
     global hasSkipped
 
+
+    # Check if it is already day
+    if isDay:
+        await user.send('It is already day.')
+        return
+
+
     if not argument == '':
         if not await kill(user, argument):
             return
     else:
         await client.get_channel(publicchannel).send('No one has died.')
 
-    # Check if it is already day
-    if isDay:
-        await user.send('It is already day.')
-        return
 
     # Open pms
     await open_pms(user)
@@ -275,10 +285,13 @@ async def start_day(user, argument):
     isExecutionToday = False # reset execution counter
     await store_status()
     notActive = [player for player in bggserver.members if (await is_player(player) and not await is_role(player, inactiverole) and not await is_gamemaster(player))] # generate notActive
-    canBeNominated = [player for player in bggserver.members if (await is_player(player) and not await is_role(player, inactiverole) and not await is_gamemaster(player))] # generate canBeNominated
-    canNominate = [player for player in bggserver.members if (not await is_role(player, ghostrole) and await is_player(player) and not await is_role(player, inactiverole) and not await is_gamemaster(player))] # generate canNominate
-    hasSkipped = [] # reset hasSkipped
-
+    canBeNominated = [player for player in bggserver.members if (await is_player(player) and not await is_gamemaster(player))] # generate canBeNominated
+    canNominate = [player for player in bggserver.members if (not await is_role(player, ghostrole) and await is_player(player) and not await is_gamemaster(player))] # generate canNominate
+    hasSkipped = [player for player in bggserver.members if (await is_role(player, inactiverole))] # reset hasSkipped
+    await store_people(notActive, "notActive.pckl")
+    await store_people(canBeNominated, "canBeNominated.pckl")
+    await store_people(canNominate, "canNominate.pckl")
+    await store_people(hasSkipped, "hasSkipped.pckl")
     # Announce morning
     role = None
     for rl in bggserver.roles: # find player role
@@ -293,7 +306,6 @@ async def end_day(user):
     global isDay
     global isExecutionToday
 
-    print(isExecutionToday)
 
     # Close pms and nominations
     await close_pms(user)
@@ -501,10 +513,6 @@ async def nominate(nominator, argument, message=None, location=None, pin=False):
         else:
             nominee = names[0]
 
-    print(nominee)
-    print(nominator)
-    print(canBeNominated)
-    print(canNominate)
     # Check if nominator is dead
     if await is_role(nominator, ghostrole) and not await is_role(nominee, travelerrole):
         await location.send('{}, you are dead and cannot nominate.'.format(nominator.mention))
@@ -527,6 +535,7 @@ async def nominate(nominator, argument, message=None, location=None, pin=False):
     if not await is_role(nominee, travelerrole) and not await is_gamemaster(nominator): # update canNominate
        await cannot_nominate(nominator)
     canBeNominated.remove(nominee) # update canBeNominated
+    await store_people(canBeNominated, "canBeNominated.pckl")
     isPmsOpen == False # update pms
     isNomsOpen == False # update noms
     await update_presence(client) # update presence
@@ -710,6 +719,7 @@ async def revive(user, argument):
 async def make_inactive(user, argument):
     # Marks a player as inactive.
     global notActive
+    global hasSkipped
     global canNominate
 
 
@@ -731,12 +741,16 @@ async def make_inactive(user, argument):
     await user.send('{} has been marked as inactive.'.format(await common_name(person)))
     if person in notActive:
         await make_active(person)
-    if person in canNominate:
-        canNominate.remove(person)
+    if person not in hasSkipped:
+        hasSkipped.append(person)
+
+    await store_people(notActive, "notActive.pckl")
+    await store_people(hasSkipped, "hasSkipped.pckl")
     return
 
 async def undo_inactive(user, argument):
     # Marks a player as active.
+    global hasSkipped
 
     # Determine player
     players = [player for player in bggserver.members if await is_player(player)]
@@ -754,8 +768,9 @@ async def undo_inactive(user, argument):
     # Mark as inactive
     await person.remove_roles(role)
     await user.send('{} has been marked as active.'.format(await common_name(person)))
-    if person not in canNominate:
-        canNominate.append(person)
+    if person in hasSkipped:
+        hasSkipped.remove(person)
+    await store_people(hasSkipped, "hasSkipped.pckl")
     return
 
 
@@ -774,6 +789,7 @@ async def on_ready():
     global canBeNominated # list - players who can be nominated today
     global hasSkipped # list - players who have skipped today
     global bggserver # abc - the main server object
+    bggserver = client.get_guild(bggid)
     try:
         file = open("status.pckl","rb")
         isPmsOpen, isNomsOpen, isDay, isExecutionToday = pickle.load(file)
@@ -784,11 +800,31 @@ async def on_ready():
         isDay = False
         isExecutionToday = False
 
-    notActive = []
-    canNominate = []
-    canBeNominated = []
-    hasSkipped = []
-    bggserver = client.get_guild(bggid)
+    try:
+        with open("notActive.pckl","rb") as file:
+            ids = pickle.load(file)
+            notActive = [person for person in bggserver.members if (person.id in ids) ]
+    except Exception:
+        notActive = []
+    try:
+        with open("canNominate.pckl","rb") as file:
+            ids = pickle.load(file)
+            canNominate = [person for person in bggserver.members if (person.id in ids) ]
+    except Exception:
+        canNominate = []
+    try:
+        with open("canBeNominated.pckl","rb") as file:
+            ids = pickle.load(file)
+            canBeNominated = [person for person in bggserver.members if (person.id in ids) ]
+    except Exception:
+        canBeNominated = []
+    try:
+        with open("hasSkipped.pckl","rb") as file:
+            ids = pickle.load(file)
+            hasSkipped = [person for person in bggserver.members if (person.id in ids) ]
+    except Exception:
+        hasSkipped = []
+
 
     print('Logged in as')
     print(client.user.name)
@@ -1006,12 +1042,12 @@ async def on_message_edit(before, after):
         # Skip
         elif 'skip' in after.content.lower():
             hasSkipped.append(after.author)
+            await store_people(hasSkipped, "hasSkipped.pckl")
             if len([x for x in canNominate if x not in hasSkipped]) == 1:
                 for memb in bggserver.members:
                     if await is_gamemaster(memb):
                         await memb.send('Just waiting on {} to nominate or skip.'.format(str([x for x in canNominate if x not in hasSkipped][0])))
             if len([x for x in canNominate if x not in hasSkipped]) == 0:
-                print('test')
                 for memb in bggserver.members:
                     if await is_gamemaster(memb):
                         await memb.send('Everyone has nominated or skipped!')
@@ -1024,11 +1060,15 @@ async def on_message_edit(before, after):
         if 'skip' in after.content.lower():
             if after.author in hasSkipped:
                 hasSkipped.remove(after.author)
+                await store_people(hasSkipped, "hasSkipped.pckl")
             return
 
 
 ### Loop
 while True:
-    client.run(TOKEN)
-    print('end')
-    time.sleep(5)
+    try:
+        client.run(TOKEN)
+        print('end')
+        time.sleep(5)
+    except Exception as e:
+        print(str(e))
