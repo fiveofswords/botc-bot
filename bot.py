@@ -1,11 +1,11 @@
-import discord, os, time
+import discord, os, time, pickle
 
 from config import *
 
 
 
 ### API Stuff
-client = discord.Client() # discord client
+client = discord.Client(status="Online") # discord client
 
 # Read API Token
 with open(os.path.dirname(os.path.realpath(__file__))+'/token.txt') as tokenfile:
@@ -172,6 +172,12 @@ async def select_player(user, text, players, origin = ''):
 
     return person
 
+async def store_status():
+    global isPmsOpen, isNomsOpen, isDay, isExecutionToday
+    file = open("status.pckl","wb")
+    pickle.dump((isPmsOpen, isNomsOpen, isDay, isExecutionToday), file)
+    file.close()
+
 
 ### Commands
 async def open_pms(user):
@@ -185,6 +191,7 @@ async def open_pms(user):
 
     isPmsOpen = True # open pms
     await update_presence(client) # update presence
+    await store_status()
     for user in bggserver.members: # send gamemasters update
         if await is_gamemaster(user):
             await user.send('PMs are now open.')
@@ -201,6 +208,7 @@ async def open_noms(user):
 
     isNomsOpen = True # open noms
     await update_presence(client) # update presence
+    await store_status()
     for user in bggserver.members: # send gamemasters update
         if await is_gamemaster(user):
             await user.send('Nominations are now open.')
@@ -217,6 +225,7 @@ async def close_pms(user):
 
     isPmsOpen = False # close pms
     await update_presence(client) # update presence
+    await store_status()
     for user in bggserver.members: # send gamemasters update
         if await is_gamemaster(user):
             await user.send('PMs are now closed.')
@@ -233,6 +242,7 @@ async def close_noms(user):
 
     isNomsOpen = False # close noms
     await update_presence(client) # update presence
+    await store_status()
     for user in bggserver.members:
         if await is_gamemaster(user):
             await user.send('Nominations are now closed.')
@@ -263,6 +273,7 @@ async def start_day(user, argument):
 
     isDay = True # start the day
     isExecutionToday = False # reset execution counter
+    await store_status()
     notActive = [player for player in bggserver.members if (await is_player(player) and not await is_role(player, inactiverole) and not await is_gamemaster(player))] # generate notActive
     canBeNominated = [player for player in bggserver.members if (await is_player(player) and not await is_role(player, inactiverole) and not await is_gamemaster(player))] # generate canBeNominated
     canNominate = [player for player in bggserver.members if (not await is_role(player, ghostrole) and await is_player(player) and not await is_role(player, inactiverole) and not await is_gamemaster(player))] # generate canNominate
@@ -294,7 +305,7 @@ async def end_day(user):
         return
 
     isDay = False # end the day
-
+    await store_status()
     # Announce no execution
     if not isExecutionToday:
         await client.get_channel(publicchannel).send('No one was executed.')
@@ -514,6 +525,7 @@ async def nominate(nominator, argument, message=None, location=None, pin=False):
     isPmsOpen == False # update pms
     isNomsOpen == False # update noms
     await update_presence(client) # update presence
+    await store_status()
 
     # Announcement for exile call
     if await is_role(nominee, travelerrole):
@@ -621,6 +633,7 @@ async def execute(user, argument):
         announcement = await client.get_channel(publicchannel).send('{} has been executed, but does not die.'.format(await common_name(person))) # announcement
 
     isExecutionToday = True # there has now been an execution
+    await store_status()
 
     # Resolve day end
     if day_end:
@@ -756,16 +769,21 @@ async def on_ready():
     global canBeNominated # list - players who can be nominated today
     global hasSkipped # list - players who have skipped today
     global bggserver # abc - the main server object
-    isPmsOpen = False
-    isNomsOpen = False
-    isDay = False
-    isExecutionToday = False
+    try:
+        file = open("status.pckl","rb")
+        isPmsOpen, isNomsOpen, isDay, isExecutionToday = pickle.load(file)
+        file.close()
+    except Exception:
+        isPmsOpen = False
+        isNomsOpen = False
+        isDay = False
+        isExecutionToday = False
+
     notActive = []
     canNominate = []
     canBeNominated = []
     hasSkipped = []
     bggserver = client.get_guild(bggid)
-    print(bggserver)
 
     print('Logged in as')
     print(client.user.name)
