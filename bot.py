@@ -5,7 +5,7 @@ from config import *
 
 
 ### API Stuff
-client = discord.Client(status="Online") # discord client
+client = discord.Client() # discord client
 
 # Read API Token
 with open(os.path.dirname(os.path.realpath(__file__))+'/token.txt') as tokenfile:
