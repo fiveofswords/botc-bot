@@ -18,7 +18,7 @@ async def common_name(user):
 
     if user.nick:
         return user.nick
-    return user.name
+    return user.name    # Returns nickname is exists, username otherwise
 
 async def generate_possibilities(text, people):
     # Generates possible users with name or nickname matching text
@@ -270,7 +270,6 @@ async def start_day(user, argument):
         await user.send('It is already day.')
         return
 
-
     if not argument == '':
         if not await kill(user, argument):
             return
@@ -281,11 +280,23 @@ async def start_day(user, argument):
     # Open pms
     await open_pms(user)
 
+
+    role = None
+    for rl in bggserver.roles:
+        if rl.name == gamemasterrole:
+            role = rl
+            break
+
+    for user in bggserver.members:
+        if role in user.roles:
+            storyteller = user
+            break
+
     isDay = True # start the day
     isExecutionToday = False # reset execution counter
     await store_status()
     notActive = [player for player in bggserver.members if (await is_player(player) and not await is_role(player, inactiverole) and not await is_gamemaster(player))] # generate notActive
-    canBeNominated = [player for player in bggserver.members if (await is_player(player) and not await is_gamemaster(player))] # generate canBeNominated
+    canBeNominated = [storyteller] + [player for player in bggserver.members if (await is_player(player) and not await is_gamemaster(player))] # generate canBeNominated
     canNominate = [player for player in bggserver.members if (not await is_role(player, ghostrole) and await is_player(player) and not await is_gamemaster(player))] # generate canNominate
     hasSkipped = [player for player in bggserver.members if (await is_role(player, inactiverole))] # reset hasSkipped
     await store_people(notActive, "notActive.pckl")
@@ -463,6 +474,8 @@ async def nominate(nominator, argument, message=None, location=None, pin=False):
     global canNominate
     global canBeNominated
     global isDay
+    global isPmsOpen
+    global isNomsOpen
 
     # Check if day
     if not isDay:
@@ -486,17 +499,22 @@ async def nominate(nominator, argument, message=None, location=None, pin=False):
 
     # Determine nominee
     # Self-nomination
+
     if argument == 'me' or argument == 'myself':
         nominee = nominator
 
     # Storyteller nomination
-    #elif 'storyteller' in argument:
-    #    role = None
-    #    for rl in bggserver.roles:
-    #        if rl.name == gamemasterrole:
-    #            role = rl
-    #            break
-    #    nominee = role
+    elif 'storyteller' in argument or argument in [x.name for x in bggserver.members if await is_gamemaster(x)] + [x.nick for x in bggserver.members if x.nick and await is_gamemaster(x)]:
+        role = None
+        for rl in bggserver.roles:
+            if rl.name == gamemasterrole:
+                role = rl
+                break
+
+        for user in bggserver.members:
+            if role in user.roles:
+                nominee = user
+                break
 
     # Other nominations
     else:
@@ -520,7 +538,7 @@ async def nominate(nominator, argument, message=None, location=None, pin=False):
         return
 
     # Check if nominator has nominated today
-    elif nominator not in canNominate and not await is_role(nominee, travelerrole) and not await is_gamemaster(nominator):
+    if nominator not in canNominate and not await is_role(nominee, travelerrole) and not await is_gamemaster(nominator):
         await location.send('{}, you have nominated already today.'.format(nominator.mention))
         await message.unpin()
         return
@@ -538,8 +556,8 @@ async def nominate(nominator, argument, message=None, location=None, pin=False):
     await store_people(canBeNominated, "canBeNominated.pckl")
     isPmsOpen == False # update pms
     isNomsOpen == False # update noms
-    await update_presence(client) # update presence
     await store_status()
+    await update_presence(client) # update presence
 
     # Announcement for exile call
     if await is_role(nominee, travelerrole):
@@ -554,6 +572,7 @@ async def nominate(nominator, argument, message=None, location=None, pin=False):
         await announcement.pin()
 
     return
+
 
 async def kill(user, argument, suppress=False):
     # Kills a player
