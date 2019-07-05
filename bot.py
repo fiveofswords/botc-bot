@@ -184,7 +184,7 @@ class Vote():
     def __init__(self, nominee, nominator):
         self.nominee = nominee
         self.nominator = nominator
-        self.order = game.seatingOrder[game.seatingOrder.index(self.nominee)+1:] + game.seatingOrder[:game.seatingOrder.index(self.nominee)]
+        self.order = game.seatingOrder[game.seatingOrder.index(self.nominee)+1:] + game.seatingOrder[:game.seatingOrder.index(self.nominee)+1]
         self.votes = 0
         self.voted = []
         self.history = []
@@ -213,7 +213,7 @@ class Vote():
             await self.vote(0)
             return
         if toCall in self.presetVotes:
-            await vote(self.presetVotes[toCall])
+            await self.vote(self.presetVotes[toCall])
             return
         await channel.send('{}, your vote on {}.'.format(toCall.user.mention, self.nominee.nick if self.nominee else 'the storytellers'))
 
@@ -260,13 +260,11 @@ class Vote():
         # When the vote is over
         tie = False
         if self.votes >= self.majority:
-            aboutToDie = game.days[-1].aboutToDie[1]
+            aboutToDie = game.days[-1].aboutToDie
             if aboutToDie == None:
                 dies = True
-                await announcement.pin()
             elif self.votes > aboutToDie[1].votes:
                 dies = True
-                await announcement.pin()
             elif self.votes == aboutToDie[1].votes:
                 dies = False
                 tie = True
@@ -284,7 +282,7 @@ class Vote():
         elif len(self.voted) == 2:
             text = self.voted[0].nick + ' and ' + self.voted[1].nick
         else:
-            text = ', '.join(self.voted[:-1]) + ', and ' + self.voted[-1].nick
+            text = ', '.join([x.nick for x in self.voted[:-1]]) + ', and ' + self.voted[-1].nick
         if dies:
             game.days[-1].aboutToDie = (self.nominee, self)
             announcement = await channel.send('{} votes on {} (nominated by {}): {}. They are about to be executed.'.format(str(self.votes), self.nominee.nick if self.nominee else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
@@ -307,9 +305,9 @@ class Vote():
 
     async def preset_vote(self, person, vt, operator=None):
         # Check dead votes
-        if vt == 1 and voter.isGhost and voter.deadVotes < 1:
-            if not st:
-                await voter.user.send('You do not have any dead votes. Please vote no.')
+        if vt == 1 and person.isGhost and person.deadVotes < 1:
+            if not operator:
+                await person.user.send('You do not have any dead votes. Please vote no.')
             else:
                 await operator.send('{} does not have any dead votes. They must vote no.'.format(voter.nick))
             return
@@ -328,7 +326,7 @@ class Vote():
             self.nominator.canNominate = True
         if self.nominee:
             self.nominee.canBeNominated = True
-        channel.send('Nomination canceled.')
+        await channel.send('Nomination canceled!')
 
         for msg in self.announcements:
             await msg.unpin()
@@ -336,7 +334,6 @@ class Vote():
         self.done = True
 
         game.days[-1].votes.remove(self)
-        print(game.days[-1].votes)
 
 class TravelerVote():
     # Stores information about a specific call for exile
@@ -344,7 +341,7 @@ class TravelerVote():
     def __init__(self, nominee, nominator):
         self.nominee = nominee
         self.nominator = nominator
-        self.order = game.seatingOrder[game.seatingOrder.index(self.nominee)+1:] + game.seatingOrder[:game.seatingOrder.index(self.nominee)]
+        self.order = game.seatingOrder[game.seatingOrder.index(self.nominee)+1:] + game.seatingOrder[:game.seatingOrder.index(self.nominee)+1]
         self.votes = 0
         self.voted = []
         self.history = []
@@ -364,7 +361,7 @@ class TravelerVote():
             await self.vote(0)
             return
         if toCall in self.presetVotes:
-            await vote(self.presetVotes[toCall])
+            await self.vote(self.presetVotes[toCall])
             return
         await channel.send('{}, your vote on {}.'.format(toCall.user.mention, self.nominee.nick if self.nominee else 'the storytellers'))
 
@@ -382,8 +379,8 @@ class TravelerVote():
 
         # Announcement
         text = 'yes' if vt == 1 else 'no'
-        announcements.append(await channel.send('{} votes {}. {} votes.'.format(voter.nick, text, str(self.votes))))
-        await announcements[-1].pin()
+        self.announcements.append(await channel.send('{} votes {}. {} votes.'.format(voter.nick, text, str(self.votes))))
+        await self.announcements[-1].pin()
 
         # Next vote
         self.position += 1
@@ -401,11 +398,10 @@ class TravelerVote():
         elif len(self.voted) == 2:
             text = self.voted[0].nick + ' and ' + self.voted[1].nick
         else:
-            text = ', '.join(self.voted[:-1]) + ', and ' + self.voted[-1].nick
+            text = ', '.join([x.nick for x in self.voted[:-1]]) + ', and ' + self.voted[-1].nick
         if self.votes >= self.majority:
             announcement = await channel.send('{} votes on {} (nominated by {}): {}.'.format(str(self.votes), self.nominee.nick if self.nominee else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
             await announcement.pin()
-            await nominee.character.exile(nominee)
         else:
             announcement = await channel.send('{} votes on {} (nominated by {}): {}. They are not exiled.'.format(str(self.votes), self.nominee.nick if self.nominee else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
             await announcement.pin()
@@ -439,7 +435,6 @@ class TravelerVote():
         self.done = True
 
         game.days[-1].votes.remove(self)
-        print(game.days[-1].votes)
 
 class Player():
     # Stores information about a player
@@ -529,7 +524,7 @@ class Player():
 
         for user in gamemasterRole.members:
             if user != self.user:
-                await user.send('**[**{} **>** {}**]** {}'.format(bggserver.get_member(frm.id).nick if bggserver.get_member(frm.id).nick else frm.name, await common_name(person),intendedMessage.content))
+                await user.send('**[**{} **>** {}**]** {}'.format(frm.nick, self.nick, content))
 
         await channel.send('**{}** > **{}**'.format(frm.nick, self.nick))
 
@@ -746,6 +741,7 @@ class Traveler(SeatingOrderModifier):
             await person.kill(suppress=True)
         else:
             await channel.send('{} has been exiled, but does not die.'.format(person.user.mention))
+        await person.user.add_roles(travelerRole)
 
 class Storyteller(Character):
     # The storyteller
@@ -1571,11 +1567,13 @@ async def on_message(message):
                     await message.author.send('It\'s not day right now.')
                     return
 
-                if game.days[-1].votes == [] or game.days[-1].votes[-1].isDone == True:
+                if game.days[-1].votes == [] or game.days[-1].votes[-1].done == True:
                     await message.author.send('There\'s no vote right now.')
                     return
 
                 await game.days[-1].votes[-1].delete()
+                await game.days[-1].open_pms()
+                await game.days[-1].open_noms()
                 return
 
             # Gives a dead vote
@@ -1735,7 +1733,7 @@ async def on_message(message):
                     await message.author.send('It\'s not day right now.')
                     return
 
-                if game.days[-1].votes == [] or game.days[-1].votes[-1].isDone == True:
+                if game.days[-1].votes == [] or game.days[-1].votes[-1].done == True:
                     await message.author.send('There\'s no vote right now.')
                     return
 
@@ -1763,22 +1761,23 @@ async def on_message(message):
                     if person == None:
                         return
 
-                    if vote.order[vote.position] != await person:
+                    if vote.order[vote.position] != person:
                         await message.author.send('It\'s not their vote right now. Do you mean @presetvote?')
                         return
 
-                    vt = int(argument == 'yes' or argument == 'no')
+                    vt = int(argument == 'yes' or argument == 'y')
 
                     await vote.vote(vt, operator=message.author)
                     return
 
                 if vote.order[vote.position] != await get_player(message.author):
                     await message.author.send('It\'s not your vote right now. Do you mean @presetvote?')
-
-                    vt = int(argument == 'yes' or argument == 'no')
-
-                    await vote.vote(vt)
                     return
+
+                vt = int(argument == 'yes' or argument == 'y')
+
+                await vote.vote(vt)
+                return
 
             # Presets a vote
             elif command == 'presetvote':
@@ -1791,7 +1790,7 @@ async def on_message(message):
                     await message.author.send('It\'s not day right now.')
                     return
 
-                if game.days[-1].votes == [] or game.days[-1].votes[-1].isDone == True:
+                if game.days[-1].votes == [] or game.days[-1].votes[-1].done == True:
                     await message.author.send('There\'s no vote right now.')
                     return
 
@@ -1819,14 +1818,16 @@ async def on_message(message):
                     if person == None:
                         return
 
-                    vt = int(argument == 'yes' or argument == 'no')
+                    vt = int(argument == 'yes' or argument == 'y')
 
                     await vote.preset_vote(person, vt, operator=message.author)
+                    await message.author.send('Successfully preset!')
                     return
 
-                vt = int(argument == 'yes' or argument == 'no')
+                vt = int(argument == 'yes' or argument == 'y')
 
                 await vote.preset_vote(await get_player(message.author), vt)
+                await message.author.send('Successfully preset! For more nuanced presets, contact the storytellers.')
                 return
 
             # Cancels a preset vote
@@ -1840,7 +1841,7 @@ async def on_message(message):
                     await message.author.send('It\'s not day right now.')
                     return
 
-                if game.days[-1].votes == [] or game.days[-1].votes[-1].isDone == True:
+                if game.days[-1].votes == [] or game.days[-1].votes[-1].done == True:
                     await message.author.send('There\'s no vote right now.')
                     return
 
@@ -1866,9 +1867,11 @@ async def on_message(message):
                         return
 
                     await vote.cancel_preset(person)
+                    await message.author.send('Successfully canceled!')
                     return
 
                 await vote.cancel_preset(await get_player(message.author))
+                await message.author.send('Successfully canceled! For more nuanced presets, contact the storytellers.')
                 return
 
             # Sends pm
@@ -1885,36 +1888,75 @@ async def on_message(message):
                     await message.author.send('You are not in the game. You may not send messages.')
                     return
 
-                person = await select_player(message.author, argument, server.members)
+                person = await select_player(message.author, argument, game.seatingOrder + [x for x in server.members if gamemasterRole in x.roles])
                 if person == None:
                     return
 
-                if gamemasterRole in person.roles:
+                if person not in game.seatingOrder:
                     person = Player(Storyteller(), 'neutral', person)
-                else:
-                    person = await get_player(person)
-                    if person == None:
-                        return
 
-                messageText = 'Messaging {}. What would you like to send?'.format(await person.nick)
-                reply = await frm.send(messageText)
+                messageText = 'Messaging {}. What would you like to send?'.format(person.nick)
+                reply = await message.author.send(messageText)
 
                 # Process reply
                 try:
-                    intendedMessage = await client.wait_for('message', check=(lambda x: x.author==frm and x.channel==reply.channel), timeout=200)
+                    intendedMessage = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==reply.channel), timeout=200)
 
                 # Timeout
                 except asyncio.TimeoutError:
-                    await frm.send('Message timed out!')
+                    await message.author.send('Message timed out!')
                     return
 
                 # Cancel
                 if intendedMessage.content.lower() == 'cancel':
-                    await frm.send('Message canceled!')
+                    await message.author.send('Message canceled!')
                     return
 
                 await person.message(await get_player(message.author), intendedMessage.content, message.jump_url)
-                if not get_player(message.author).isActive:
+                if not (await get_player(message.author)).isActive:
+                    await make_active(message.author)
+
+                return
+
+            # Replies to the previous message
+            elif command == 'reply':
+
+                if game == None:
+                    await message.author.send('There\'s no game right now.')
+
+                if not game.days[-1].isPms: # Check if PMs open
+                    await message.author.send('PMs are closed.')
+                    return
+
+                if not await get_player(message.author):
+                    await message.author.send('You are not in the game. You may not send messages.')
+                    return
+
+                if len((await get_player(message.author)).messageHistory) == 0:
+                    await message.author.send('You have no previous messages.')
+                    return
+
+                person = (await get_player(message.author)).messageHistory[-1]['from']
+
+                messageText = 'Messaging {}. What would you like to send?'.format(person.nick)
+                reply = await message.author.send(messageText)
+
+                # Process reply
+                try:
+                    intendedMessage = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==reply.channel), timeout=200)
+
+                # Timeout
+                except asyncio.TimeoutError:
+                    await message.author.send('Message timed out!')
+                    return
+
+                # Cancel
+                if intendedMessage.content.lower() == 'cancel':
+                    await message.author.send('Message canceled!')
+                    return
+
+                await person.message(await get_player(message.author), intendedMessage.content, message.jump_url)
+                if not (await get_player(message.author)).isActive:
                     await make_active(message.author)
 
                 return
@@ -1926,11 +1968,13 @@ async def on_message(message):
 
                 if gamemasterRole in server.get_member(message.author.id).roles:
 
-                    person1 = await select_player(message.author, argument, game.seatingOrder)
+                    argument = argument.split(', ')
+
+                    person1 = await select_player(message.author, argument[0], game.seatingOrder)
                     if person1 == None:
                         return
 
-                    person2 = await select_player(message.author, argument, game.seatingOrder)
+                    person2 = await select_player(message.author, argument[1], game.seatingOrder)
                     if person2 == None:
                         return
 
@@ -1941,8 +1985,10 @@ async def on_message(message):
                             continue
                         while msg['day'] != day:
                             day += 1
-                            messageText += '\n\nDay {}'.format(str(day))
-                        messageText += '\nFrom: {} | To: {} | Time: {}\n{}'.format(msg['from'].nick,msg['to'].nick,msg['time'].strftime("%m/%d, %H:%M:%S"),msg['content'])
+                            messageText += '\n\n**Day {}:**'.format(str(day))
+                        messageText += '\nFrom: {} | To: {} | Time: {}\n**{}**'.format(msg['from'].nick,msg['to'].nick,msg['time'].strftime("%m/%d, %H:%M:%S"),msg['content'])
+
+                    await message.author.send(messageText)
                     return
 
                 if not await get_player(message.author):
@@ -1955,13 +2001,16 @@ async def on_message(message):
 
                 messageText = '**History with {} (Times in UTC):**\n\n**Day 1:**'.format(person.nick)
                 day = 1
-                for msg in await get_player(message.author).messageHistory:
+                for msg in (await get_player(message.author)).messageHistory:
                     if not msg['from'] == person and not msg['to'] == person:
                         continue
                     while msg['day'] != day:
                         day += 1
-                        messageText += '\n\nDay {}'.format(str(day))
-                    messageText += '\nFrom: {} | To: {} | Time: {} | Jump: {}\n{}'.format(msg['from'].nick,msg['to'].nick,msg['time'].strftime("%m/%d, %H:%M:%S"),msg['jump'],msg['content'])
+                        messageText += '\n\n**Day {}:**'.format(str(day))
+                    messageText += '\nFrom: {} | To: {} | Time: {}\n**{}**'.format(msg['from'].nick,msg['to'].nick,msg['time'].strftime("%m/%d, %H:%M:%S"),msg['content'])
+
+                await message.author.send(messageText)
+                return
 
             # Help dialogue
             elif command == 'help':
