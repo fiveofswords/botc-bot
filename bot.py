@@ -1,4 +1,4 @@
-import discord, os, time, dill, sys
+import discord, os, time, dill, sys, asyncio
 from config import *
 
 ### Classes
@@ -15,11 +15,11 @@ class Game():
         # Ends the game
 
         # remove roles
-        for person in seatingOrder:
+        for person in self.seatingOrder:
             await person.wipe_roles()
 
         # unpin messages
-        for msg in channel.pins():
+        for msg in await channel.pins():
             if msg.created_at >= self.seatingOrderMessage.created_at:
                 await msg.unpin()
 
@@ -37,11 +37,12 @@ class Game():
 
         # delete old backup
         os.remove('current_game.txt')
+        '''
 
         # turn off
         global game
         game = None
-        '''
+        await update_presence(client)
 
     async def reseat(self, newSeatingOrder):
         # Reseats the table
@@ -54,7 +55,7 @@ class Game():
         for index, person in enumerate(self.seatingOrder):
 
             if person.isGhost:
-                if person.deadVotes == 0:
+                if person.deadVotes <= 0:
                     messageText += '\n{}'.format('~~' + person.nick + '~~ X')
                 else:
                     messageText += '\n{}'.format('~~' + person.nick + '~~ ' + 'O' * person.deadVotes)
@@ -63,7 +64,7 @@ class Game():
                 messageText += '\n{}'.format(person.nick)
 
             if isinstance(person.character, SeatingOrderModifier):
-                messageText += await person.character.seating_order_message()
+                messageText += person.character.seating_order_message(self.seatingOrder)
 
             person.position = index
 
@@ -71,19 +72,21 @@ class Game():
 
     async def add_traveler(self, person):
         self.seatingOrder.insert(person.position, person)
-        await person.user.add_roles(travelerRole)
+        await person.user.add_roles(playerRole, travelerRole)
         await self.reseat(self.seatingOrder)
         await channel.send('{} has joined the town as the {}.'.format(person.nick, person.character.role_name))
 
     async def remove_traveler(self, person):
         self.seatingOrder.remove(person)
+        await person.user.remove_roles(playerRole, travelerRole)
         await self.reseat(self.seatingOrder)
-        await channel.send('{} has left the town.'.format(person.nick))
+        announcement = await channel.send('{} has left the town.'.format(person.nick))
+        await announcement.pin()
 
     async def start_day(self, kills=[]):
         for person in kills:
             await person.kill()
-        if kills == []:
+        if kills == [] and len(self.days) > 0:
             await channel.send('No one has died.')
         await channel.send('{}, wake up!'.format(playerRole.mention))
         self.days.append(Day())
@@ -92,14 +95,14 @@ class Game():
         for person in game.seatingOrder:
             await person.morning()
             if isinstance(person.character, DayStartModifier):
-                await person.character.on_day_start()
+                person.character.on_day_start()
 
 class Script():
     # Stores booleans for characters which modify the game rules from the script
 
     def __init__(self, scriptList):
         self.isAtheist = 'atheist' in scriptList
-        self.isStorytellerConversation = '' in scriptList
+        self.list = scriptList
 
 class Day():
     # Stores information about a specific day
@@ -124,7 +127,7 @@ class Day():
         if len(self.votes) == 0:
             for person in game.seatingOrder:
                 if isinstance(person.character, NomsCalledModifier):
-                    await person.character.on_noms_called()
+                    person.character.on_noms_called()
         for memb in gamemasterRole.members:
             await memb.send('Nominations are now open.')
         await update_presence(client)
@@ -146,23 +149,25 @@ class Day():
     async def nomination(self,nominee,nominator):
         await self.close_pms()
         await self.close_noms()
-        if isinstance(nominee, traveler):
-            if nominee:
-                nominee.canBeNominated = False
+        nominee.canBeNominated = False
+        if isinstance(nominee.character, Traveler):
             self.votes.append(TravelerVote(nominee, nominator))
+            announcement = await channel.send('{} has called for {}\'s exile.'.format(nominator.nick if nominator else 'The storytellers', nominee.user.mention))
         else:
-            if nominee:
-                nominee.canBeNominated = False
             if nominator:
                 nominator.canNominate = False
             self.votes.append(Vote(nominee, nominator))
+            announcement = await channel.send('{} has been nominated by {}.'.format(nominee.user.mention, nominator.nick if nominator else 'the storytellers'))
+        self.votes[-1].announcements.append(announcement)
+        await announcement.pin()
+        await self.votes[-1].call_next()
 
     async def end(self):
         # Ends the day
 
         for person in game.seatingOrder:
             if isinstance(person.character, DayEndModifier):
-                await person.character.on_day_end()
+                person.character.on_day_end()
 
         game.isDay = False
         self.isNoms = False
@@ -176,15 +181,14 @@ class Day():
 class Vote():
     # Stores information about a specific vote
 
-    async def __init__(self, nominee, nominator):
+    def __init__(self, nominee, nominator):
         self.nominee = nominee
         self.nominator = nominator
         self.order = game.seatingOrder[game.seatingOrder.index(self.nominee)+1:] + game.seatingOrder[:game.seatingOrder.index(self.nominee)]
         self.votes = 0
         self.voted = []
         self.history = []
-        self.announcements = [await channel.send('{} has been nominated by {}.'.format(self.nominee.mention if self.nominee else 'The storytellers', self.nominator.nick if self.nominator else 'the storytellers'))]
-        await self.announcements[0].pin()
+        self.announcements = []
         self.presetVotes = {}
         self.values = {person: (0,1) for person in self.order}
         self.majority = 0.0
@@ -193,11 +197,10 @@ class Vote():
                 self.majority += 0.5
         for person in game.seatingOrder:
             if isinstance(person.character, VoteBeginningModifier):
-                self.order, self.values, self.majority = await person.character.on_vote_beginning(self.order, self.values, self.majority)
+                self.order, self.values, self.majority = person.character.on_vote_beginning(self.order, self.values, self.majority)
         self.position = 0
         game.days[-1].votes.append(self)
         self.done = False
-        await self.call_next()
 
     async def call_next(self):
         # Calls for person to vote
@@ -205,7 +208,7 @@ class Vote():
         toCall = self.order[self.position]
         for person in game.seatingOrder:
             if isinstance(person.character, VoteModifier):
-                await person.character.before_vote_call(toCall)
+                person.character.before_vote_call(toCall)
         if toCall.isGhost and toCall.deadVotes < 1:
             await self.vote(0)
             return
@@ -233,7 +236,7 @@ class Vote():
         # On vote character powers
         for person in game.seatingOrder:
             if isinstance(person.character, VoteModifier):
-                await person.character.on_vote()
+                person.character.on_vote()
 
         # Vote tracking
         self.history.append(vt)
@@ -273,7 +276,7 @@ class Vote():
             dies = False
         for person in game.seatingOrder:
             if isinstance(person.character, VoteModifier):
-                dies, tie = await person.character.on_vote_conclusion(dies, tie)
+                dies, tie = person.character.on_vote_conclusion(dies, tie)
         if len(self.voted) == 0:
             text = 'no one'
         elif len(self.voted) == 1:
@@ -338,22 +341,20 @@ class Vote():
 class TravelerVote():
     # Stores information about a specific call for exile
 
-    async def __init__(self, nominee, nominator):
+    def __init__(self, nominee, nominator):
         self.nominee = nominee
         self.nominator = nominator
         self.order = game.seatingOrder[game.seatingOrder.index(self.nominee)+1:] + game.seatingOrder[:game.seatingOrder.index(self.nominee)]
         self.votes = 0
         self.voted = []
         self.history = []
-        self.announcements = [await channel.send('{} has called for {}\'s exile.'.format(self.nominator.nick if self.nominator else 'The storytellers', self.nominee.mention if self.nominee else 'the storytellers'))]
-        await self.announcements[0].pin()
+        self.announcements = []
         self.presetVotes = {}
         self.values = {person: (0,1) for person in self.order}
         self.majority = len(game.seatingOrder)/2
         self.position = 0
         game.days[-1].votes.append(self)
         self.done = False
-        await self.call_next()
 
     async def call_next(self):
         # Calls for person to vote
@@ -404,7 +405,7 @@ class TravelerVote():
         if self.votes >= self.majority:
             announcement = await channel.send('{} votes on {} (nominated by {}): {}.'.format(str(self.votes), self.nominee.nick if self.nominee else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
             await announcement.pin()
-            await nominee.exile()
+            await nominee.character.exile(nominee)
         else:
             announcement = await channel.send('{} votes on {} (nominated by {}): {}. They are not exiled.'.format(str(self.votes), self.nominee.nick if self.nominee else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
             await announcement.pin()
@@ -453,13 +454,22 @@ class Player():
         self.isGhost = False
         self.deadVotes = 1
         self.isActive = False
-        self.isInactive = False
         self.canNominate = False
         self.canBeNominated = False
         self.hasSkipped = False
         self.messageHistory = []
 
+        if inactiveRole in self.user.roles:
+            self.isInactive = True
+        else:
+            self.isInactive = False
+
+
     async def morning(self):
+        if inactiveRole in self.user.roles:
+            self.isInactive = True
+        else:
+            self.isInactive = False
         self.canNominate = True
         self.canBeNominated = True
         self.isActive = self.isInactive
@@ -469,7 +479,7 @@ class Player():
         self.isGhost = True
         for person in game.seatingOrder:
             if isinstance(person, DeathModifier):
-                await person.on_death(self)
+                person.on_death(self)
         if not suppress:
             announcement = await channel.send('{} has died.'.format(self.user.mention))
             await announcement.pin()
@@ -481,7 +491,7 @@ class Player():
         end = game.isDay
         for person in game.seatingOrder:
             if isinstance(person, ExileModifier):
-                die, end = await person.on_execution(self, die, end)
+                die, end = person.on_execution(self, die, end)
         if die and not self.isGhost:
             announcement = await channel.send('{} has been executed.'.format(self.user.mention))
             await announcement.pin()
@@ -495,9 +505,8 @@ class Player():
 
     async def revive(self):
         self.isGhost = False
-        if not suppress:
-            announcement = await channel.send('{} has come back to life.'.format(self.user.mention))
-            await announcement.pin()
+        announcement = await channel.send('{} has come back to life.'.format(self.user.mention))
+        await announcement.pin()
         await self.user.remove_roles(ghostRole, deadVoteRole)
         await game.reseat(game.seatingOrder)
 
@@ -533,21 +542,23 @@ class Player():
         self.hasSkipped = True
         self.isActive = True
 
-        notActive = [player for player in game.seatingOrder if player.isActive == False]
-        if len(notActive) == 1:
-            for memb in gamemasterRole.members:
-                await memb.send('Just waiting on {} to speak.'.format(notActive[0].nick))
-        if len(notActive) == 0:
-            for memb in gamemasterRole.members:
-                await memb.send('Everyone has spoken!')
+        if game.isDay:
 
-        canNominate = [player for player in game.seatingOrder if player.canNominate == True and player.hasSkipped == False]
-        if len(canNominate) == 1:
-            for memb in gamemasterRole.members:
-                await memb.send('Just waiting on {} to nominate or skip.'.format(canNominate[0].nick))
-        if len(canNominate) == 0:
-            for memb in gamemasterRole.members:
-                await memb.send('Everyone has nominated or skipped!')
+            notActive = [player for player in game.seatingOrder if player.isActive == False]
+            if len(notActive) == 1:
+                for memb in gamemasterRole.members:
+                    await memb.send('Just waiting on {} to speak.'.format(notActive[0].nick))
+            if len(notActive) == 0:
+                for memb in gamemasterRole.members:
+                    await memb.send('Everyone has spoken!')
+
+            canNominate = [player for player in game.seatingOrder if player.canNominate == True and player.hasSkipped == False]
+            if len(canNominate) == 1:
+                for memb in gamemasterRole.members:
+                    await memb.send('Just waiting on {} to nominate or skip.'.format(canNominate[0].nick))
+            if len(canNominate) == 0:
+                for memb in gamemasterRole.members:
+                    await memb.send('Everyone has nominated or skipped!')
 
     async def undo_inactive(self):
         self.isInactive = False
@@ -608,11 +619,11 @@ class SeatingOrderModifier(Character):
     def __init__(self):
         super().__init__()
 
-    async def seating_order(self, seatingOrder):
+    def seating_order(self, seatingOrder):
         # returns a seating order after the character's modifications
         return seatingOrder
 
-    def seating_order_message(self):
+    def seating_order_message(self, seatingOrder):
         # returns a string to be added to the seating order message specifically (not just to the seating order)
         return ''
 
@@ -622,7 +633,7 @@ class DayStartModifier(Character):
     def __init__(self):
         super().__init__()
 
-    async def on_day_start(self):
+    def on_day_start(self):
         # Called on the start of the day
         pass
 
@@ -632,7 +643,7 @@ class NomsCalledModifier(Character):
     def __init__(self):
         super().__init__()
 
-    async def on_noms_called(self):
+    def on_noms_called(self):
         # Called when nominations are called for the first time each day
         pass
 
@@ -642,7 +653,7 @@ class NominationModifier(Character):
     def __init__(self):
         super().__init__()
 
-    async def on_nomination(self, nominator, nominee):
+    def on_nomination(self, nominator, nominee):
         # Called when a nomination is made
         pass
 
@@ -652,7 +663,7 @@ class DayEndModifier(Character):
     def __init__(self):
         super().__init__()
 
-    async def on_day_end(self):
+    def on_day_end(self):
         # Called on the end of the day
         pass
 
@@ -662,7 +673,7 @@ class VoteBeginningModifier(Character):
     def __init__(self):
         super().__init__()
 
-    async def modify_vote_values(self, order, values, majority):
+    def modify_vote_values(self, order, values, majority):
         # returns a list of the vote's order, a dictionary of vote values, and majority
         return order, values, majority
 
@@ -672,15 +683,15 @@ class VoteModifier(Character):
     def __init__(self):
         super().__init__()
 
-    async def on_vote_call(self, toCall):
+    def on_vote_call(self, toCall):
         # Called every time a player is called to vote
         pass
 
-    async def on_vote(self):
+    def on_vote(self):
         # Called every time a player votes
         pass
 
-    async def on_vote_conclusion(self, dies, tie):
+    def on_vote_conclusion(self, dies, tie):
         # returns boolean -- whether the nominee is about to die, whether the vote is tied
         return dies, tie
 
@@ -690,7 +701,7 @@ class DeathModifier(Character):
     def __init__(self):
         super().__init__()
 
-    async def on_death(self, person):
+    def on_death(self, person):
         # Called on death
         pass
 
@@ -700,7 +711,7 @@ class ExecutionModifier(Character):
     def __init__(self):
         super().__init__()
 
-    async def on_execution(self, person, die, end):
+    def on_execution(self, person, die, end):
         # returns bool -- whether the player will die and whether the day will end
         return die, end
 
@@ -710,7 +721,7 @@ class ExileModifier(Character):
     def __init__(self):
         super().__init__()
 
-    async def on_exile(self, perosn, die):
+    def on_exile(self, perosn, die):
         # returns bool -- whether the traveler will die
         return die
 
@@ -724,17 +735,17 @@ class Traveler(SeatingOrderModifier):
     def seating_order_message(self, seatingOrder):
         return ' - {}'.format(self.role_name)
 
-    async def exile(self):
-        die = self.isGhost
-        for person in game.seatingOrder:
-            if isinstance(person, ExileModifier):
-                die = await person.on_exile(self, die)
-        if die and not self.isGhost:
-            announcement = await channel.send('{} has been exiled.'.format(self.user.mention))
+    async def exile(self, person):
+        die = not person.isGhost
+        for player in game.seatingOrder:
+            if isinstance(player, ExileModifier):
+                die = player.on_exile(self, die)
+        if die and not person.isGhost:
+            announcement = await channel.send('{} has been exiled.'.format(person.user.mention))
             await announcement.pin()
-            await self.kill(suppress=True)
+            await person.kill(suppress=True)
         else:
-            await channel.send('{} has been exiled, but does not die.'.format(self.user.mention))
+            await channel.send('{} has been exiled, but does not die.'.format(person.user.mention))
 
 class Storyteller(Character):
     # The storyteller
@@ -761,7 +772,8 @@ async def generate_possibilities(text, people):
 
     possibilities = []
     for person in people:
-        if ((person.nick != None and text.lower() in person.nick.lower()) or text.lower() in person.name.lower()):
+        if ((person.nick != None and text.lower() in person.nick.lower()) or text.lower() in person
+        .name.lower()):
             possibilities.append(person)
     return possibilities
 
@@ -778,10 +790,9 @@ async def choices(user, possibilities, text):
 
     # Request clarifciation from user
     reply = await user.send(messageText)
-    choice = await client.wait_for('message', check=(lambda x: x.author==user and x.channel==reply.channel), timeout=200)
-
-    # Timeout
-    if choice == None:
+    try:
+        choice = await client.wait_for('message', check=(lambda x: x.author==user and x.channel==reply.channel), timeout=200)
+    except asyncio.TimeoutError:
         await user.send('Timed out.')
         return
 
@@ -821,10 +832,9 @@ async def yes_no(user, text):
     # Ask a yes or no question of a user
 
     reply = await user.send('{}? yes or no'.format(text))
-    choice = await client.wait_for('message', check=(lambda x: x.author==user and x.channel==reply.channel), timeout=200)
-
-    # Timeout
-    if choice == None:
+    try:
+        choice = await client.wait_for('message', check=(lambda x: x.author==user and x.channel==reply.channel), timeout=200)
+    except asyncio.TimeoutError:
         await user.send('Timed out.')
         return
 
@@ -1097,9 +1107,9 @@ async def on_message(message):
 
                 '''
                 msg = await message.author.send('What is the seating order? (separate users with line breaks)')
-                order = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
-
-                if order == None:
+                try:
+                    order = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
+                except asyncio.TimeoutError:
                     await message.author.send('Timed out.')
                     return
 
@@ -1110,9 +1120,9 @@ async def on_message(message):
                 order = order.content.split('\n')
 
                 msg = await message.author.send('What are the corresponding roles? (also separated with line breaks)')
-                roles = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
-
-                if roles == None:
+                try:
+                    roles = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
+                except asyncio.TimeoutError:
                     await message.author.send('Timed out.')
                     return
 
@@ -1121,14 +1131,14 @@ async def on_message(message):
                     return
 
                 roles = roles.content.split('\n')
-                '''
-                order = ['Vice', 'Thornn']
-                roles = ['Townsfolk', 'Demon']
-
 
                 if len(roles) != len(order):
                     await message.author.send('Players and roles do not match.')
                     return
+                '''
+
+                order = ['Vice', 'Thornn', 'Testing']
+                characters = [Townsfolk, Demon, Traveler]
 
                 users = []
                 for person in order:
@@ -1137,9 +1147,7 @@ async def on_message(message):
                         return
                     users.append(name)
 
-                for user in users:
-                    await user.add_roles(playerRole)
-
+                '''
                 characters = []
                 for text in roles:
                     role = ''.join([''.join([y.capitalize() for y in x.split('-')]) for x in text.split(' ')])
@@ -1149,14 +1157,21 @@ async def on_message(message):
                         await message.author.send('Role not found: {}.'.format(text))
                         return
                     characters.append(role)
+                '''
+
+                for index, user in enumerate(users):
+                    await user.add_roles(playerRole)
+                    if issubclass(characters[index], Traveler):
+                        await user.add_roles(travelerRole)
 
                 alignments = []
                 for role in characters:
                     if issubclass(role, Traveler):
-                        msg = await message.author.send('What alignment is the {}?'.format(role().name))
-                        alignment = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
-
-                        if alignment == None:
+                        '''
+                        msg = await message.author.send('What alignment is the {}?'.format(role().role_name))
+                        try:
+                            alignment = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
+                        except asyncio.TimeoutError:
                             await message.author.send('Timed out.')
                             return
 
@@ -1169,22 +1184,24 @@ async def on_message(message):
                             return
 
                         alignments.append(alignment.content.lower())
-
-                    elif role == Townsfolk or role == Outsider or issubclass(role, Townsfolk) or issubclass(role, Outsider):
+                        '''
                         alignments.append('good')
 
-                    elif role == Minion or role == Demon or issubclass(role, Minion) or issubclass(role, Demon):
+                    elif issubclass(role, Townsfolk) or issubclass(role, Outsider):
+                        alignments.append('good')
+
+                    elif issubclass(role, Minion) or issubclass(role, Demon):
                         alignments.append('evil')
 
                 indicies = [x for x in range(len(users))]
 
-                seatingOrder = [Player(characters[x], alignments[x], users[x], x) for x in indicies]
+                seatingOrder = [Player(characters[x](), alignments[x], users[x], x) for x in indicies]
 
                 '''
                 msg = await message.author.send('What roles are on the script? (send the text of the json file from the script creator)')
-                script = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
-
-                if script == None:
+                try:
+                    script = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
+                except asyncio.TimeoutError:
                     await message.author.send('Timed out.')
                     return
 
@@ -1215,7 +1232,7 @@ async def on_message(message):
                 for person in seatingOrder:
                     messageText += '\n{}'.format(person.nick)
                     if isinstance(person.character, SeatingOrderModifier):
-                        messageText += person.character.seating_order_message()
+                        messageText += person.character.seating_order_message(seatingOrder)
                 seatingOrderMessage = await channel.send(messageText)
                 # await seatingOrderMessage.pin()
 
@@ -1343,10 +1360,10 @@ async def on_message(message):
                 if person == None:
                     return
 
-                if not isinstance(person.character, travelerRole):
+                if not isinstance(person.character, Traveler):
                     await message.author.send('{} is not a traveler.'.format(person.nick))
 
-                await person.exile()
+                await person.character.exile(person)
                 return
 
             # Revives a player
@@ -1421,10 +1438,14 @@ async def on_message(message):
                 if person == None:
                     return
 
-                msg = await message.author.send('What role?')
-                text = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
+                if await get_player(person) != None:
+                    await message.author.send('{} is already in the game.'.format(person.nick if person.nick else person.name))
+                    return
 
-                if text == None:
+                msg = await message.author.send('What role?')
+                try:
+                    text = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
+                except asyncio.TimeoutError:
                     await message.author.send('Timed out.')
                     return
 
@@ -1448,9 +1469,10 @@ async def on_message(message):
 
                 # Determine position in order
                 msg = await message.author.send('Where in the order are they? (send the player before them or a one-indexed integer)')
-                pos = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
+                try:
+                    pos = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
 
-                if pos == None:
+                except asyncio.TimeoutError:
                     await message.author.send('Timed out.')
                     return
 
@@ -1458,19 +1480,22 @@ async def on_message(message):
                     await message.author.send('Traveler cancelled!')
                     return
 
+                pos = pos.content
+
                 try:
                     pos = int(pos) - 1
                 except ValueError:
-                    player = await select_player(user, pos, game.seatingOrder)
+                    player = await select_player(message.author, pos, game.seatingOrder)
                     if player == None:
                         return
                     pos = player.position + 1
 
                 # Determine alignment
                 msg = await message.author.send('What alignment are they?')
-                alignment = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
+                try:
+                    alignment = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
 
-                if alignment == None:
+                except asyncio.TimeoutError:
                     await message.author.send('Timed out.')
                     return
 
@@ -1482,7 +1507,7 @@ async def on_message(message):
                     await message.author.send('The alignment must be \'good\' or \'evil\' exactly.')
                     return
 
-                await game.add_traveler(Player(role, alignment.content.lower(), message.author, pos))
+                await game.add_traveler(Player(role(), alignment.content.lower(), person, pos))
                 return
 
             # Removes traveler
@@ -1514,9 +1539,10 @@ async def on_message(message):
                     return
 
                 msg = await message.author.send('What is the seating order? (separate users with line breaks)')
-                order = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
+                try:
+                    order = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
 
-                if order == None:
+                except asyncio.TimeoutError:
                     await message.author.send('Timed out.')
                     return
 
@@ -1562,7 +1588,7 @@ async def on_message(message):
                     await message.author.send('You don\'t have permission to give dead votes.')
                     return
 
-                person = await select_player(message.author, argument, server.members)
+                person = await select_player(message.author, argument, game.seatingOrder)
                 if person == None:
                     return
 
@@ -1588,7 +1614,7 @@ async def on_message(message):
 
             # Clears history
             elif command == 'clear':
-                await user.send('{}Clearing\n{}'.format('\u200B\n' * 25, '\u200B\n' * 25))
+                await message.author.send('{}Clearing\n{}'.format('\u200B\n' * 25, '\u200B\n' * 25))
                 return
 
             # Checks active players
@@ -1610,9 +1636,9 @@ async def on_message(message):
 
                 messageText = 'These players have not spoken:'
                 for player in notActive:
-                    messageText += '\n{}'.format(await player.nick)
+                    messageText += '\n{}'.format(player.nick)
 
-                await user.send(messageText)
+                await message.author.send(messageText)
                 return
 
             # Checks who can nominate
@@ -1626,16 +1652,16 @@ async def on_message(message):
                     await message.author.send('It\'s not day right now.')
                     return
 
-                canNominate == [player for player in game.seatingOrder if player.canNominate == True and player.hasSkipped == False]
+                canNominate = [player for player in game.seatingOrder if player.canNominate == True and player.hasSkipped == False]
                 if canNominate == []:
                     message.author.send('Everyone has nominated or skipped!')
                     return
 
                 messageText = 'These players have not nominated or skipped:'
                 for player in canNominate:
-                    messageText += '\n{}'.format(await player.nick)
+                    messageText += '\n{}'.format(player.nick)
 
-                await user.send(messageText)
+                await message.author.send(messageText)
                 return
 
             # Checks who can be nominated
@@ -1649,16 +1675,16 @@ async def on_message(message):
                     await message.author.send('It\'s not day right now.')
                     return
 
-                canBeNominated == [player for player in game.seatingOrder if player.canBeNominated == True]
+                canBeNominated = [player for player in game.seatingOrder if player.canBeNominated == True]
                 if canBeNominated == []:
                     message.author.send('Everyone has been nominated!')
                     return
 
                 messageText = 'These players have not been nominated:'
                 for player in canBeNominated:
-                    messageText += '\n{}'.format(await player.nick)
+                    messageText += '\n{}'.format(player.nick)
 
-                await user.send(messageText)
+                await message.author.send(messageText)
                 return
 
             # Nominates
@@ -1672,21 +1698,24 @@ async def on_message(message):
                     await message.author.send('It\'s not day right now.')
                     return
 
-                person = await select_player(message.author, argument, game.seatingOrder)
-                if person == None:
-                    if game.script.isAtheist:
-                        if argument == 'storytellers':
-                            for person in game.seatingOrder:
-                                if isinstance(person.character, Storyteller):
-                                    await game.days[-1].nomination(person, await get_player(message.author))
-                                    return
-                    return
-
                 if not await get_player(message.author):
                     if not gamemasterRole in server.get_member(message.author.id).roles:
                         await message.author.send('You aren\'t in the game, and so cannot nominate.')
                         return
-                    game.days[-1].nomination(person, None)
+
+                if game.script.isAtheist:
+                    if argument == 'storytellers':
+                        for person in game.seatingOrder:
+                            if isinstance(person.character, Storyteller):
+                                await game.days[-1].nomination(person, await get_player(message.author))
+                                return
+
+                person = await select_player(message.author, argument, game.seatingOrder)
+
+
+                if gamemasterRole in server.get_member(message.author.id).roles:
+                    await game.days[-1].nomination(person, None)
+                    return
 
                 if game.days[-1].isNoms == False:
                     await message.author.send('Nominations aren\'t open right now.')
@@ -1717,9 +1746,10 @@ async def on_message(message):
 
                 if gamemasterRole in server.get_member(message.author.id).roles:
                     msg = await message.author.send('Whose vote is this?')
-                    reply = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
+                    try:
+                        reply = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
 
-                    if reply == None:
+                    except asyncio.TimeoutError:
                         await message.author.send('Timed out.')
                         return
 
@@ -1772,9 +1802,10 @@ async def on_message(message):
 
                 if gamemasterRole in server.get_member(message.author.id).roles:
                     msg = await message.author.send('Whose vote is this?')
-                    reply = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
+                    try:
+                        reply = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
 
-                    if reply == None:
+                    except asyncio.TimeoutError:
                         await message.author.send('Timed out.')
                         return
 
@@ -1817,9 +1848,10 @@ async def on_message(message):
 
                 if gamemasterRole in server.get_member(message.author.id).roles:
                     msg = await message.author.send('Whose vote do you want to cancel?')
-                    reply = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
+                    try:
+                        reply = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
 
-                    if reply == None:
+                    except asyncio.TimeoutError:
                         await message.author.send('Timed out.')
                         return
 
@@ -1845,7 +1877,7 @@ async def on_message(message):
                 if game == None:
                     await message.author.send('There\'s no game right now.')
 
-                if not isPmsOpen: # Check if PMs open
+                if not game.days[-1].isPms: # Check if PMs open
                     await message.author.send('PMs are closed.')
                     return
 
@@ -1868,10 +1900,11 @@ async def on_message(message):
                 reply = await frm.send(messageText)
 
                 # Process reply
-                intendedMessage = await client.wait_for('message', check=(lambda x: x.author==frm and x.channel==reply.channel), timeout=200)
+                try:
+                    intendedMessage = await client.wait_for('message', check=(lambda x: x.author==frm and x.channel==reply.channel), timeout=200)
 
                 # Timeout
-                if intendedMessage == None:
+                except asyncio.TimeoutError:
                     await frm.send('Message timed out!')
                     return
 
