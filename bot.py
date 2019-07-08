@@ -31,12 +31,12 @@ class Game():
         i = 0
         while True:
             i += 1
-            if os.path.isfile('game_{}.txt'.format(str(i)),'rb'):
+            if os.path.isfile('game_{}.pckl'.format(str(i)),'rb'):
                 break
-        dill.dump_session('game_{}.txt')
+        dill.dump_session('game_{}.pckl')
 
         # delete old backup
-        os.remove('current_game.txt')
+        os.remove('current_game.pckl')
         '''
 
         # turn off
@@ -158,7 +158,7 @@ class Day():
                 nominator.canNominate = False
             self.votes.append(Vote(nominee, nominator))
             announcement = await channel.send('{} has been nominated by {}.'.format(nominee.user.mention, nominator.nick if nominator else 'the storytellers'))
-        self.votes[-1].announcements.append(announcement)
+        self.votes[-1].announcements.append(announcement.id)
         await announcement.pin()
         await self.votes[-1].call_next()
 
@@ -246,8 +246,8 @@ class Vote():
 
         # Announcement
         text = 'yes' if vt == 1 else 'no'
-        self.announcements.append(await channel.send('{} votes {}. {} votes.'.format(voter.nick, text, str(self.votes))))
-        await self.announcements[-1].pin()
+        self.announcements.append((await channel.send('{} votes {}. {} votes.'.format(voter.nick, text, str(self.votes)))).id)
+        await channel.fetch_message(self.announcements[-1]).pin()
 
         # Next vote
         self.position += 1
@@ -296,7 +296,7 @@ class Vote():
             await announcement.pin()
 
         for msg in self.announcements:
-            await msg.unpin()
+            await channel.fetch_message(msg).unpin()
 
         self.done = True
 
@@ -329,7 +329,7 @@ class Vote():
         await channel.send('Nomination canceled!')
 
         for msg in self.announcements:
-            await msg.unpin()
+            await channel.fetch_message(msg).unpin()
 
         self.done = True
 
@@ -379,8 +379,8 @@ class TravelerVote():
 
         # Announcement
         text = 'yes' if vt == 1 else 'no'
-        self.announcements.append(await channel.send('{} votes {}. {} votes.'.format(voter.nick, text, str(self.votes))))
-        await self.announcements[-1].pin()
+        self.announcements.append((await channel.send('{} votes {}. {} votes.'.format(voter.nick, text, str(self.votes)))).id)
+        await channel.fetch_message(self.announcements[-1]).pin()
 
         # Next vote
         self.position += 1
@@ -407,7 +407,7 @@ class TravelerVote():
             await announcement.pin()
 
         for msg in self.announcements:
-            await msg.unpin()
+            await channel.fetch_message(msg).unpin()
 
         self.done = True
 
@@ -430,7 +430,7 @@ class TravelerVote():
         channel.send('Nomination canceled.')
 
         for msg in self.announcements:
-            await msg.unpin()
+            await channel.fetch_message(msg).unpin()
 
         self.done = True
 
@@ -459,6 +459,14 @@ class Player():
         else:
             self.isInactive = False
 
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state['user'] = self.user.id
+        return state
+
+    def __setstate__(self):
+        self.__dict__.update(state)
+        self.user = server.get_member(self.user)
 
     async def morning(self):
         if inactiveRole in self.user.roles:
@@ -1087,13 +1095,6 @@ class PoppyGrower(Townsfolk):
         super().__init__()
         self.role_name = 'Poppy Grower'
 
-class WitchHunter(Townsfolk):
-    # The witch hunter
-
-    def __init__(self):
-        super().__init__()
-        self.role_name = 'Witch Hunter'
-
 # amnesiac, atheist
 
 class Drunk(Outsider):
@@ -1475,11 +1476,41 @@ async def update_presence(client):
         clopen = ['Closed', 'Open']
         await client.change_presence(status = discord.Status.online, activity = discord.Game(name = 'PMs {}, Nominations {}!'.format(clopen[game.days[-1].isPms],clopen[game.days[-1].isNoms])))
 
-def backup():
+def backup(fileName):
 # Backs up the game state
 
-    with open('current_game.txt', 'wb') as file:
-        dill.dump(game, file)
+    objects = [x for x in dir(game) if not x.startswith('__') and not callable(getattr(game,x))]
+    print(objects)
+    with open(fileName, 'wb') as file:
+        dill.dump(objects, file)
+
+    for obj in objects:
+        print(obj)
+        with open(obj+'_'+fileName, 'wb') as file:
+            if obj == 'seatingOrderMessage':
+                dill.dump(getattr(game, obj).id, file)
+            else:
+                dill.dump(getattr(game, obj), file)
+
+def load(fileName):
+# Loads the game state
+
+    with open(fileName, 'rb') as file:
+        objects = dill.load(file)
+
+    game = Game([], None, None)
+    for obj in objects:
+        print(obj)
+        if not os.path.isfile(obj+'_'+fileName):
+            print('Incomplete backup found.')
+            return
+        with open(obj+'_'+fileName, 'wb') as file:
+            if obj == 'seatingOrderMessage':
+                setattr(game, obj, channel.fetch_message(dill.load(file)))
+            else:
+                setattr(game, obj, dill.load(file))
+
+    return game
 
 
 ### Event Handling
@@ -1507,14 +1538,10 @@ async def on_ready():
         elif role.name == inactiveName:
             inactiveRole = role
 
-    if os.path.isfile('current_game.txt'):
-        try:
-            game = dill.load('current_game.txt')
-            print('Backup restored!')
-            print(game)
-        except EOFError:
-            os.remove('current_game.txt')
-            print('Incomplete backup found.')
+    if os.path.isfile('current_game.pckl'):
+        game = load('current_game.pckl')
+        print('Backup restored!')
+        print(game)
 
     else:
         print('No backup found.')
@@ -1743,7 +1770,7 @@ async def on_message(message):
                     role = ''.join([''.join([y.capitalize() for y in x.split('-')]) for x in text.split(' ')])
                     try:
                         role = str_to_class(role)
-                    except NameError:
+                    except AttributeError:
                         await message.author.send('Role not found: {}.'.format(text))
                         return
                     characters.append(role)
@@ -1821,7 +1848,7 @@ async def on_message(message):
 
                 game = Game(seatingOrder, seatingOrderMessage, script)
 
-                backup()
+                backup('current_game.pckl')
                 await update_presence(client)
 
                 return
