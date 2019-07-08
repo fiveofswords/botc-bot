@@ -2709,63 +2709,63 @@ async def on_message(message):
             elif command == 'help':
                 if gamemasterRole in server.get_member(message.author.id).roles:
                     await message.author.send('''
-                                        **Storyteller Commands (multiple arguments are always comma-separated):**
-                                        startgame: starts the game
-                                        endgame <<team>>: ends the game, with winner team
-                                        openpms: opens pms
-                                        opennoms: opens nominations
-                                        open: opens pms and nominations
-                                        closepms: closes pms
-                                        closenoms: closes nominations
-                                        close: closes pms and nominations
-                                        startday <<players>>: starts the day, killing players
-                                        endday: ends the day. if there is an execution, execute is preferred
-                                        kill <<player>>: kills player
-                                        execute <<player>>: executes player
-                                        exile <<traveler>>: exiles traveler
-                                        revive <<player>>: revives player
-                                        changerole <<player>>: changes player's role
-                                        changealignment <<player>>: changes player's alignment
-                                        makeinactive <<player>>: marks player as inactive. must be done in all games player is participating in
-                                        undoinactive <<player>>: undoes an inactivity mark. must be done in all games player is participating in
-                                        addtraveler <<player>> or addtraveller <<player>>: adds player as a traveler
-                                        removetraveler <<traveler>> or removetraveller <<traveler>>: removes traveler from the game
-                                        reseat: reseats the game
-                                        cancelnomination: cancels the previous nomination
-                                        givedeadvote <<player>>: adds a dead vote for player
-                                        removedeadvote <<player>>: removes a dead vote from player. not necessary for ordinary usage
-                                        history <<player1>> <<player2>>: views the message history between player1 and player2
+**Storyteller Commands (multiple arguments are always comma-separated):**
+startgame: starts the game
+endgame <<team>>: ends the game, with winner team
+openpms: opens pms
+opennoms: opens nominations
+open: opens pms and nominations
+closepms: closes pms
+closenoms: closes nominations
+close: closes pms and nominations
+startday <<players>>: starts the day, killing players
+endday: ends the day. if there is an execution, execute is preferred
+kill <<player>>: kills player
+execute <<player>>: executes player
+exile <<traveler>>: exiles traveler
+revive <<player>>: revives player
+changerole <<player>>: changes player's role
+changealignment <<player>>: changes player's alignment
+makeinactive <<player>>: marks player as inactive. must be done in all games player is participating in
+undoinactive <<player>>: undoes an inactivity mark. must be done in all games player is participating in
+addtraveler <<player>> or addtraveller <<player>>: adds player as a traveler
+removetraveler <<traveler>> or removetraveller <<traveler>>: removes traveler from the game
+reseat: reseats the game
+cancelnomination: cancels the previous nomination
+givedeadvote <<player>>: adds a dead vote for player
+removedeadvote <<player>>: removes a dead vote from player. not necessary for ordinary usage
+history <<player1>> <<player2>>: views the message history between player1 and player2
 
-                                        **Player Commands:**
-                                        clear: returns whitespace
-                                        notactive: lists players who are yet to speak
-                                        cannominate: lists players who are yet to nominate or skip
-                                        canbenominated: lists players who are yet to be nominated
-                                        nominate <<player>>: nominates player
-                                        vote <<yes/no>>: votes on an ongoing nomination
-                                        presetvote <<yes/no>>: submits a preset vote. will not work if it is your turn to vote. not reccomended -- contact the storytellers instead
-                                        cancelpreset: cancels an existing preset
-                                        pm <<player>> or message <<player>>: sends player a message
-                                        reply: messages the authour of the previously received message
-                                        history <<player>>: views your message history with player
-                                        help: displays this dialogue
+**Player Commands:**
+clear: returns whitespace
+notactive: lists players who are yet to speak
+cannominate: lists players who are yet to nominate or skip
+canbenominated: lists players who are yet to be nominated
+nominate <<player>>: nominates player
+vote <<yes/no>>: votes on an ongoing nomination
+presetvote <<yes/no>>: submits a preset vote. will not work if it is your turn to vote. not reccomended -- contact the storytellers instead
+cancelpreset: cancels an existing preset
+pm <<player>> or message <<player>>: sends player a message
+reply: messages the authour of the previously received message
+history <<player>>: views your message history with player
+help: displays this dialogue
                                         ''')
                     return
                 else:
                     await message.author.send('''
-                                        **Player Commands:**
-                                        clear: returns whitespace
-                                        notactive: lists players who are yet to speak
-                                        cannominate: lists players who are yet to nominate or skip
-                                        canbenominated: lists players who are yet to be nominated
-                                        nominate <<player>>: nominates player
-                                        vote <<yes/no>>: votes on an ongoing nomination
-                                        presetvote <<yes/no>>: submits a preset vote. will not work if it is your turn to vote. not reccomended -- contact the storytellers instead
-                                        cancelpreset: cancels an existing preset
-                                        pm <<player>> or message <<player>>: sends player a message
-                                        reply: messages the authour of the previously received message
-                                        history <<player>>: views your message history with player
-                                        help: displays this dialogue
+**Player Commands:**
+clear: returns whitespace
+notactive: lists players who are yet to speak
+cannominate: lists players who are yet to nominate or skip
+canbenominated: lists players who are yet to be nominated
+nominate <<player>>: nominates player
+vote <<yes/no>>: votes on an ongoing nomination
+presetvote <<yes/no>>: submits a preset vote. will not work if it is your turn to vote. not reccomended -- contact the storytellers instead
+cancelpreset: cancels an existing preset
+pm <<player>> or message <<player>>: sends player a message
+reply: messages the authour of the previously received message
+history <<player>>: views your message history with player
+help: displays this dialogue
                                         ''')
 
                 return
