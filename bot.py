@@ -2708,7 +2708,7 @@ async def on_message(message):
             # Help dialogue
             elif command == 'help':
                 if gamemasterRole in server.get_member(message.author.id).roles:
-                    message.author.send('''
+                    await message.author.send('''
                                         **Storyteller Commands (multiple arguments are always comma-separated):**
                                         startgame: starts the game
                                         endgame <<team>>: ends the game, with winner team
@@ -2752,7 +2752,7 @@ async def on_message(message):
                                         ''')
                     return
                 else:
-                    message.author.send('''
+                    await message.author.send('''
                                         **Player Commands:**
                                         clear: returns whitespace
                                         notactive: lists players who are yet to speak
