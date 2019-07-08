@@ -481,13 +481,60 @@ class Player():
         await self.user.add_roles(ghostRole, deadVoteRole)
         await game.reseat(game.seatingOrder)
 
-    async def execute(self):
-        die = not self.isGhost
-        end = game.isDay
-        for person in game.seatingOrder:
-            if isinstance(person, ExileModifier):
-                die, end = person.on_execution(self, die, end)
-        if die and not self.isGhost:
+    async def execute(self, user):
+        # Executes the player
+
+        msg = await user.send('Do they die? yes or no')
+
+        try:
+            choice = await client.wait_for('message', check=(lambda x: x.author==user and x.channel==msg.channel), timeout=200)
+        except asyncio.TimeoutError:
+            await user.send('Message timed out!')
+            return
+
+        # Cancel
+        if choice.content.lower() == 'cancel':
+            await user.send('Action cancelled!')
+            return
+
+        # Yes
+        if choice.content.lower() == 'yes' or choice.content.lower() == 'y':
+            die = True
+
+        # No
+        elif choice.content.lower() == 'no' or choice.content.lower() == 'n':
+            die = False
+
+        else:
+            await user.send('Your answer must be \'yes,\' \'y,\' \'no,\' or \'n\' exactly.')
+            return
+
+        msg = await user.send('Does the day end? yes or no')
+
+        try:
+            choice = await client.wait_for('message', check=(lambda x: x.author==user and x.channel==msg.channel), timeout=200)
+        except asyncio.TimeoutError:
+            await user.send('Message timed out!')
+            return
+
+        # Cancel
+        if choice.content.lower() == 'cancel':
+            await user.send('Action cancelled!')
+            return
+
+        # Yes
+        if choice.content.lower() == 'yes' or choice.content.lower() == 'y':
+            end = True
+
+        # No
+        elif choice.content.lower() == 'no' or choice.content.lower() == 'n':
+            end = False
+
+        else:
+            await user.send('Your answer must be \'yes,\' \'y,\' \'no,\' or \'n\' exactly.')
+            return
+
+        if die:
             announcement = await channel.send('{} has been executed.'.format(self.user.mention))
             await announcement.pin()
             await self.kill(suppress=True)
@@ -506,13 +553,11 @@ class Player():
         await game.reseat(game.seatingOrder)
 
     async def change_character(self, character):
-        self.character = getattr(module, character)
-        await self.user.send('You are now the {}.'.format(character))
+        self.character = character
         await game.reseat(game.seatingOrder)
 
     async def change_alignment(self, alignment):
         self.alignment = alignment
-        await self.user.send('You are now {}.'.format(alignment))
 
     async def message(self, frm, content, jump):
         # Sends a message
@@ -700,26 +745,6 @@ class DeathModifier(Character):
         # Called on death
         pass
 
-class ExecutionModifier(Character):
-    # A character which triggers on a player's execution
-
-    def __init__(self):
-        super().__init__()
-
-    def on_execution(self, person, die, end):
-        # returns bool -- whether the player will die and whether the day will end
-        return die, end
-
-class ExileModifier(Character):
-    # A character which triggers on a player's exile
-
-    def __init__(self):
-        super().__init__()
-
-    def on_exile(self, perosn, die):
-        # returns bool -- whether the traveler will die
-        return die
-
 class Traveler(SeatingOrderModifier):
     # A generic traveler
 
@@ -730,12 +755,30 @@ class Traveler(SeatingOrderModifier):
     def seating_order_message(self, seatingOrder):
         return ' - {}'.format(self.role_name)
 
-    async def exile(self, person):
-        die = not person.isGhost
-        for player in game.seatingOrder:
-            if isinstance(player, ExileModifier):
-                die = player.on_exile(self, die)
-        if die and not person.isGhost:
+    async def exile(self, person, user):
+
+        msg = await user.send('Do they die? yes or no')
+
+        try:
+            choice = await client.wait_for('message', check=(lambda x: x.author==user and x.channel==msg.channel), timeout=200)
+        except asyncio.TimeoutError:
+            await user.send('Message timed out!')
+            return
+
+        # Cancel
+        if choice.content.lower() == 'cancel':
+            await user.send('Action cancelled!')
+            return
+
+        # Yes
+        if choice.content.lower() == 'yes' or choice.content.lower() == 'y':
+            die = True
+
+        # No
+        elif choice.content.lower() == 'no' or choice.content.lower() == 'n':
+            die = False
+
+        if die:
             announcement = await channel.send('{} has been exiled.'.format(person.user.mention))
             await announcement.pin()
             await person.kill(suppress=True)
@@ -749,6 +792,533 @@ class Storyteller(Character):
     def __init__(self):
         super().__init__()
         self.role_name = 'Storyteller'
+
+class Chef(Townsfolk):
+    # The chef
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Chef'
+
+class Empath(Townsfolk):
+    # The empath
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Empath'
+
+class Investigator(Townsfolk):
+    # The investigator
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Investigator'
+
+class FortuneTeller(Townsfolk):
+    # The fortune teller
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Fortune Teller'
+
+class Librarian(Townsfolk):
+    # The librarian
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Librarian'
+
+class Mayor(Townsfolk):
+    # The mayor
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Mayor'
+
+class Monk(Townsfolk):
+    # The monk
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Monk'
+
+class Slayer(Townsfolk):
+    # The slayer
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Slayer'
+
+class Soldier(Townsfolk):
+    # The soldier
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Soldier'
+
+class Ravenkeeper(Townsfolk):
+    # The ravenkeeper
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Ravenkeeper'
+
+class Undertaker(Townsfolk):
+    # The undertaker
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Undertaker'
+
+class Washerwoman(Townsfolk):
+    # The washerwoman
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Washerwoman'
+
+class Virgin(Townsfolk):
+    # The virgin
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Virgin'
+
+class Chambermaid(Townsfolk):
+    # The chambermaid
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Chambermaid'
+
+class Exorcist(Townsfolk):
+    # The exorcist
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Exorcist'
+
+class Gambler(Townsfolk):
+    # The gambler
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Gambler'
+
+class Gossip(Townsfolk):
+    # The gossip
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Gossip'
+
+class Grandmother(Townsfolk):
+    # The grandmother
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Grandmother'
+
+class Innkeeper(Townsfolk):
+    # The innkeeper
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Innkeeper'
+
+class Minstrel(Townsfolk):
+    # The minstrel
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Minstrel'
+
+class Pacifist(Townsfolk):
+    # The pacifist
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Pacifist'
+
+class Professor(Townsfolk):
+    # The professor
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Professor'
+
+class Sailor(Townsfolk):
+    # The sailor
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Sailor'
+
+class TeaLady(Townsfolk):
+    # The tea lady
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Tea Lady'
+
+class Artist(Townsfolk):
+    # The artist
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Artist'
+
+class Clockmaker(Townsfolk):
+    # The clockmaker
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Clockmaker'
+
+class Dreamer(Townsfolk):
+    # The dreamer
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Dreamer'
+
+class Flowergirl(Townsfolk):
+     # The flowergirl
+
+     def __init__(self):
+         super().__init__()
+         self.role_name = 'Flowergirl'
+
+class Juggler(Townsfolk):
+     # The juggler
+
+     def __init__(self):
+         super().__init__()
+         self.role_name = 'Juggler'
+
+class Mathematician(Townsfolk):
+     # The mathematician
+
+     def __init__(self):
+         super().__init__()
+         self.role_name = 'Mathematician'
+
+class Oracle(Townsfolk):
+    # The oracle
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Oracle'
+
+class Philosopher(Townsfolk):
+    # The philosopher
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Philosopher'
+
+class Sage(Townsfolk):
+    # The sage
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Sage'
+
+class Savant(Townsfolk):
+    # The savant
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Savant'
+
+class Seamstress(Townsfolk):
+    # The seamstress
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Seamstress'
+
+class SnakeCharmer(Townsfolk):
+     # The snake charmer
+
+     def __init__(self):
+         super().__init__()
+         self.role_name = 'Snake Charmer'
+
+class TownCrier(Townsfolk):
+    # The town crier
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Town Crier'
+
+class Farmer(Townsfolk):
+    # The farmer
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Farmer'
+
+class Fisherman(Townsfolk):
+    # The fisherman
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Fisherman'
+
+class General(Townsfolk):
+    # The general
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'General'
+
+class Knight(Townsfolk):
+    # The knight
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Knight'
+
+class PoppyGrower(Townsfolk):
+    # The poppy grower
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Poppy Grower'
+
+class WitchHunter(Townsfolk):
+    # The witch hunter
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Witch Hunter'
+
+# amnesiac, atheist
+
+class Drunk(Outsider):
+    # The drunk
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Drunk'
+
+class Butler(Outsider):
+    # The butler
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Butler'
+
+class Saint(Outsider):
+    # The saint
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Saint'
+
+class Recluse(Outsider):
+    # The recluse
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Recluse'
+
+class Regent(Outsider):
+    # The regent
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Regent'
+
+class Lunatic(Outsider):
+    # The lunatic
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Lunatic'
+
+class Tinker(Outsider):
+    # The tinker
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Tinker'
+
+class Barber(Outsider):
+    # The barber
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Barber'
+
+class Klutz(Outsider):
+    # The klutz
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Klutz'
+
+class Mutant(Outsider):
+    # The mutant
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Mutant'
+
+class Sweetheart(Outsider):
+    # The sweetheart
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Sweetheart'
+
+class Godfather(Minion):
+    # The godfather
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Godfather'
+
+class Mastermind(Minion):
+    # The mastermind
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Mastermind'
+
+class Spy(Minion):
+    # The spy
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Spy'
+
+class Witch(Minion):
+    # The witch
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Witch'
+
+class FangGu(Demon):
+    # The fang gu
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Fang Gu'
+
+class Imp(Demon):
+    # The imp
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Imp'
+
+class NoDashii(Demon):
+    # The no dashii
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'No Dashii'
+
+class Po(Demon):
+    # The po
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Po'
+
+class Beggar(Traveler):
+    # the beggar
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Beggar'
+
+class Gunslinger(Traveler):
+    # the gunslinger
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Gunslinger'
+
+class Scapegoat(Traveler):
+    # the scapegoat
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Scapegoat'
+
+class Apprentice(Traveler):
+    # the apprentice
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Apprentice'
+
+class Matron(Traveler):
+    # the matron
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Matron'
+
+class Judge(Traveler):
+    # the judge
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Judge'
+
+class Bishop(Traveler):
+    # the bishop
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'bishop'
+
+class Butcher(Traveler):
+    # the butcher
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Butcher'
+
+class BoneCollector(Traveler):
+    # the bone collector
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Bone Collector'
+
+class Harlot(Traveler):
+    # the harlot
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Harlot'
+
+class Barista(Traveler):
+    # the barista
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Barista'
+
+class Deviant(Traveler):
+    # the deviant
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Deviant'
+
+class Gangster(Traveler):
+    # the gangster
+
+    def __init__(self):
+        super().__init__()
+        self.role_name = 'Gangster'
 
 
 ### API Stuff
@@ -908,7 +1478,8 @@ async def update_presence(client):
 def backup():
 # Backs up the game state
 
-    dill.dump_session('current_game.txt')
+    with open('current_game.txt', 'wb') as file:
+        dill.dump(game, file)
 
 
 ### Event Handling
@@ -936,19 +1507,17 @@ async def on_ready():
         elif role.name == inactiveName:
             inactiveRole = role
 
-    '''
     if os.path.isfile('current_game.txt'):
         try:
-            game = dill.load_session('current_game.txt')
+            game = dill.load('current_game.txt')
             print('Backup restored!')
             print(game)
         except EOFError:
             os.remove('current_game.txt')
-            print('No backup found.')
+            print('Incomplete backup found.')
 
     else:
         print('No backup found.')
-    '''
 
     await update_presence(client)
     print('Logged in as')
@@ -971,6 +1540,37 @@ async def on_message(message):
         if game != None:
             if game.isDay:
                 await make_active(message.author)
+
+        # Votes
+        if '@vote' in message.content.lower() or ',vote' in message.content.lower():
+
+            argument = message.content.lower()[message.content.lower().index('vote ')+5:]
+
+            if game == None:
+                await channel.send('There\'s no game right now.')
+                return
+
+            if game.isDay == False:
+                await channel.send('It\'s not day right now.')
+                return
+
+            if game.days[-1].votes == [] or game.days[-1].votes[-1].done == True:
+                await channel.send('There\'s no vote right now.')
+                return
+
+            if argument != 'yes' and argument != 'y' and argument != 'no' and argument != 'n':
+                await channel.send('{} is not a valid vote. Use \'yes\', \'y\', \'no\', or \'n\'.'.format(argument))
+
+            vote = game.days[-1].votes[-1]
+
+            if vote.order[vote.position] != await get_player(message.author):
+                await channel.send('It\'s not your vote right now.')
+                return
+
+            vt = int(argument == 'yes' or argument == 'y')
+
+            await vote.vote(vt)
+            return
 
     # Responding to dms
     if message.guild == None:
@@ -1101,7 +1701,6 @@ async def on_message(message):
                     await message.author.send('You don\'t have permission to start a game.')
                     return
 
-                '''
                 msg = await message.author.send('What is the seating order? (separate users with line breaks)')
                 try:
                     order = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
@@ -1131,10 +1730,6 @@ async def on_message(message):
                 if len(roles) != len(order):
                     await message.author.send('Players and roles do not match.')
                     return
-                '''
-
-                order = ['Vice', 'Thornn', 'Testing']
-                characters = [Townsfolk, Demon, Traveler]
 
                 users = []
                 for person in order:
@@ -1143,7 +1738,6 @@ async def on_message(message):
                         return
                     users.append(name)
 
-                '''
                 characters = []
                 for text in roles:
                     role = ''.join([''.join([y.capitalize() for y in x.split('-')]) for x in text.split(' ')])
@@ -1153,7 +1747,6 @@ async def on_message(message):
                         await message.author.send('Role not found: {}.'.format(text))
                         return
                     characters.append(role)
-                '''
 
                 for index, user in enumerate(users):
                     await user.add_roles(playerRole)
@@ -1163,7 +1756,6 @@ async def on_message(message):
                 alignments = []
                 for role in characters:
                     if issubclass(role, Traveler):
-                        '''
                         msg = await message.author.send('What alignment is the {}?'.format(role().role_name))
                         try:
                             alignment = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
@@ -1180,8 +1772,6 @@ async def on_message(message):
                             return
 
                         alignments.append(alignment.content.lower())
-                        '''
-                        alignments.append('good')
 
                     elif issubclass(role, Townsfolk) or issubclass(role, Outsider):
                         alignments.append('good')
@@ -1193,7 +1783,6 @@ async def on_message(message):
 
                 seatingOrder = [Player(characters[x](), alignments[x], users[x], x) for x in indicies]
 
-                '''
                 msg = await message.author.send('What roles are on the script? (send the text of the json file from the script creator)')
                 try:
                     script = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
@@ -1206,8 +1795,6 @@ async def on_message(message):
                     return
 
                 scriptList = script.content[8:-3].split('"},{"id":"')
-                '''
-                scriptList = ['artist', 'dreamer', 'empath', 'general', 'grandmother', 'insomniac', 'lycanthrope', 'monk', 'oracle', 'poppy_grower', 'sage', 'snake_charmer', 'barber', 'drunk', 'puzzlemaster', 'recluse', 'sweetheart', 'tinker', 'baron', 'godfather', 'mephit', 'pit-hag', 'fang_gu', 'imp', 'ojo']
 
                 script = Script(scriptList)
 
@@ -1230,11 +1817,11 @@ async def on_message(message):
                     if isinstance(person.character, SeatingOrderModifier):
                         messageText += person.character.seating_order_message(seatingOrder)
                 seatingOrderMessage = await channel.send(messageText)
-                # await seatingOrderMessage.pin()
+                await seatingOrderMessage.pin()
 
                 game = Game(seatingOrder, seatingOrderMessage, script)
 
-                # backup()
+                backup()
                 await update_presence(client)
 
                 return
@@ -1338,7 +1925,7 @@ async def on_message(message):
                 if person == None:
                     return
 
-                await person.execute()
+                await person.execute(message.author)
                 return
 
             # Exiles a traveler
@@ -1381,6 +1968,81 @@ async def on_message(message):
                     await message.author.send('{} is not dead.'.format(person.nick))
 
                 await person.revive()
+                return
+
+            # Changes role
+            elif command == 'changerole':
+
+                if game == None:
+                    await message.author.send('There\'s no game right now.')
+                    return
+
+                if not gamemasterRole in server.get_member(message.author.id).roles:
+                    await message.author.send('You don\'t have permission to revive players.')
+                    return
+
+                person = await select_player(message.author, argument, game.seatingOrder)
+                if person == None:
+                    return
+
+                msg = await message.author.send('What is the new role?')
+                try:
+                    role = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
+                except asyncio.TimeoutError:
+                    await message.author.send('Timed out.')
+                    return
+
+                role = role.content.lower()
+
+                if role == 'cancel':
+                    await message.author.send('Role change cancelled!')
+                    return
+
+                role = ''.join([''.join([y.capitalize() for y in x.split('-')]) for x in role.split(' ')])
+                try:
+                    role = str_to_class(role)
+                except AttributeError:
+                    await message.author.send('Role not found: {}.'.format(text))
+                    return
+
+                await person.change_character(role())
+                await message.author.send('Role change successful!')
+                return
+
+            # Changes alignment
+            elif command == 'changealignment':
+
+                if game == None:
+                    await message.author.send('There\'s no game right now.')
+                    return
+
+                if not gamemasterRole in server.get_member(message.author.id).roles:
+                    await message.author.send('You don\'t have permission to revive players.')
+                    return
+
+                person = await select_player(message.author, argument, game.seatingOrder)
+                if person == None:
+                    return
+
+                msg = await message.author.send('What is the new alignment?')
+                try:
+                    alignment = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
+                except asyncio.TimeoutError:
+                    await message.author.send('Timed out.')
+                    return
+
+                alignment = alignment.content.lower()
+
+                if alignment == 'cancel':
+                    await message.author.send('Alignment change cancelled!')
+                    return
+
+                if alignment != 'good' and alignment != 'evil':
+                    await message.author.send('The alignment must be \'good\' or \'evil\' exactly.')
+                    return
+
+                await person.change_alignment(alignment)
+                await message.author.send('Alignment change successful!')
                 return
 
             # Marks as inactive
@@ -1455,7 +2117,7 @@ async def on_message(message):
 
                 try:
                     role = str_to_class(role)
-                except NameError:
+                except AttributeError:
                     await message.author.send('Role not found: {}.'.format(text))
                     return
 
@@ -1696,6 +2358,10 @@ async def on_message(message):
                     await message.author.send('It\'s not day right now.')
                     return
 
+                if game.days[-1].isNoms == False:
+                    await message.author.send('Nominations aren\'t open right now.')
+                    return
+
                 if not await get_player(message.author):
                     if not gamemasterRole in server.get_member(message.author.id).roles:
                         await message.author.send('You aren\'t in the game, and so cannot nominate.')
@@ -1710,13 +2376,8 @@ async def on_message(message):
 
                 person = await select_player(message.author, argument, game.seatingOrder)
 
-
                 if gamemasterRole in server.get_member(message.author.id).roles:
                     await game.days[-1].nomination(person, None)
-                    return
-
-                if game.days[-1].isNoms == False:
-                    await message.author.send('Nominations aren\'t open right now.')
                     return
 
                 await game.days[-1].nomination(person, await get_player(message.author))
@@ -2020,7 +2681,101 @@ async def on_message(message):
             else:
                 await message.author.send('Command {} not recognized. For a list of commands, type @help.'.format(command))
 
-# nominate, vote, skip
+
+@client.event
+async def on_message_edit(before, after):
+    # Handles messages on modification
+
+    # On pin
+    if after.channel == channel and before.pinned == False and after.pinned == True:
+
+        # Nomination
+        if 'nominate ' in after.content.lower():
+
+            argument = after.content.lower()[after.content.lower().index('nominate ') + 9:]
+
+            if game == None:
+                await channel.send('There\'s no game right now.')
+                await after.unpin()
+                return
+
+            if game.isDay == False:
+                await channel.send('It\'s not day right now.')
+                await after.unpin()
+                return
+
+            if game.days[-1].isNoms == False:
+                await channel.send('Nominations aren\'t open right now.')
+                await after.unpin()
+                return
+
+            if not await get_player(after.author):
+                await channel.send('You aren\'t in the game, and so cannot nominate.')
+                await after.unpin()
+                return
+
+            if game.script.isAtheist:
+                if argument == 'storytellers' or argument == 'the storytellers':
+                    for person in game.seatingOrder:
+                        if isinstance(person.character, Storyteller):
+                            await game.days[-1].nomination(person, await get_player(after.author))
+                            return
+
+            names = await generate_possibilities(argument, game.seatingOrder)
+
+            if len(names) == 1:
+
+                await game.days[-1].nomination(names[0], await get_player(after.author))
+                return
+
+            elif len(names) > 1:
+
+                await channel.send('There are too many matching players.')
+                await message.unpin()
+                return
+
+            else:
+
+                await channel.send('There are no matching players.')
+                await message.unpin()
+                return
+
+        # Skip
+        elif 'skip' in after.content.lower():
+
+            if game == None:
+                await channel.send('There\'s no game right now.')
+                await after.unpin()
+                return
+
+            if not await get_player(after.author):
+                await channel.send('You aren\'t in the game, and so cannot nominate.')
+                await after.unpin()
+                return
+
+            if not game.isDay:
+                await channel.send('It\'s not day right now.')
+                await after.unpin()
+                return
+
+            (await get_player(after.author)).hasSkipped = True
+
+            canNominate = [player for player in game.seatingOrder if player.canNominate == True and player.hasSkipped == False]
+            if len(canNominate) == 1:
+                for memb in gamemasterRole.members:
+                    await memb.send('Just waiting on {} to nominate or skip.'.format(canNominate[0].nick))
+            if len(canNominate) == 0:
+                for memb in gamemasterRole.members:
+                    await memb.send('Everyone has nominated or skipped!')
+
+            return
+
+    # On unpin
+    elif after.channel == channel and before.pinned == True and after.pinned == False:
+
+        # Unskip
+        if 'skip' in after.content.lower():
+            (await get_player(after.author)).hasSkipped = False
 
 ### Event loop
 while True:
