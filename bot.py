@@ -2010,7 +2010,7 @@ async def on_message(message):
                     return
 
                 if not gamemasterRole in server.get_member(message.author.id).roles:
-                    await message.author.send('You don\'t have permission to revive players.')
+                    await message.author.send('You don\'t have permission to change roles.')
                     return
 
                 person = await select_player(message.author, argument, game.seatingOrder)
@@ -2049,7 +2049,7 @@ async def on_message(message):
                     return
 
                 if not gamemasterRole in server.get_member(message.author.id).roles:
-                    await message.author.send('You don\'t have permission to revive players.')
+                    await message.author.send('You don\'t have permission to change alignemtns.')
                     return
 
                 person = await select_player(message.author, argument, game.seatingOrder)
@@ -2572,6 +2572,11 @@ async def on_message(message):
 
                 if game == None:
                     await message.author.send('There\'s no game right now.')
+                    return
+
+                if not game.isDay:
+                    await message.author.send('It\'s not day right now.')
+                    return
 
                 if not game.days[-1].isPms: # Check if PMs open
                     await message.author.send('PMs are closed.')
@@ -2616,6 +2621,11 @@ async def on_message(message):
 
                 if game == None:
                     await message.author.send('There\'s no game right now.')
+                    return
+
+                if not game.isDay:
+                    await message.author.send('It\'s not day right now.')
+                    return
 
                 if not game.days[-1].isPms: # Check if PMs open
                     await message.author.send('PMs are closed.')
@@ -2658,6 +2668,7 @@ async def on_message(message):
             elif command == 'history':
                 if game == None:
                     await message.author.send('There\'s no game right now.')
+                    return
 
                 if gamemasterRole in server.get_member(message.author.id).roles:
 
