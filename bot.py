@@ -1,4 +1,4 @@
-import discord, os, time, dill, sys, asyncio
+import discord, os, time, pickle, sys, asyncio
 from config import *
 
 ### Classes
@@ -26,18 +26,16 @@ class Game():
         # announcement
         await channel.send('{}, {} has won. Good game!'.format(playerRole.mention, winner.lower()))
 
-        '''
         # save backup
         i = 0
         while True:
             i += 1
-            if os.path.isfile('game_{}.pckl'.format(str(i)),'rb'):
+            if os.path.isfile('game_{}.pckl'.format(str(i))):
                 break
-        dill.dump_session('game_{}.pckl')
+        backup('game_{}.pckl'.format(str(i)))
 
         # delete old backup
-        os.remove('current_game.pckl')
-        '''
+        remove_backup('current_game.pckl')
 
         # turn off
         global game
@@ -464,7 +462,7 @@ class Player():
         state['user'] = self.user.id
         return state
 
-    def __setstate__(self):
+    def __setstate__(self, state):
         self.__dict__.update(state)
         self.user = server.get_member(self.user)
 
@@ -1480,38 +1478,42 @@ def backup(fileName):
 # Backs up the game state
 
     objects = [x for x in dir(game) if not x.startswith('__') and not callable(getattr(game,x))]
-    print(objects)
     with open(fileName, 'wb') as file:
-        dill.dump(objects, file)
+        pickle.dump(objects, file)
 
     for obj in objects:
-        print(obj)
         with open(obj+'_'+fileName, 'wb') as file:
             if obj == 'seatingOrderMessage':
-                dill.dump(getattr(game, obj).id, file)
+                pickle.dump(getattr(game, obj).id, file)
             else:
-                dill.dump(getattr(game, obj), file)
+                pickle.dump(getattr(game, obj), file)
 
-def load(fileName):
+async def load(fileName):
 # Loads the game state
 
     with open(fileName, 'rb') as file:
-        objects = dill.load(file)
+        objects = pickle.load(file)
 
     game = Game([], None, None)
     for obj in objects:
-        print(obj)
         if not os.path.isfile(obj+'_'+fileName):
             print('Incomplete backup found.')
             return
-        with open(obj+'_'+fileName, 'wb') as file:
+        with open(obj+'_'+fileName, 'rb') as file:
             if obj == 'seatingOrderMessage':
-                setattr(game, obj, channel.fetch_message(dill.load(file)))
+                id = pickle.load(file)
+                msg = await channel.fetch_message(id)
+                setattr(game, obj, msg)
             else:
-                setattr(game, obj, dill.load(file))
+                setattr(game, obj, pickle.load(file))
 
     return game
 
+def remove_backup(fileName):
+
+    os.remove(fileName)
+    for obj in [x for x in dir(game) if not x.startswith('__') and not callable(getattr(game,x))]:
+        os.remove(obj+'_'+fileName)
 
 ### Event Handling
 @client.event
@@ -1539,9 +1541,8 @@ async def on_ready():
             inactiveRole = role
 
     if os.path.isfile('current_game.pckl'):
-        game = load('current_game.pckl')
+        game = await load('current_game.pckl')
         print('Backup restored!')
-        print(game)
 
     else:
         print('No backup found.')
@@ -1557,6 +1558,9 @@ async def on_ready():
 async def on_message(message):
     # Handles messages
     global game
+
+    if game != None:
+        backup('current_game.pckl')
 
     # Don't respond to self
     if message.author == client.user:
@@ -1993,6 +1997,7 @@ async def on_message(message):
 
                 if not person.isGhost:
                     await message.author.send('{} is not dead.'.format(person.nick))
+                    return
 
                 await person.revive()
                 return
@@ -2712,6 +2717,9 @@ async def on_message(message):
 @client.event
 async def on_message_edit(before, after):
     # Handles messages on modification
+
+    if game != None:
+        backup('current_game.pckl')
 
     # On pin
     if after.channel == channel and before.pinned == False and after.pinned == True:
