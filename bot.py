@@ -2953,6 +2953,7 @@ async def on_member_update(before, after):
             if before.nick != after.nick:
                 (await get_player(after)).nick = after.nick
                 await after.send('Your nickname has been updated.')
+                backup('current_game.pckl')
 
 
 
