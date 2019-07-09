@@ -1559,8 +1559,7 @@ async def on_message(message):
     # Handles messages
     global game
 
-    if game != None:
-        backup('current_game.pckl')
+
 
     # Don't respond to self
     if message.author == client.user:
@@ -1571,6 +1570,8 @@ async def on_message(message):
         if game != None:
             if game.isDay:
                 await make_active(message.author)
+                if game != None:
+                    backup('current_game.pckl')
 
         # Votes
         if '@vote' in message.content.lower() or ',vote' in message.content.lower():
@@ -1601,6 +1602,8 @@ async def on_message(message):
             vt = int(argument == 'yes' or argument == 'y')
 
             await vote.vote(vt)
+            if game != None:
+                backup('current_game.pckl')
             return
 
     # Responding to dms
@@ -1637,6 +1640,8 @@ async def on_message(message):
                     return
 
                 await game.days[-1].open_pms()
+                if game != None:
+                    backup('current_game.pckl')
 
             # Opens nominations
             elif command == 'opennoms':
@@ -1653,6 +1658,8 @@ async def on_message(message):
                     return
 
                 await game.days[-1].open_noms()
+                if game != None:
+                    backup('current_game.pckl')
 
             # Opens pms and nominations
             elif command == 'open':
@@ -1670,6 +1677,8 @@ async def on_message(message):
 
                 await game.days[-1].open_pms()
                 await game.days[-1].open_noms()
+                if game != None:
+                    backup('current_game.pckl')
 
             # Closes pms
             elif command == 'closepms':
@@ -1686,6 +1695,8 @@ async def on_message(message):
                     return
 
                 await game.days[-1].close_pms()
+                if game != None:
+                    backup('current_game.pckl')
 
             # Closes nominations
             elif command == 'closenoms':
@@ -1702,6 +1713,8 @@ async def on_message(message):
                     return
 
                 await game.days[-1].close_noms()
+                if game != None:
+                    backup('current_game.pckl')
 
             # Closes pms and nominations
             elif command == 'close':
@@ -1719,6 +1732,8 @@ async def on_message(message):
 
                 await game.days[-1].close_pms()
                 await game.days[-1].close_noms()
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Starts game
@@ -1876,6 +1891,8 @@ async def on_message(message):
                     return
 
                 await game.end(argument.lower())
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Starts day
@@ -1895,6 +1912,8 @@ async def on_message(message):
 
                 if argument == '':
                     await game.start_day()
+                    if game != None:
+                        backup('current_game.pckl')
                     return
 
                 people = [await select_player(message.author, person, game.seatingOrder) for person in argument.split(' ')]
@@ -1902,6 +1921,8 @@ async def on_message(message):
                     return
 
                 await game.start_day(people)
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Ends day
@@ -1920,6 +1941,8 @@ async def on_message(message):
                     return
 
                 await game.days[-1].end()
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Kills a player
@@ -1942,6 +1965,8 @@ async def on_message(message):
                     return
 
                 await person.kill()
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Executes a player
@@ -1960,6 +1985,8 @@ async def on_message(message):
                     return
 
                 await person.execute(message.author)
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Exiles a traveler
@@ -1981,6 +2008,8 @@ async def on_message(message):
                     await message.author.send('{} is not a traveler.'.format(person.nick))
 
                 await person.character.exile(person)
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Revives a player
@@ -2003,6 +2032,8 @@ async def on_message(message):
                     return
 
                 await person.revive()
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Changes role
@@ -2042,6 +2073,8 @@ async def on_message(message):
 
                 await person.change_character(role())
                 await message.author.send('Role change successful!')
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Changes alignment
@@ -2078,6 +2111,8 @@ async def on_message(message):
 
                 await person.change_alignment(alignment)
                 await message.author.send('Alignment change successful!')
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Marks as inactive
@@ -2096,6 +2131,8 @@ async def on_message(message):
                     return
 
                 await person.make_inactive()
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Marks as inactive
@@ -2114,6 +2151,8 @@ async def on_message(message):
                     return
 
                 await person.undo_inactive()
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Adds traveler
@@ -2201,6 +2240,8 @@ async def on_message(message):
                     return
 
                 await game.add_traveler(Player(role(), alignment.content.lower(), person, pos))
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Removes traveler
@@ -2219,6 +2260,8 @@ async def on_message(message):
                     return
 
                 await game.remove_traveler(person)
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Changes seating chart
@@ -2248,6 +2291,8 @@ async def on_message(message):
                     return
 
                 await game.reseat(order)
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Cancels a nomination
@@ -2271,6 +2316,8 @@ async def on_message(message):
                 await game.days[-1].votes[-1].delete()
                 await game.days[-1].open_pms()
                 await game.days[-1].open_noms()
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Gives a dead vote
@@ -2288,6 +2335,8 @@ async def on_message(message):
                     return
 
                 await person.add_dead_vote()
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Removes a dead vote
@@ -2305,6 +2354,8 @@ async def on_message(message):
                     return
 
                 await person.remove_dead_vote()
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Clears history
@@ -2407,15 +2458,21 @@ async def on_message(message):
                         for person in game.seatingOrder:
                             if isinstance(person.character, Storyteller):
                                 await game.days[-1].nomination(person, await get_player(message.author))
+                                if game != None:
+                                    backup('current_game.pckl')
                                 return
 
                 person = await select_player(message.author, argument, game.seatingOrder)
 
                 if gamemasterRole in server.get_member(message.author.id).roles:
                     await game.days[-1].nomination(person, None)
+                    if game != None:
+                        backup('current_game.pckl')
                     return
 
                 await game.days[-1].nomination(person, await get_player(message.author))
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Votes
@@ -2464,6 +2521,8 @@ async def on_message(message):
                     vt = int(argument == 'yes' or argument == 'y')
 
                     await vote.vote(vt, operator=message.author)
+                    if game != None:
+                        backup('current_game.pckl')
                     return
 
                 if vote.order[vote.position] != await get_player(message.author):
@@ -2473,6 +2532,8 @@ async def on_message(message):
                 vt = int(argument == 'yes' or argument == 'y')
 
                 await vote.vote(vt)
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Presets a vote
@@ -2518,12 +2579,16 @@ async def on_message(message):
 
                     await vote.preset_vote(person, vt, operator=message.author)
                     await message.author.send('Successfully preset!')
+                    if game != None:
+                        backup('current_game.pckl')
                     return
 
                 vt = int(argument == 'yes' or argument == 'y')
 
                 await vote.preset_vote(await get_player(message.author), vt)
                 await message.author.send('Successfully preset! For more nuanced presets, contact the storytellers.')
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Cancels a preset vote
@@ -2564,10 +2629,14 @@ async def on_message(message):
 
                     await vote.cancel_preset(person)
                     await message.author.send('Successfully canceled!')
+                    if game != None:
+                        backup('current_game.pckl')
                     return
 
                 await vote.cancel_preset(await get_player(message.author))
                 await message.author.send('Successfully canceled! For more nuanced presets, contact the storytellers.')
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Sends pm
@@ -2616,7 +2685,8 @@ async def on_message(message):
                 await person.message(await get_player(message.author), intendedMessage.content, message.jump_url)
                 if not (await get_player(message.author)).isActive:
                     await make_active(message.author)
-
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             # Replies to the previous message
@@ -2664,6 +2734,8 @@ async def on_message(message):
                 await person.message(await get_player(message.author), intendedMessage.content, message.jump_url)
                 if not (await get_player(message.author)).isActive:
                     await make_active(message.author)
+                if game != None:
+                    backup('current_game.pckl')
 
                 return
 
@@ -2773,8 +2845,6 @@ help: displays this dialogue''')
 async def on_message_edit(before, after):
     # Handles messages on modification
 
-    if game != None:
-        backup('current_game.pckl')
 
     # On pin
     if after.channel == channel and before.pinned == False and after.pinned == True:
@@ -2809,6 +2879,8 @@ async def on_message_edit(before, after):
                     for person in game.seatingOrder:
                         if isinstance(person.character, Storyteller):
                             await game.days[-1].nomination(person, await get_player(after.author))
+                            if game != None:
+                                backup('current_game.pckl')
                             return
 
             names = await generate_possibilities(argument, game.seatingOrder)
@@ -2816,6 +2888,8 @@ async def on_message_edit(before, after):
             if len(names) == 1:
 
                 await game.days[-1].nomination(names[0], await get_player(after.author))
+                if game != None:
+                    backup('current_game.pckl')
                 return
 
             elif len(names) > 1:
@@ -2849,6 +2923,8 @@ async def on_message_edit(before, after):
                 return
 
             (await get_player(after.author)).hasSkipped = True
+            if game != None:
+                backup('current_game.pckl')
 
             canNominate = [player for player in game.seatingOrder if player.canNominate == True and player.hasSkipped == False]
             if len(canNominate) == 1:
@@ -2866,6 +2942,8 @@ async def on_message_edit(before, after):
         # Unskip
         if 'skip' in after.content.lower():
             (await get_player(after.author)).hasSkipped = False
+            if game != None:
+                backup('current_game.pckl')
 
 ### Event loop
 while True:
