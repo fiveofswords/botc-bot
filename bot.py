@@ -1812,7 +1812,10 @@ async def on_message(message):
 
                 indicies = [x for x in range(len(users))]
 
-                seatingOrder = [Player(characters[x](), alignments[x], users[x], x) for x in indicies]
+                seatingOrder = []
+                for x in indicies:
+                    print(x)
+                    seatingOrder.append(Player(characters[x](), alignments[x], users[x], x) for x in indicies])
 
                 msg = await message.author.send('What roles are on the script? (send the text of the json file from the script creator)')
                 try:
