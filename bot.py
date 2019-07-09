@@ -1439,7 +1439,7 @@ async def make_active(user):
 
     person = await get_player(user)
 
-    if person.isActive == False:
+    if person.isActive == True:
         return
 
     person.isActive = True
