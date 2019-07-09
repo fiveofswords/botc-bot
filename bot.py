@@ -1559,8 +1559,6 @@ async def on_message(message):
     # Handles messages
     global game
 
-
-
     # Don't respond to self
     if message.author == client.user:
         return
@@ -2944,6 +2942,19 @@ async def on_message_edit(before, after):
             (await get_player(after.author)).hasSkipped = False
             if game != None:
                 backup('current_game.pckl')
+
+
+@client.event
+async def on_member_update(before, after):
+    # Handles member-level modifications
+
+    if game != None:
+        if await get_player(after):
+            if before.nick != after.nick:
+                (await get_player(after)).nick = after.nick
+                await after.send('Your nickname has been updated.')
+
+
 
 ### Event loop
 while True:
