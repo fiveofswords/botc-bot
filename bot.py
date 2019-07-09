@@ -1590,6 +1590,7 @@ async def on_message(message):
 
             if argument != 'yes' and argument != 'y' and argument != 'no' and argument != 'n':
                 await channel.send('{} is not a valid vote. Use \'yes\', \'y\', \'no\', or \'n\'.'.format(argument))
+                return
 
             vote = game.days[-1].votes[-1]
 
@@ -2490,6 +2491,7 @@ async def on_message(message):
 
                 if argument != 'yes' and argument != 'y' and argument != 'no' and argument != 'n':
                     await message.author.send('{} is not a valid vote. Use \'yes\', \'y\', \'no\', or \'n\'.'.format(argument))
+                    return
 
                 vote = game.days[-1].votes[-1]
 
@@ -2551,6 +2553,7 @@ async def on_message(message):
 
                 if argument != 'yes' and argument != 'y' and argument != 'no' and argument != 'n':
                     await message.author.send('{} is not a valid vote. Use \'yes\', \'y\', \'no\', or \'n\'.'.format(argument))
+                    return
 
                 vote = game.days[-1].votes[-1]
 
