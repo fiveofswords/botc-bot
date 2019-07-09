@@ -1814,7 +1814,6 @@ async def on_message(message):
 
                 seatingOrder = []
                 for x in indicies:
-                    print(x)
                     seatingOrder.append(Player(characters[x](), alignments[x], users[x], x) for x in indicies)
 
                 msg = await message.author.send('What roles are on the script? (send the text of the json file from the script creator)')
@@ -1831,6 +1830,7 @@ async def on_message(message):
                 scriptList = script.content[8:-3].split('"},{"id":"')
 
                 script = Script(scriptList)
+                print('1')
 
                 # Role Stuff
                 for memb in server.members:
@@ -1843,7 +1843,11 @@ async def on_message(message):
                     else:
                         await memb.remove_roles(travelerRole, ghostRole, deadVoteRole)
 
+                print('2')
+
                 await channel.send('{}, welcome to Blood on the Clocktower! Go to sleep.'.format(playerRole.mention))
+
+                print('3')
 
                 messageText = '**Seating Order:**'
                 for person in seatingOrder:
