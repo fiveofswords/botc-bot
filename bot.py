@@ -245,7 +245,7 @@ class Vote():
         # Announcement
         text = 'yes' if vt == 1 else 'no'
         self.announcements.append((await channel.send('{} votes {}. {} votes.'.format(voter.nick, text, str(self.votes)))).id)
-        await channel.fetch_message(self.announcements[-1]).pin()
+        await (await channel.fetch_message(self.announcements[-1])).pin()
 
         # Next vote
         self.position += 1
@@ -294,7 +294,7 @@ class Vote():
             await announcement.pin()
 
         for msg in self.announcements:
-            await channel.fetch_message(msg).unpin()
+            await (await channel.fetch_message(msg)).unpin()
 
         self.done = True
 
@@ -327,7 +327,7 @@ class Vote():
         await channel.send('Nomination canceled!')
 
         for msg in self.announcements:
-            await channel.fetch_message(msg).unpin()
+            await (await channel.fetch_message(msg)).unpin()
 
         self.done = True
 
@@ -378,7 +378,7 @@ class TravelerVote():
         # Announcement
         text = 'yes' if vt == 1 else 'no'
         self.announcements.append((await channel.send('{} votes {}. {} votes.'.format(voter.nick, text, str(self.votes)))).id)
-        await channel.fetch_message(self.announcements[-1]).pin()
+        await (await channel.fetch_message(self.announcements[-1])).pin()
 
         # Next vote
         self.position += 1
@@ -405,7 +405,7 @@ class TravelerVote():
             await announcement.pin()
 
         for msg in self.announcements:
-            await channel.fetch_message(msg).unpin()
+            await (await channel.fetch_message(msg)).unpin()
 
         self.done = True
 
@@ -428,7 +428,7 @@ class TravelerVote():
         channel.send('Nomination canceled.')
 
         for msg in self.announcements:
-            await channel.fetch_message(msg).unpin()
+            await (await channel.fetch_message(msg)).unpin()
 
         self.done = True
 
