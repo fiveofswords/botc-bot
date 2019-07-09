@@ -1834,6 +1834,7 @@ async def on_message(message):
 
                 # Role Stuff
                 for memb in server.members:
+                    print(memb)
                     if gamemasterRole in server.get_member(memb.id).roles:
                         pass
                     elif not memb in users:
