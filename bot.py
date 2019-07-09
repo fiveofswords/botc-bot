@@ -1830,9 +1830,7 @@ async def on_message(message):
                 scriptList = script.content[8:-3].split('"},{"id":"')
 
                 script = Script(scriptList)
-                print('1')
 
-                '''
                 # Role Stuff
                 for memb in server.members:
                     print(memb)
@@ -1844,12 +1842,8 @@ async def on_message(message):
                         await memb.remove_roles(ghostRole, deadVoteRole)
                     else:
                         await memb.remove_roles(travelerRole, ghostRole, deadVoteRole)
-                '''
-                print('2')
 
                 await channel.send('{}, welcome to Blood on the Clocktower! Go to sleep.'.format(playerRole.mention))
-
-                print('3')
 
                 messageText = '**Seating Order:**'
                 for person in seatingOrder:
@@ -2728,8 +2722,7 @@ async def on_message(message):
             # Help dialogue
             elif command == 'help':
                 if gamemasterRole in server.get_member(message.author.id).roles:
-                    await message.author.send('''
-**Storyteller Commands (multiple arguments are always comma-separated):**
+                    await message.author.send('''**Storyteller Commands (multiple arguments are always comma-separated):**
 startgame: starts the game
 endgame <<team>>: ends the game, with winner team
 openpms: opens pms
@@ -2754,8 +2747,8 @@ reseat: reseats the game
 cancelnomination: cancels the previous nomination
 givedeadvote <<player>>: adds a dead vote for player
 removedeadvote <<player>>: removes a dead vote from player. not necessary for ordinary usage
-history <<player1>> <<player2>>: views the message history between player1 and player2
-
+history <<player1>> <<player2>>: views the message history between player1 and player2''')
+                await message.author.send('''
 **Player Commands:**
 clear: returns whitespace
 notactive: lists players who are yet to speak
@@ -2768,26 +2761,7 @@ cancelpreset: cancels an existing preset
 pm <<player>> or message <<player>>: sends player a message
 reply: messages the authour of the previously received message
 history <<player>>: views your message history with player
-help: displays this dialogue
-                                        ''')
-                    return
-                else:
-                    await message.author.send('''
-**Player Commands:**
-clear: returns whitespace
-notactive: lists players who are yet to speak
-cannominate: lists players who are yet to nominate or skip
-canbenominated: lists players who are yet to be nominated
-nominate <<player>>: nominates player
-vote <<yes/no>>: votes on an ongoing nomination
-presetvote <<yes/no>>: submits a preset vote. will not work if it is your turn to vote. not reccomended -- contact the storytellers instead
-cancelpreset: cancels an existing preset
-pm <<player>> or message <<player>>: sends player a message
-reply: messages the authour of the previously received message
-history <<player>>: views your message history with player
-help: displays this dialogue
-                                        ''')
-
+help: displays this dialogue''')
                 return
 
             # Command unrecognized
