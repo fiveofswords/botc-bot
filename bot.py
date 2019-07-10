@@ -1527,7 +1527,7 @@ async def load(fileName):
     with open(fileName, 'rb') as file:
         objects = pickle.load(file)
 
-    game = Game([], None, None)
+    game = Game([], None, Script([]))
     for obj in objects:
         if not os.path.isfile(obj+'_'+fileName):
             print('Incomplete backup found.')
