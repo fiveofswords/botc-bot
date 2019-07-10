@@ -1,5 +1,6 @@
-import discord, os, time, pickle, sys, asyncio
+import discord, os, time, pickle, sys, asyncio, pytz, datetime
 from config import *
+from dateutil.parser import parse
 
 ### Classes
 class Game():
@@ -30,7 +31,7 @@ class Game():
         i = 0
         while True:
             i += 1
-            if os.path.isfile('game_{}.pckl'.format(str(i))):
+            if not os.path.isfile('game_{}.pckl'.format(str(i))):
                 break
         backup('game_{}.pckl'.format(str(i)))
 
@@ -110,6 +111,8 @@ class Day():
         self.isNoms = False
         self.isPms = True
         self.votes = []
+        self.voteEndMessages = []
+        self.deadlineMessages = []
         self.aboutToDie = None
 
     async def open_pms(self):
@@ -166,6 +169,12 @@ class Day():
         for person in game.seatingOrder:
             if isinstance(person.character, DayEndModifier):
                 person.character.on_day_end()
+
+        for msg in self.voteEndMessages:
+            await (await channel.fetch_message(msg)).unpin()
+
+        for msg in self.deadlineMessages:
+            await (await channel.fetch_message(msg)).unpin()
 
         game.isDay = False
         self.isNoms = False
@@ -282,16 +291,22 @@ class Vote():
         else:
             text = ', '.join([x.nick for x in self.voted[:-1]]) + ', and ' + self.voted[-1].nick
         if dies:
+            if aboutToDie != None:
+                msg = await channel.fetch_message(game.days[-1].voteEndMessages[game.days[-1].votes.index(aboutToDie[1])])
+                await msg.edit(content=msg.content[:-31] + ' They are not about to be executed.')
             game.days[-1].aboutToDie = (self.nominee, self)
             announcement = await channel.send('{} votes on {} (nominated by {}): {}. They are about to be executed.'.format(str(self.votes), self.nominee.nick if self.nominee else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
-            await announcement.pin()
         elif tie:
+            if aboutToDie != None:
+                msg = await channel.fetch_message(game.days[-1].voteEndMessages[game.days[-1].votes.index(aboutToDie[1])])
+                await msg.edit(content=msg.content[:-31] + ' No one is about to be executed.')
             game.days[-1].aboutToDie = None
             announcement = await channel.send('{} votes on {} (nominated by {}): {}. No one is about to be executed.'.format(str(self.votes), self.nominee.nick if self.nominee else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
-            await announcement.pin()
         else:
             announcement = await channel.send('{} votes on {} (nominated by {}): {}. They are not about to be executed.'.format(str(self.votes), self.nominee.nick if self.nominee else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
-            await announcement.pin()
+
+        await announcement.pin()
+        game.days[-1].voteEndMessages.append(announcement.id)
 
         for msg in self.announcements:
             await (await channel.fetch_message(msg)).unpin()
@@ -399,10 +414,11 @@ class TravelerVote():
             text = ', '.join([x.nick for x in self.voted[:-1]]) + ', and ' + self.voted[-1].nick
         if self.votes >= self.majority:
             announcement = await channel.send('{} votes on {} (nominated by {}): {}.'.format(str(self.votes), self.nominee.nick if self.nominee else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
-            await announcement.pin()
         else:
             announcement = await channel.send('{} votes on {} (nominated by {}): {}. They are not exiled.'.format(str(self.votes), self.nominee.nick if self.nominee else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
-            await announcement.pin()
+
+        await announcement.pin()
+        game.days[-1].voteEndMessages.append(announcement.id)
 
         for msg in self.announcements:
             await (await channel.fetch_message(msg)).unpin()
@@ -1515,6 +1531,12 @@ def remove_backup(fileName):
     for obj in [x for x in dir(game) if not x.startswith('__') and not callable(getattr(game,x))]:
         os.remove(obj+'_'+fileName)
 
+def is_dst():
+
+    x = datetime.datetime(datetime.datetime.now().year, 1, 1, 0, 0, 0, tzinfo=pytz.timezone('US/Eastern')) # Jan 1 of this year
+    y = datetime.datetime.now(pytz.timezone('US/Eastern'))
+    return (y.utcoffset() != x.utcoffset())
+
 ### Event Handling
 @client.event
 async def on_ready():
@@ -2319,6 +2341,33 @@ async def on_message(message):
                     backup('current_game.pckl')
                 return
 
+            # Sets a deadline
+            elif command == 'setdeadline':
+                if game == None:
+                    await message.author.send('There\'s no game right now.')
+                    return
+
+                if not gamemasterRole in server.get_member(message.author.id).roles:
+                    await message.author.send('You don\'t have permission to set deadlines.')
+                    return
+
+                try:
+                    time = parse(argument)
+                except ValueError:
+                    await message.author.send('Time format not recognized. If in doubt, use \'HH:MM\'. All times must be in UTC.')
+                    return
+
+                if len(game.days[-1].deadlineMessages) > 0:
+                    await (await channel.fetch_message(game.days[-1].deadlineMessages[-1])).unpin()
+
+                if is_dst():
+                    announcement = await channel.send('{}, nominations are open. The deadline is {} PDT / {} EDT / {} UTC unless someone nominates or everyone skips.'.format(playerRole.mention, time.astimezone(pytz.timezone('US/Pacific')).strftime('%-I:%M %p'), time.astimezone(pytz.timezone('US/Eastern')).strftime('%-I:%M %p'), time.astimezone(pytz.utc).strftime('%H:%M')))
+                else:
+                    announcement = await channel.send('{}, nominations are open. The deadline is {} PST / {} EST / {} UTC unless someone nominates or everyone skips.'.format(playerRole.mention, time.astimezone(pytz.timezone('US/Pacific')).strftime('%-I:%M %p'), time.astimezone(pytz.timezone('US/Eastern')).strftime('%-I:%M %p'), time.astimezone(pytz.utc).strftime('%H:%M')))
+                await announcement.pin()
+                game.days[-1].deadlineMessages.append(announcement.id)
+                await game.days[-1].open_noms()
+
             # Gives a dead vote
             elif command == 'givedeadvote':
                 if game == None:
@@ -2845,6 +2894,8 @@ help: displays this dialogue''')
 @client.event
 async def on_message_edit(before, after):
     # Handles messages on modification
+    if after.author == client.user:
+        return
 
 
     # On pin
@@ -2902,7 +2953,7 @@ async def on_message_edit(before, after):
             else:
 
                 await channel.send('There are no matching players.')
-                await message.unpin()
+                await after.unpin()
                 return
 
         # Skip
