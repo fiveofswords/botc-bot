@@ -1502,7 +1502,7 @@ async def update_presence(client):
     if game == None:
         await client.change_presence(status = discord.Status.dnd, activity = discord.Game(name = 'No ongoing game!'))
     elif game.isDay == False:
-        await client.change_presence(status = discord.Status.idle, activity = discord.Game(name = 'It\'s night time!'))
+        await client.change_presence(status = discord.Status.idle, activity = discord.Game(name = 'It\'s nighttime!'))
     else:
         clopen = ['Closed', 'Open']
         await client.change_presence(status = discord.Status.online, activity = discord.Game(name = 'PMs {}, Nominations {}!'.format(clopen[game.days[-1].isPms],clopen[game.days[-1].isNoms])))
