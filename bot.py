@@ -113,6 +113,7 @@ class Day():
         self.votes = []
         self.voteEndMessages = []
         self.deadlineMessages = []
+        self.skipMessages = []
         self.aboutToDie = None
 
     async def open_pms(self):
@@ -174,6 +175,9 @@ class Day():
             await (await channel.fetch_message(msg)).unpin()
 
         for msg in self.deadlineMessages:
+            await (await channel.fetch_message(msg)).unpin()
+
+        for msg in self.skipMessages:
             await (await channel.fetch_message(msg)).unpin()
 
         game.isDay = False
@@ -2986,6 +2990,8 @@ async def on_message_edit(before, after):
             if len(canNominate) == 0:
                 for memb in gamemasterRole.members:
                     await memb.send('Everyone has nominated or skipped!')
+
+            game.days[-1].skipMessages.append(after.id)
 
             return
 
