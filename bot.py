@@ -587,7 +587,7 @@ class Player():
 
     async def message(self, frm, content, jump):
         # Sends a message
-        
+
         try:
             message = await self.user.send('Message from {}: **{}**'.format(frm.nick, content))
         except discord.errors.HTTPException:
@@ -2825,6 +2825,9 @@ async def on_message(message):
                     for msg in person1.messageHistory:
                         if not ((msg['from'] == person1 and msg['to'] == person2) or (msg['to'] == person1 and msg['from'] == person2)):
                             continue
+                        if len(messageText) > 1500:
+                            await message.author.send(messageText)
+                            messageText = ''
                         while msg['day'] != day:
                             await message.author.send(messageText)
                             day += 1
@@ -2847,6 +2850,9 @@ async def on_message(message):
                 for msg in (await get_player(message.author)).messageHistory:
                     if not msg['from'] == person and not msg['to'] == person:
                         continue
+                    if len(messageText) > 1500:
+                        await message.author.send(messageText)
+                        messageText = ''
                     while msg['day'] != day:
                         await message.author.send(messageText)
                         day += 1
