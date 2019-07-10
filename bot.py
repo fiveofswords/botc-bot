@@ -587,7 +587,13 @@ class Player():
 
     async def message(self, frm, content, jump):
         # Sends a message
-        message = await self.user.send('Message from {}: **{}**'.format(frm.nick, content))
+        
+        try:
+            message = await self.user.send('Message from {}: **{}**'.format(frm.nick, content))
+        except discord.errors.HTTPException:
+            await frm.user.send('Message is too long.')
+            return
+
         message_to = {'from': frm, 'to': self, 'content': content, 'day': len(game.days), 'time': message.created_at, 'jump': message.jump_url}
         message_from = {'from': frm, 'to': self, 'content': content, 'day': len(game.days), 'time': message.created_at, 'jump': jump}
         self.messageHistory.append(message_to)
@@ -2802,6 +2808,9 @@ async def on_message(message):
                 if gamemasterRole in server.get_member(message.author.id).roles:
 
                     argument = argument.split(', ')
+                    if len(argument) != 2:
+                        await message.author.send('There must be exactly two comma-separated inputs.')
+                        return
 
                     person1 = await select_player(message.author, argument[0], game.seatingOrder)
                     if person1 == None:
@@ -2817,8 +2826,9 @@ async def on_message(message):
                         if not ((msg['from'] == person1 and msg['to'] == person2) or (msg['to'] == person1 and msg['from'] == person2)):
                             continue
                         while msg['day'] != day:
+                            await message.author.send(messageText)
                             day += 1
-                            messageText += '\n\n**Day {}:**'.format(str(day))
+                            messageText = '**Day {}:**'.format(str(day))
                         messageText += '\nFrom: {} | To: {} | Time: {}\n**{}**'.format(msg['from'].nick,msg['to'].nick,msg['time'].strftime("%m/%d, %H:%M:%S"),msg['content'])
 
                     await message.author.send(messageText)
@@ -2838,8 +2848,9 @@ async def on_message(message):
                     if not msg['from'] == person and not msg['to'] == person:
                         continue
                     while msg['day'] != day:
+                        await message.author.send(messageText)
                         day += 1
-                        messageText += '\n\n**Day {}:**'.format(str(day))
+                        messageText = '\n\n**Day {}:**'.format(str(day))
                     messageText += '\nFrom: {} | To: {} | Time: {}\n**{}**'.format(msg['from'].nick,msg['to'].nick,msg['time'].strftime("%m/%d, %H:%M:%S"),msg['content'])
 
                 await message.author.send(messageText)
