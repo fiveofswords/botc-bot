@@ -2867,6 +2867,7 @@ addtraveler <<player>> or addtraveller <<player>>: adds player as a traveler
 removetraveler <<traveler>> or removetraveller <<traveler>>: removes traveler from the game
 reseat: reseats the game
 cancelnomination: cancels the previous nomination
+setdeadline <time>: sends a message with time in UTC as the deadline
 givedeadvote <<player>>: adds a dead vote for player
 removedeadvote <<player>>: removes a dead vote from player. not necessary for ordinary usage
 history <<player1>> <<player2>>: views the message history between player1 and player2''')
