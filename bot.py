@@ -11,6 +11,13 @@ class Game():
         self.script = script
         self.seatingOrder = seatingOrder
         self.seatingOrderMessage = seatingOrderMessage
+        if script.isAtheist:
+            for person in game.seatingOrder:
+                if gamemasterRole in server.get_member(message.author.id).roles:
+                    person = person
+                    break
+            self.seatingOrder.insert(0, Player(Storyteller(), 'neutral', person))
+            self.reseat()
 
     async def end(self, winner):
         # Ends the game
@@ -2512,7 +2519,7 @@ async def on_message(message):
                         return
 
                 if game.script.isAtheist:
-                    if argument == 'storytellers':
+                    if argument == 'storytellers' or argument == 'the storytellers' or gamemasterRole in server.get_member(message.author.id).roles:
                         for person in game.seatingOrder:
                             if isinstance(person.character, Storyteller):
                                 await game.days[-1].nomination(person, await get_player(message.author))
@@ -2949,10 +2956,10 @@ async def on_message_edit(before, after):
                 return
 
             if game.script.isAtheist:
-                if argument == 'storytellers' or argument == 'the storytellers':
+                if argument == 'storytellers' or argument == 'the storytellers' or gamemasterRole in server.get_member(message.author.id).roles:
                     for person in game.seatingOrder:
                         if isinstance(person.character, Storyteller):
-                            await game.days[-1].nomination(person, await get_player(after.author))
+                            await game.days[-1].nomination(person, await get_player(message.author))
                             if game != None:
                                 backup('current_game.pckl')
                             return
