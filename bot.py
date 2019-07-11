@@ -67,7 +67,7 @@ class Game():
                     messageText += person.character.seating_order_message(self.seatingOrder)
             else:
                 messageText += '\n[Storytellers]'
-            
+
             person.position = index
 
         await self.seatingOrderMessage.edit(content=messageText)
@@ -2142,7 +2142,7 @@ async def on_message(message):
 
                 messageText = '**Seating Order:**'
                 for person in seatingOrder:
-                    if gamemasterRole not in person.roles:
+                    if gamemasterRole not in person.user.roles:
                         messageText += '\n{}'.format(person.nick)
                         if isinstance(person.character, SeatingOrderModifier):
                             messageText += person.character.seating_order_message(seatingOrder)
