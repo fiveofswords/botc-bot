@@ -2119,7 +2119,7 @@ async def on_message(message):
 
                 script = Script(scriptList)
 
-'''
+                '''
                 # Role Stuff
                 for memb in server.members:
                     print(memb)
@@ -2131,7 +2131,7 @@ async def on_message(message):
                         await memb.remove_roles(ghostRole, deadVoteRole)
                     else:
                         await memb.remove_roles(travelerRole, ghostRole, deadVoteRole)
-'''
+                '''
                 await channel.send('{}, welcome to Blood on the Clocktower! Go to sleep.'.format(playerRole.mention))
 
                 messageText = '**Seating Order:**'
