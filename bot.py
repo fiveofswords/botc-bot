@@ -3115,7 +3115,7 @@ async def on_message(message):
 
                 messageText = '**Messages mentioning {} (Times in UTC):**\n\n**Day 1:**'.format(argument)
                 day = 1
-                for msg in history:
+                for msg in (await get_player(message.author)).history:
                     if not (argument.lower() in message['content'].lower()):
                         continue
                     if len(messageText) > 1500:
@@ -3129,7 +3129,7 @@ async def on_message(message):
 
                 await message.author.send(messageText)
                 return
-            
+
             # Help dialogue
             elif command == 'help':
                 if gamemasterRole in server.get_member(message.author.id).roles:
@@ -3173,6 +3173,7 @@ cancelpreset: cancels an existing preset
 pm <<player>> or message <<player>>: sends player a message
 reply: messages the authour of the previously received message
 history <<player>>: views your message history with player
+search <<content>>: views all of your messages containing content
 help: displays this dialogue''')
                 return
 
