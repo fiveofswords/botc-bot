@@ -47,6 +47,8 @@ class Game():
         # Reseats the table
 
         # Seating order
+        if self.script.isAtheist:
+            newSeatingOrder.insert(self.seatingOrder[0])
         self.seatingOrder = newSeatingOrder
 
         # Seating order message
@@ -211,6 +213,8 @@ class Vote():
         self.nominee = nominee
         self.nominator = nominator
         self.order = game.seatingOrder[game.seatingOrder.index(self.nominee)+1:] + game.seatingOrder[:game.seatingOrder.index(self.nominee)+1]
+        if game.script.isAtheist:
+            self.order.remove(game.seatingOrder[0])
         self.votes = 0
         self.voted = []
         self.history = []
@@ -218,7 +222,7 @@ class Vote():
         self.presetVotes = {}
         self.values = {person: (0,1) for person in self.order}
         self.majority = 0.0
-        for person in game.seatingOrder:
+        for person in self.order:
             if not person.isGhost:
                 self.majority += 0.5
         for person in game.seatingOrder:
@@ -374,13 +378,15 @@ class TravelerVote():
         self.nominee = nominee
         self.nominator = nominator
         self.order = game.seatingOrder[game.seatingOrder.index(self.nominee)+1:] + game.seatingOrder[:game.seatingOrder.index(self.nominee)+1]
+        if game.script.isAtheist:
+            self.order.remove(game.seatingOrder[0])
         self.votes = 0
         self.voted = []
         self.history = []
         self.announcements = []
         self.presetVotes = {}
         self.values = {person: (0,1) for person in self.order}
-        self.majority = len(game.seatingOrder)/2
+        self.majority = len(self.order)/2
         self.position = 0
         game.days[-1].votes.append(self)
         self.done = False
@@ -638,7 +644,7 @@ class Player():
 
         if game.isDay:
 
-            notActive = [player for player in game.seatingOrder if player.isActive == False]
+            notActive = [player for player in game.seatingOrder if player.isActive == False and player.alignment != 'neutral']
             if len(notActive) == 1:
                 for memb in gamemasterRole.members:
                     await memb.send('Just waiting on {} to speak.'.format(notActive[0].nick))
@@ -646,7 +652,7 @@ class Player():
                 for memb in gamemasterRole.members:
                     await memb.send('Everyone has spoken!')
 
-            canNominate = [player for player in game.seatingOrder if player.canNominate == True and player.hasSkipped == False]
+            canNominate = [player for player in game.seatingOrder if player.canNominate == True and player.hasSkipped == False and player.alignment != 'neutral']
             if len(canNominate) == 1:
                 for memb in gamemasterRole.members:
                     await memb.send('Just waiting on {} to nominate or skip.'.format(canNominate[0].nick))
@@ -1536,9 +1542,8 @@ class Bureaucrat(Traveler, DayStartModifier, VoteBeginningModifier):
     def modify_vote_values(self, order, values, majority):
         if self.target and not self.isPoisoned:
             values[self.target] = (values[self.target][0], values[self.target][1] * 3)
-            for person in game.seatingOrder:
-                if not person.isGhost:
-                    majority += values[person][1]/2.0
+            for person in game.days[-1].votes[-1]:
+                majority += values[person][1]/2.0
 
         return order, values, majority
 
@@ -1574,7 +1579,7 @@ class Thief(Traveler, DayStartModifier, VoteBeginningModifier):
         if self.target and not self.isPoisoned:
             values[self.target] = (values[self.target][0], values[self.target][1] * -1)
             for person in game.seatingOrder:
-                if not person.isGhost:
+                if not person.isGhost and person.alignment != 'neutral':
                     majority += values[person][1]/2.0
 
         return order, values, majority
@@ -1703,7 +1708,7 @@ async def make_active(user):
         return
 
     person.isActive = True
-    notActive = [player for player in game.seatingOrder if player.isActive == False]
+    notActive = [player for player in game.seatingOrder if player.isActive == False and player.alignment != 'neutral']
     if len(notActive) == 1:
         for memb in gamemasterRole.members:
             await memb.send('Just waiting on {} to speak.'.format(notActive[0].nick))
@@ -2684,7 +2689,7 @@ async def on_message(message):
                     await message.author.send('It\'s not day right now.')
                     return
 
-                notActive = [player for player in game.seatingOrder if player.isActive == False]
+                notActive = [player for player in game.seatingOrder if player.isActive == False and player.alignment != 'neutral']
 
                 if notActive == []:
                     message.author.send('Everyone has spoken!')
@@ -2708,7 +2713,7 @@ async def on_message(message):
                     await message.author.send('It\'s not day right now.')
                     return
 
-                canNominate = [player for player in game.seatingOrder if player.canNominate == True and player.hasSkipped == False]
+                canNominate = [player for player in game.seatingOrder if player.canNominate == True and player.hasSkipped == False and player.alignment != 'neutral']
                 if canNominate == []:
                     message.author.send('Everyone has nominated or skipped!')
                     return
@@ -3157,7 +3162,7 @@ async def on_message(message):
                     messageText = '**Messages mentioning {} (Times in UTC):**\n\n**Day 1:**'.format(argument)
                     day = 1
                     for msg in history:
-                        if not (argument.lower() in message['content'].lower()):
+                        if not (argument.lower() in msg['content'].lower()):
                             continue
                         if len(messageText) > 1500:
                             await message.author.send(messageText)
@@ -3182,7 +3187,7 @@ async def on_message(message):
                 messageText = '**Messages mentioning {} (Times in UTC):**\n\n**Day 1:**'.format(argument)
                 day = 1
                 for msg in (await get_player(message.author)).history:
-                    if not (argument.lower() in message['content'].lower()):
+                    if not (argument.lower() in msg['content'].lower()):
                         continue
                     if len(messageText) > 1500:
                         await message.author.send(messageText)
@@ -3337,7 +3342,7 @@ async def on_message_edit(before, after):
             if game != None:
                 backup('current_game.pckl')
 
-            canNominate = [player for player in game.seatingOrder if player.canNominate == True and player.hasSkipped == False]
+            canNominate = [player for player in game.seatingOrder if player.canNominate == True and player.hasSkipped == False and player.alignment != 'neutral']
             if len(canNominate) == 1:
                 for memb in gamemasterRole.members:
                     await memb.send('Just waiting on {} to nominate or skip.'.format(canNominate[0].nick))
