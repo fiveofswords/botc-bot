@@ -1187,6 +1187,14 @@ class PoppyGrower(Townsfolk):
         super().__init__(parent)
         self.role_name = 'Poppy Grower'
 
+class Atheist(Townsfolk):
+    # The atheist
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Atheist'
+
+
 # amnesiac, atheist
 
 class Drunk(Outsider):
