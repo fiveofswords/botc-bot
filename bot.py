@@ -1726,6 +1726,13 @@ def is_dst():
     y = datetime.datetime.now(pytz.timezone('US/Eastern'))
     return (y.utcoffset() != x.utcoffset())
 
+def find_all(p, s):
+
+    i = s.find(p)
+    while i != -1:
+        yield i
+        i = s.find(p, i+1)
+
 ### Event Handling
 @client.event
 async def on_ready():
@@ -3063,6 +3070,66 @@ async def on_message(message):
                 await message.author.send(messageText)
                 return
 
+            # Message search
+            elif command == 'search':
+                if game == None:
+                    await message.author.send('There\'s no game right now.')
+                    return
+
+                if gamemasterRole in server.get_member(message.author.id).roles:
+
+                    history = []
+                    people = []
+                    for person in game.seatingOrder:
+                        for msg in person.messageHistory:
+                            if not msg['from'] in people and not msg['to'] in people:
+                                history.append(msg)
+                        people.append(person)
+
+                    history = sorted(history, key=lambda i: i['time'])
+
+                    messageText = '**Messages mentioning {} (Times in UTC):**\n\n**Day 1:**'.format(argument)
+                    day = 1
+                    for msg in history:
+                        if not (argument.lower() in message['content'].lower()):
+                            continue
+                        if len(messageText) > 1500:
+                            await message.author.send(messageText)
+                            messageText = ''
+                        while msg['day'] != day:
+                            await message.author.send(messageText)
+                            day += 1
+                            messageText = '**Day {}:**'.format(str(day))
+                        messageText += '\nFrom: {} | To: {} | Time: {}\n**{}**'.format(msg['from'].nick,msg['to'].nick,msg['time'].strftime("%m/%d, %H:%M:%S"),msg['content'])
+
+                    await message.author.send(messageText)
+                    return
+
+                if not await get_player(message.author):
+                    await message.author.send('You are not in the game. You have no message history.')
+                    return
+
+                person = await select_player(message.author, argument, game.seatingOrder)
+                if person == None:
+                    return
+
+                messageText = '**Messages mentioning {} (Times in UTC):**\n\n**Day 1:**'.format(argument)
+                day = 1
+                for msg in history:
+                    if not (argument.lower() in message['content'].lower()):
+                        continue
+                    if len(messageText) > 1500:
+                        await message.author.send(messageText)
+                        messageText = ''
+                    while msg['day'] != day:
+                        await message.author.send(messageText)
+                        day += 1
+                        messageText = '**Day {}:**'.format(str(day))
+                    messageText += '\nFrom: {} | To: {} | Time: {}\n**{}**'.format(msg['from'].nick,msg['to'].nick,msg['time'].strftime("%m/%d, %H:%M:%S"),msg['content'])
+
+                await message.author.send(messageText)
+                return
+            
             # Help dialogue
             elif command == 'help':
                 if gamemasterRole in server.get_member(message.author.id).roles:
