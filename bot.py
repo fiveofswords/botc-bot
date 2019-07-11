@@ -1,4 +1,5 @@
 import discord, os, time, dill, sys, asyncio, pytz, datetime, weakref
+import numpy as np
 from config import *
 from dateutil.parser import parse
 
@@ -159,25 +160,26 @@ class Day():
     async def nomination(self,nominee,nominator):
         await self.close_pms()
         await self.close_noms()
+        nominee.canBeNominated = False
         if isinstance(nominee.character, Traveler):
-            announcement = await channel.send('{} has called for {}\'s exile.'.format(nominator.nick if nominator else 'The storytellers', nominee.user.mention))
+            self.votes.append(TravelerVote(nominee, nominator))
+            announcement = await channel.send('{}, {} has called for {}\'s exile. {} to exile.'.format(playerRole.mention, nominator.nick if nominator else 'The storytellers', nominee.user.mention, str(int(np.ceil(self.votes[-1].majority)))))
             await announcement.pin()
         else:
-            announcement = await channel.send('{} has been nominated by {}.'.format(nominee.user.mention, nominator.nick if nominator else 'the storytellers'))
-            await announcement.pin()
             proceed = True
             for person in game.seatingOrder:
                 if isinstance(person.character, NominationModifier):
                     proceed = await person.character.on_nomination(nominee, nominator, proceed)
-            nominee.canBeNominated = False
-        if not proceed:
-            return
-        if isinstance(nominee.character, Traveler):
-            self.votes.append(TravelerVote(nominee, nominator))
-        else:
+            if not proceed:
+                return
+            self.votes.append(Vote(nominee, nominator))
+            if self.aboutToDie != None:
+                announcement = await channel.send('{}, {} has been nominated by {}. {} to tie, {} to execute.'.format(playerRole.mention, nominee.user.mention, nominator.nick if nominator else 'the storytellers', str(int(np.ceil(self.aboutToDie[1].votes))), str(int(np.ceil(self.aboutToDie[1].votes+1)))))
+            else:
+                announcement = await channel.send('{}, {} has been nominated by {}. {} to execute.'.format(playerRole.mention, nominee.user.mention, nominator.nick if nominator else 'the storytellers', str(int(np.ceil(self.votes[-1].majority)))))
+            await announcement.pin()
             if nominator:
                 nominator.canNominate = False
-            self.votes.append(Vote(nominee, nominator))
         self.votes[-1].announcements.append(announcement.id)
         await self.votes[-1].call_next()
 
