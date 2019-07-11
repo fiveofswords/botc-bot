@@ -17,7 +17,7 @@ class Game():
                     person = person
                     break
             self.seatingOrder.insert(0, Player(Storyteller, 'neutral', person))
-            self.reseat()
+            self.reseat(self.seatingOrder)
 
     async def end(self, winner):
         # Ends the game
