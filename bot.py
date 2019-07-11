@@ -3031,7 +3031,7 @@ async def on_message(message):
                     await message.author.send('You have no previous messages.')
                     return
 
-                person = (await get_player(message.author)).messageHistory[-1]['from']
+                person = [x for x in (await get_player(message.author)).messageHistory[-1] if x['from'] != await (await get_player(message.author))]['from']
 
                 messageText = 'Messaging {}. What would you like to send?'.format(person.nick)
                 reply = await message.author.send(messageText)
