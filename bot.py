@@ -3182,7 +3182,7 @@ async def on_message(message):
 
                 messageText = '**Messages mentioning {} (Times in UTC):**\n\n**Day 1:**'.format(argument)
                 day = 1
-                for msg in (await get_player(message.author)).history:
+                for msg in (await get_player(message.author)).messageHistory:
                     if not (argument.lower() in msg['content'].lower()):
                         continue
                     if len(messageText) > 1500:
