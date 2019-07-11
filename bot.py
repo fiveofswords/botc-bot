@@ -515,13 +515,13 @@ class Player():
         self.isActive = self.isInactive
         self.hasSkipped = self.isInactive
 
-    async def kill(self, suppress = False):
+    async def kill(self, suppress = False, force = False):
         dies = True
         self.isGhost = True
         for person in game.seatingOrder:
             if isinstance(person, DeathModifier):
                 dies = person.on_death(self)
-        if not dies:
+        if not dies and not force:
             return dies
         if not suppress:
             announcement = await channel.send('{} has died.'.format(self.user.mention))
@@ -530,7 +530,7 @@ class Player():
         await game.reseat(game.seatingOrder)
         return dies
 
-    async def execute(self, user):
+    async def execute(self, user, force = False):
         # Executes the player
 
         msg = await user.send('Do they die? yes or no')
@@ -584,7 +584,7 @@ class Player():
             return
 
         if die:
-            die = await self.kill(suppress = True)
+            die = await self.kill(suppress = True, force = force)
             if die:
                 announcement = await channel.send('{} has been executed.'.format(self.user.mention))
                 await announcement.pin()
@@ -980,6 +980,7 @@ class Fool(Townsfolk):
     def on_death(self, person, dies):
         if self.parent == person and not self.isPoisoned:
             return False
+        return True
 
 class Gambler(Townsfolk):
     # The gambler
@@ -1030,8 +1031,6 @@ class Professor(Townsfolk):
         super().__init__(parent)
         self.role_name = 'Professor'
 
-######### currently doing undying characters
-
 class Sailor(Townsfolk):
     # The sailor
 
@@ -1039,12 +1038,28 @@ class Sailor(Townsfolk):
         super().__init__(parent)
         self.role_name = 'Sailor'
 
-class TeaLady(Townsfolk):
+    def on_death(self, person, dies):
+        if self.parent == person and not self.isPoisoned:
+            return False
+        return True
+
+class TeaLady(Townsfolk, DeathModifier):
     # The tea lady
 
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = 'Tea Lady'
+
+    def on_death(self, person, dies):
+        neighbor1 = game.seatingOrder[self.parent.position-1]
+        while isinstance(neighbor1.character, Storyteller) and neighbor1.alignment == 'neutral':
+            neighbor1 = game.seatingOrder[neighbor1.position-1]
+        neighbor2 = game.seatingOrder[self.parent.position+1]
+        while isinstance(neighbor2.character, Storyteller) and neighbor2.alignment == 'neutral':
+            neighbor2 = game.seatingOrder[neighbor1.position+1]
+        if neighbor1.alignment == 'good' and neighbor2.alignment == 'good' and (person == neighbor1 or person == neighbor2):
+            return False
+        return True
 
 class Artist(Townsfolk):
     # The artist
@@ -1180,6 +1195,7 @@ class Drunk(Outsider):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = 'Drunk'
+        self.isPoisoned = True
 
 class Butler(Outsider):
     # The butler
@@ -1215,6 +1231,7 @@ class Lunatic(Outsider):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = 'Lunatic'
+        self.isPoisoned = True
 
 class Tinker(Outsider):
     # The tinker
@@ -1272,6 +1289,29 @@ class Spy(Minion):
         super().__init__(parent)
         self.role_name = 'Spy'
 
+class Cerenovous(Minion):
+    # The cerenovous
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Cerenovous'
+
+class Marionette(Minion):
+    # The marionette
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Marionette'
+        self.isPoisoned = True
+
+class Poisoner(Minion):
+    # The poisoner
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Poisoner'
+        self.isPoisoned = True
+
 class Witch(Minion, NominationModifier, DayStartModifier):
     # The witch
 
@@ -1325,6 +1365,14 @@ class NoDashii(Demon):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = 'No Dashii'
+        neighbor1 = game.seatingOrder[self.parent.position-1]
+        while not isinstance(neighbor1.character, Townsfolk) or neighbor1.isGhost:
+            neighbor1 = game.seatingOrder[neighbor1.position-1]
+        neighbor2 = game.seatingOrder[self.parent.position+1]
+        while not isinstance(neighbor2.character, Townsfolk) or neighbor2.isGhost:
+            neighbor2 = game.seatingOrder[neighbor1.position+1]
+        neighbor1.character.isPoisoned = True
+        neighbor2.character.isPoisoned = True
 
 class Po(Demon):
     # The po
@@ -2181,7 +2229,7 @@ async def on_message(message):
                     await message.author.send('{} is already dead.'.format(person.nick))
                     return
 
-                await person.kill()
+                await person.kill(force = True)
                 if game != None:
                     backup('current_game.pckl')
                 return
@@ -2201,7 +2249,7 @@ async def on_message(message):
                 if person == None:
                     return
 
-                await person.execute(message.author)
+                await person.execute(message.author, force = True)
                 if game != None:
                     backup('current_game.pckl')
                 return
@@ -3224,6 +3272,7 @@ async def on_message_edit(before, after):
                             await game.days[-1].nomination(person, await get_player(message.author))
                             if game != None:
                                 backup('current_game.pckl')
+                            await after.unpin()
                             return
 
             names = await generate_possibilities(argument, game.seatingOrder)
@@ -3233,6 +3282,7 @@ async def on_message_edit(before, after):
                 await game.days[-1].nomination(names[0], await get_player(after.author))
                 if game != None:
                     backup('current_game.pckl')
+                await after.unpin()
                 return
 
             elif len(names) > 1:
