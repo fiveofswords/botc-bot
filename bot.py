@@ -11,13 +11,6 @@ class Game():
         self.script = script
         self.seatingOrder = seatingOrder
         self.seatingOrderMessage = seatingOrderMessage
-        if script.isAtheist:
-            for person in server.members:
-                if gamemasterRole in person.roles:
-                    person = person
-                    break
-            self.seatingOrder.insert(0, Player(Storyteller, 'neutral', person))
-            await self.reseat(self.seatingOrder)
 
     async def end(self, winner):
         # Ends the game
@@ -2119,6 +2112,13 @@ async def on_message(message):
 
                 script = Script(scriptList)
 
+                if script.isAtheist:
+                    for person in server.members:
+                        if gamemasterRole in person.roles:
+                            person = person
+                            break
+                    self.seatingOrder.insert(0, Player(Storyteller, 'neutral', person))
+                
                 '''
                 # Role Stuff
                 for memb in server.members:
