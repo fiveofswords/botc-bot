@@ -3180,10 +3180,6 @@ async def on_message(message):
                     await message.author.send('You are not in the game. You have no message history.')
                     return
 
-                person = await select_player(message.author, argument, game.seatingOrder)
-                if person == None:
-                    return
-
                 messageText = '**Messages mentioning {} (Times in UTC):**\n\n**Day 1:**'.format(argument)
                 day = 1
                 for msg in (await get_player(message.author)).history:
@@ -3242,7 +3238,7 @@ vote <<yes/no>>: votes on an ongoing nomination
 presetvote <<yes/no>>: submits a preset vote. will not work if it is your turn to vote. not reccomended -- contact the storytellers instead
 cancelpreset: cancels an existing preset
 pm <<player>> or message <<player>>: sends player a message
-reply: messages the authour of the previously received message
+reply: messages the author of the previously received message
 history <<player>>: views your message history with player
 search <<content>>: views all of your messages containing content
 help: displays this dialogue''')
