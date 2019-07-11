@@ -13,7 +13,7 @@ class Game():
         self.seatingOrderMessage = seatingOrderMessage
         if script.isAtheist:
             for person in server.members:
-                if gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole in person.roles:
                     person = person
                     break
             self.seatingOrder.insert(0, Player(Storyteller, 'neutral', person))
