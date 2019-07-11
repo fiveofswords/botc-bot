@@ -2117,8 +2117,8 @@ async def on_message(message):
                         if gamemasterRole in person.roles:
                             person = person
                             break
-                    self.seatingOrder.insert(0, Player(Storyteller, 'neutral', person))
-                
+                    seatingOrder.insert(0, Player(Storyteller, 'neutral', person))
+
                 '''
                 # Role Stuff
                 for memb in server.members:
