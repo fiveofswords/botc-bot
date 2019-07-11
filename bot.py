@@ -2125,7 +2125,7 @@ async def on_message(message):
 
                 if script.isAtheist:
                     for person in server.members:
-                        if gamemasterRole in person.roles and person.nick != 'Ben (they/them)':
+                        if gamemasterRole in person.roles and person.nick != 'ben (they/them)':
                             person = person
                             break
                     seatingOrder.insert(0, Player(Storyteller, 'neutral', person))
@@ -2769,7 +2769,7 @@ async def on_message(message):
                         return
 
                 if game.script.isAtheist:
-                    if argument == 'storytellers' or argument == 'the storytellers' or gamemasterRole in server.get_member(message.author.id).roles:
+                    if argument == 'storytellers' or argument == 'the storytellers' or (len(await generate_possibilities(argument, server.members)) == 1 and gamemasterRole in server.get_member((await generate_possibilities(argument, server.members))[0].id).roles):
                         for person in game.seatingOrder:
                             if isinstance(person.character, Storyteller):
                                 await game.days[-1].nomination(person, await get_player(message.author))
@@ -3289,7 +3289,7 @@ async def on_message_edit(before, after):
                 return
 
             if game.script.isAtheist:
-                if argument == 'storytellers' or argument == 'the storytellers' or gamemasterRole in server.get_member(message.author.id).roles:
+                if argument == 'storytellers' or argument == 'the storytellers' or (len(await generate_possibilities(argument, server.members)) == 1 and gamemasterRole in server.get_member((await generate_possibilities(argument, server.members))[0].id).roles):
                     for person in game.seatingOrder:
                         if isinstance(person.character, Storyteller):
                             await game.days[-1].nomination(person, await get_player(message.author))
