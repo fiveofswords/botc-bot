@@ -53,18 +53,21 @@ class Game():
         messageText = '**Seating Order:**'
         for index, person in enumerate(self.seatingOrder):
 
-            if person.isGhost:
-                if person.deadVotes <= 0:
-                    messageText += '\n{}'.format('~~' + person.nick + '~~ X')
+            if gamemasterRole not in person.roles:
+                if person.isGhost:
+                    if person.deadVotes <= 0:
+                        messageText += '\n{}'.format('~~' + person.nick + '~~ X')
+                    else:
+                        messageText += '\n{}'.format('~~' + person.nick + '~~ ' + 'O' * person.deadVotes)
+
                 else:
-                    messageText += '\n{}'.format('~~' + person.nick + '~~ ' + 'O' * person.deadVotes)
+                    messageText += '\n{}'.format(person.nick)
 
+                if isinstance(person.character, SeatingOrderModifier):
+                    messageText += person.character.seating_order_message(self.seatingOrder)
             else:
-                messageText += '\n{}'.format(person.nick)
-
-            if isinstance(person.character, SeatingOrderModifier):
-                messageText += person.character.seating_order_message(self.seatingOrder)
-
+                messageText += '\n[Storytellers]'
+            
             person.position = index
 
         await self.seatingOrderMessage.edit(content=messageText)
@@ -848,7 +851,6 @@ class Storyteller(SeatingOrderModifier):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = 'Storyteller'
-
 
     def seating_order_message(self, seatingOrder):
         return ' - {}'.format(self.role_name)
@@ -2118,7 +2120,7 @@ async def on_message(message):
 
                 if script.isAtheist:
                     for person in server.members:
-                        if gamemasterRole in person.roles:
+                        if gamemasterRole in person.roles and person.nick != 'Ben (they/them)':
                             person = person
                             break
                     seatingOrder.insert(0, Player(Storyteller, 'neutral', person))
@@ -2140,9 +2142,12 @@ async def on_message(message):
 
                 messageText = '**Seating Order:**'
                 for person in seatingOrder:
-                    messageText += '\n{}'.format(person.nick)
-                    if isinstance(person.character, SeatingOrderModifier):
-                        messageText += person.character.seating_order_message(seatingOrder)
+                    if gamemasterRole not in person.roles:
+                        messageText += '\n{}'.format(person.nick)
+                        if isinstance(person.character, SeatingOrderModifier):
+                            messageText += person.character.seating_order_message(seatingOrder)
+                    else:
+                        messageText += '\n[Storytellers]'
                 seatingOrderMessage = await channel.send(messageText)
                 await seatingOrderMessage.pin()
 
