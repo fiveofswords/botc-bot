@@ -1358,7 +1358,7 @@ class Witch(Minion, NominationModifier, DayStartModifier):
     async def on_nomination(self, nominee, nominator, proceed):
         if self.witched and self.witched == nominator and not self.witched.isGhost and not self.parent.iGhost and not self.isPoisoned:
             await self.witched.kill()
-            return proceed
+        return proceed
 
 class FangGu(Demon):
     # The fang gu
@@ -2616,7 +2616,7 @@ async def on_message(message):
                     return
 
                 person.character.isPoisoned = True
-                message.author.send('Successfully poisoned {}!'.format(person.nick))
+                await message.author.send('Successfully poisoned {}!'.format(person.nick))
                 return
 
             # Unpoisons
@@ -2634,7 +2634,7 @@ async def on_message(message):
                     return
 
                 person.character.isPoisoned = False
-                message.author.send('Successfully unpoisoned {}!'.format(person.nick))
+                await message.author.send('Successfully unpoisoned {}!'.format(person.nick))
                 return
 
             # Cancels a nomination
