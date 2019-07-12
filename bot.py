@@ -3132,7 +3132,7 @@ async def on_message(message):
 
                         messageText = '**History for {} (Times in UTC):**\n\n**Day 1:**'.format(person.nick)
                         day = 1
-                        for msg in person1.messageHistory:
+                        for msg in person.messageHistory:
                             if len(messageText) > 1500:
                                 await message.author.send(messageText)
                                 messageText = ''
