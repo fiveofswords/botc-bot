@@ -2554,6 +2554,19 @@ async def on_message(message):
                     backup('current_game.pckl')
                 return
 
+            # Resets the seating chart
+            elif command == 'resetseats':
+                if game == None:
+                    await message.author.send('There\'s no game right now.')
+
+                if not gamemasterRole in server.get_member(message.author.id).roles:
+                    await message.author.send('You don\'t have permission to change the seating chart.')
+                    return
+
+                await game.reseat(game.seatingOrder)
+                return
+
+
             # Changes seating chart
             elif command == 'reseat':
 
