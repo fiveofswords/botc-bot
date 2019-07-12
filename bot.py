@@ -514,9 +514,9 @@ class Player():
             self.isInactive = True
         else:
             self.isInactive = False
-        self.canNominate = True
+        self.canNominate = not self.isGhost
         self.canBeNominated = True
-        self.isActive = self.isInactive
+        self.isActive = (self.isInactive or self.isGhost) 
         self.hasSkipped = self.isInactive
 
     async def kill(self, suppress = False, force = False):
