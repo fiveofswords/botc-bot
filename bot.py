@@ -49,7 +49,7 @@ class Game():
 
         # Seating order
         if self.script.isAtheist:
-            newSeatingOrder.insert(self.seatingOrder[0])
+            newSeatingOrder.insert(0, self.seatingOrder[0])
         self.seatingOrder = newSeatingOrder
 
         # Seating order message
