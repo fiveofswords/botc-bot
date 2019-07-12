@@ -2601,6 +2601,42 @@ async def on_message(message):
                     backup('current_game.pckl')
                 return
 
+            # Poisons
+            elif command == 'poison':
+                if game == None:
+                    await message.author.send('There\'s no game right now.')
+                    return
+
+                if not gamemasterRole in server.get_member(message.author.id).roles:
+                    await message.author.send('You don\'t have permission to revive players.')
+                    return
+
+                person = await select_player(message.author, argument, game.seatingOrder)
+                if person == None:
+                    return
+
+                person.character.isPoisoned = True
+                message.author.send('Successfully poisoned {}!'.format(person.nick))
+                return
+
+            # Unpoisons
+            elif command == 'unpoison':
+                if game == None:
+                    await message.author.send('There\'s no game right now.')
+                    return
+
+                if not gamemasterRole in server.get_member(message.author.id).roles:
+                    await message.author.send('You don\'t have permission to revive players.')
+                    return
+
+                person = await select_player(message.author, argument, game.seatingOrder)
+                if person == None:
+                    return
+
+                person.character.isPoisoned = False
+                message.author.send('Successfully unpoisoned {}!'.format(person.nick))
+                return
+
             # Cancels a nomination
             elif command == 'cancelnomination':
                 if game == None:
