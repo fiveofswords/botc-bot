@@ -56,7 +56,7 @@ class Game():
         messageText = '**Seating Order:**'
         for index, person in enumerate(self.seatingOrder):
 
-            if gamemasterRole not in person.roles:
+            if gamemasterRole not in person.user.roles:
                 if person.isGhost:
                     if person.deadVotes <= 0:
                         messageText += '\n{}'.format('~~' + person.nick + '~~ X')
