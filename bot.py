@@ -48,7 +48,7 @@ class Game():
         # Reseats the table
 
         # Seating order
-        if self.script.isAtheist:
+        if self.script.isAtheist and newSeatingOrder[0].alignment != 'neutral':
             newSeatingOrder.insert(0, self.seatingOrder[0])
         self.seatingOrder = newSeatingOrder
 
@@ -2575,6 +2575,9 @@ async def on_message(message):
                 if order.content == 'cancel':
                     await message.author.send('Game cancelled!')
                     return
+
+                if order.content == 'none':
+                    await game.reseat(game.seatingOrder)
 
                 order = [await select_player(message.author, person, game.seatingOrder) for person in order.content.split('\n')]
                 if None in order:
