@@ -2,6 +2,7 @@ import discord, os, time, dill, sys, asyncio, pytz, datetime, weakref
 import numpy as np
 from config import *
 from dateutil.parser import parse
+from aio_timers import Timer
 
 ### Classes
 class Game():
@@ -233,6 +234,12 @@ class Vote():
         self.position = 0
         game.days[-1].votes.append(self)
         self.done = False
+        self.defaultVoteTimer = None
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state['defaultVoteTimer'] = None
+        return state
 
     async def call_next(self):
         # Calls for person to vote
@@ -247,10 +254,23 @@ class Vote():
         if toCall in self.presetVotes:
             await self.vote(self.presetVotes[toCall])
             return
+        self.defaultVoteTimer = None
         await channel.send('{}, your vote on {}.'.format(toCall.user.mention, self.nominee.nick if self.nominee else 'the storytellers'))
+        try:
+            time = preferences[toCall.user.id]['defaultno']
+            await toCall.user.send('Will enter a no vote in {} seconds.'.format(preferences[toCall.user.id]['defaultno']))
+            await asyncio.sleep(time)
+            if toCall == self.order[self.position]:
+                await self.vote(0)
+        except KeyError:
+            pass
 
     async def vote(self, vt, operator=None):
         # Executes a vote. vt is binary -- 0 if no, 1 if yes
+
+        if self.defaultVoteTimer:
+            self.defaultVoteTimer.cancel()
+            self.defaultVoteTimer = None
 
         # Voter
         voter = self.order[self.position]
@@ -352,10 +372,8 @@ class Vote():
 
         self.presetVotes[person] = vt
 
-
     async def cancel_preset(self, person):
         del self.presetVotes[person]
-
 
     async def delete(self):
         # Undoes an unintentional nomination
@@ -516,7 +534,7 @@ class Player():
             self.isInactive = False
         self.canNominate = not self.isGhost
         self.canBeNominated = True
-        self.isActive = (self.isInactive or self.isGhost) 
+        self.isActive = self.isInactive
         self.hasSkipped = self.isInactive
 
     async def kill(self, suppress = False, force = False):
@@ -1194,13 +1212,19 @@ class PoppyGrower(Townsfolk):
         super().__init__(parent)
         self.role_name = 'Poppy Grower'
 
+class WitchHunter(Townsfolk):
+    # The witch hunter
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Witch Hunter'
+
 class Atheist(Townsfolk):
     # The atheist
 
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = 'Atheist'
-
 
 # amnesiac, atheist
 
@@ -1325,7 +1349,6 @@ class Poisoner(Minion):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = 'Poisoner'
-        self.isPoisoned = True
 
 class Witch(Minion, NominationModifier, DayStartModifier):
     # The witch
@@ -1380,6 +1403,7 @@ class NoDashii(Demon):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = 'No Dashii'
+        '''
         neighbor1 = game.seatingOrder[self.parent.position-1]
         while not isinstance(neighbor1.character, Townsfolk) or neighbor1.isGhost:
             neighbor1 = game.seatingOrder[neighbor1.position-1]
@@ -1388,6 +1412,7 @@ class NoDashii(Demon):
             neighbor2 = game.seatingOrder[neighbor1.position+1]
         neighbor1.character.isPoisoned = True
         neighbor2.character.isPoisoned = True
+        '''
 
 class Po(Demon):
     # The po
@@ -1800,7 +1825,7 @@ def find_all(p, s):
 async def on_ready():
     # On startup
 
-    global server, channel, playerRole, travelerRole, ghostRole, deadVoteRole, gamemasterRole, inactiveRole, game
+    global server, channel, playerRole, travelerRole, ghostRole, deadVoteRole, gamemasterRole, inactiveRole, game, preferences
     game = None
 
     server = client.get_guild(serverid)
@@ -1826,6 +1851,13 @@ async def on_ready():
 
     else:
         print('No backup found.')
+
+    if os.path.isfile('preferences.pckl'):
+        with open('preferences.pckl', 'rb') as file:
+            preferences = dill.load(file)
+
+    else:
+        preferences = {}
 
     await update_presence(client)
     print('Logged in as')
@@ -2566,7 +2598,6 @@ async def on_message(message):
                 await game.reseat(game.seatingOrder)
                 return
 
-
             # Changes seating chart
             elif command == 'reseat':
 
@@ -2909,7 +2940,7 @@ async def on_message(message):
                 return
 
             # Presets a vote
-            elif command == 'presetvote':
+            elif command == 'presetvote' or command == 'prevote':
 
                 if game == None:
                     await message.author.send('There\'s no game right now.')
@@ -3010,6 +3041,28 @@ async def on_message(message):
                 await message.author.send('Successfully canceled! For more nuanced presets, contact the storytellers.')
                 if game != None:
                     backup('current_game.pckl')
+                return
+
+            # Default to no vote
+            elif command == 'defaultno':
+
+                if argument == '':
+                    time = 3600
+                else:
+                    try:
+                        time = int(argument)
+                    except ValueError:
+                        await message.author.send('{} is not a valid number of seconds.'.format(argument))
+                        return
+
+                try:
+                    preferences[message.author.id]['defaultno'] = time
+                except KeyError:
+                    preferences[message.author.id] = {'defaultno': time}
+
+                await message.author.send('Successfully set default no vote at {} seconds.'.format(str(time)))
+                with open('preferences.pckl', 'wb') as file:
+                    dill.dump(preferences, file)
                 return
 
             # Sends pm
@@ -3280,6 +3333,8 @@ cancelnomination: cancels the previous nomination
 setdeadline <time>: sends a message with time in UTC as the deadline
 givedeadvote <<player>>: adds a dead vote for player
 removedeadvote <<player>>: removes a dead vote from player. not necessary for ordinary usage
+poison <<player>>: poisons player
+unpoison <<player>>: unpoisons player
 history <<player1>> <<player2>>: views the message history between player1 and player2''')
                 await message.author.send('''
 **Player Commands:**
@@ -3338,6 +3393,11 @@ async def on_message_edit(before, after):
                 await after.unpin()
                 return
 
+            if not await get_player(after.author).canNominate:
+                await channel.send('You have already nominated.')
+                await after.unpin()
+                return
+
             if game.script.isAtheist:
                 if argument == 'storytellers' or argument == 'the storytellers' or (len(await generate_possibilities(argument, server.members)) == 1 and gamemasterRole in server.get_member((await generate_possibilities(argument, server.members))[0].id).roles):
                     for person in game.seatingOrder:
@@ -3351,6 +3411,11 @@ async def on_message_edit(before, after):
             names = await generate_possibilities(argument, game.seatingOrder)
 
             if len(names) == 1:
+
+                if not await names[0].canBeNominated:
+                    await channel.send('{} has already been nominated.'.format(names[0].nick))
+                    await after.unpin()
+                    return
 
                 await game.days[-1].nomination(names[0], await get_player(after.author))
                 if game != None:
