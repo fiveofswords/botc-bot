@@ -2,7 +2,6 @@ import discord, os, time, dill, sys, asyncio, pytz, datetime, weakref
 import numpy as np
 from config import *
 from dateutil.parser import parse
-from aio_timers import Timer
 
 ### Classes
 class Game():
@@ -175,7 +174,7 @@ class Day():
                 return
             self.votes.append(Vote(nominee, nominator))
             if self.aboutToDie != None:
-                announcement = await channel.send('{}, {} has been nominated by {}. {} to tie, {} to execute.'.format(playerRole.mention, nominee.user.mention, nominator.nick if nominator else 'the storytellers', str(int(np.ceil(self.aboutToDie[1].votes))), str(int(np.ceil(self.aboutToDie[1].votes+1)))))
+                announcement = await channel.send('{}, {} has been nominated by {}. {} to tie, {} to execute.'.format(playerRole.mention, nominee.user.mention, nominator.nick if nominator else 'the storytellers', str(int(np.ceil(max(self.aboutToDie[1].votes, self.votes[-1].majority)))), str(int(np.ceil(self.aboutToDie[1].votes+1)))))
             else:
                 announcement = await channel.send('{}, {} has been nominated by {}. {} to execute.'.format(playerRole.mention, nominee.user.mention, nominator.nick if nominator else 'the storytellers', str(int(np.ceil(self.votes[-1].majority)))))
             await announcement.pin()
@@ -208,6 +207,7 @@ class Day():
             await channel.send('No one was executed.')
 
         await channel.send('{}, go to sleep!'.format(playerRole.mention))
+        await update_presence(client)
 
 class Vote():
     # Stores information about a specific vote
@@ -234,12 +234,6 @@ class Vote():
         self.position = 0
         game.days[-1].votes.append(self)
         self.done = False
-        self.defaultVoteTimer = None
-
-    def __getstate__(self):
-        state = self.__dict__.copy()
-        state['defaultVoteTimer'] = None
-        return state
 
     async def call_next(self):
         # Calls for person to vote
@@ -247,30 +241,29 @@ class Vote():
         toCall = self.order[self.position]
         for person in game.seatingOrder:
             if isinstance(person.character, VoteModifier):
-                person.character.before_vote_call(toCall)
+                person.character.on_vote_call(toCall)
         if toCall.isGhost and toCall.deadVotes < 1:
             await self.vote(0)
             return
         if toCall in self.presetVotes:
             await self.vote(self.presetVotes[toCall])
             return
-        self.defaultVoteTimer = None
         await channel.send('{}, your vote on {}.'.format(toCall.user.mention, self.nominee.nick if self.nominee else 'the storytellers'))
         try:
-            time = preferences[toCall.user.id]['defaultno']
-            await toCall.user.send('Will enter a no vote in {} seconds.'.format(preferences[toCall.user.id]['defaultno']))
+            default = preferences[toCall.user.id]['defaultvote']
+            time = default[1]
+            await toCall.user.send('Will enter a {} vote in {} minutes.'.format(['no', 'yes'][default[0]],str(int(default[1]/60))))
+            for memb in gamemasterRole.members:
+                await memb.send('{}\'s vote. Their default is {} in {} minutes.'.format(toCall.nick, ['no', 'yes'][default[0]],str(int(default[1]/60))))
             await asyncio.sleep(time)
             if toCall == self.order[self.position]:
-                await self.vote(0)
+                await self.vote(default[0])
         except KeyError:
-            pass
+            for memb in gamemasterRole.members:
+                await memb.send('{}\'s vote. They have no default.'.format(toCall.nick))
 
     async def vote(self, vt, operator=None):
         # Executes a vote. vt is binary -- 0 if no, 1 if yes
-
-        if self.defaultVoteTimer:
-            self.defaultVoteTimer.cancel()
-            self.defaultVoteTimer = None
 
         # Voter
         voter = self.order[self.position]
@@ -422,6 +415,18 @@ class TravelerVote():
             await self.vote(self.presetVotes[toCall])
             return
         await channel.send('{}, your vote on {}.'.format(toCall.user.mention, self.nominee.nick if self.nominee else 'the storytellers'))
+        try:
+            default = preferences[toCall.user.id]['defaultvote']
+            time = default[1]
+            await toCall.user.send('Will enter a {} vote in {} minutes.'.format(['no', 'yes'][default[0]],str(int(default[1]/60))))
+            await asyncio.sleep(time)
+            if toCall == self.order[self.position]:
+                await self.vote(default[0])
+            for memb in gamemasterRole.members:
+                await memb.send('{}\'s vote. Their default is {} in {} minutes.'.format(toCall.nick, ['no', 'yes'][default[0]],str(int(default[1]/60))))
+        except KeyError:
+            for memb in gamemasterRole.members:
+                await memb.send('{}\'s vote. They have no default.'.format(toCall.nick))
 
     async def vote(self, vt, operator=None):
         # Executes a vote. vt is binary -- 0 if no, 1 if yes
@@ -757,7 +762,7 @@ class DayStartModifier(Character):
 
     async def on_day_start(self, origin, kills):
         # Called on the start of the day
-        pass
+        return True
 
 class NomsCalledModifier(Character):
     # A character which modifies the start of the day
@@ -825,6 +830,92 @@ class DeathModifier(Character):
 
     def on_death(self, person, dies):
         # Returns bool -- does person die
+        return dies
+
+class AbilityModifier(SeatingOrderModifier, DayStartModifier, NomsCalledModifier, NominationModifier, DayEndModifier, VoteBeginningModifier, VoteModifier, DeathModifier):
+    # A character which can have different abilities
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.abilities = []
+
+    def add_ability(self, role):
+        self.abilities.append(role(self.parent))
+
+    def seating_order(self, seatingOrder):
+        # returns a seating order after the character's modifications
+        for role in self.abilities:
+            if isinstance(role, SeatingOrderModifier):
+                seatingOrder = role.seating_order(seatingOrder)
+        return seatingOrder
+
+    async def on_day_start(self, origin, kills):
+        # Called on the start of the day
+        if not self.isPoisoned:
+            for role in self.abilities:
+                if isinstance(role, DayStartModifier):
+                    await role.on_day_start(origin, kills)
+
+        return True
+
+    def on_noms_called(self):
+        # Called when nominations are called for the first time each day
+        if not self.isPoisoned:
+            for role in self.abilities:
+                if isinstance(role, NomsCalledModifier):
+                    role.on_noms_called()
+
+    async def on_nomination(self, nominee, nominator, proceed):
+        # Returns bool -- whether the nomination proceeds
+        if not self.isPoisoned:
+            for role in self.abilities:
+                if isinstance(role, NominationModifier):
+                    proceed = await role.on_nomination(nominee, nominator, proceed)
+        return proceed
+
+    def on_day_end(self):
+        # Called on the end of the day
+        if not self.isPoisoned:
+            for role in self.abilities:
+                if isinstance(role, DayEndModifier):
+                    role.on_day_end()
+
+    def modify_vote_values(self, order, values, majority):
+        # returns a list of the vote's order, a dictionary of vote values, and majority
+        if not self.isPoisoned:
+            for role in self.abilities:
+                if isinstance(role, VoteModifier):
+                    order, values, majority = role.modify_vote_values(order, values, majority)
+        return order, values, majority
+
+    def on_vote_call(self, toCall):
+        # Called every time a player is called to vote
+        if not self.isPoisoned:
+            for role in self.abilities:
+                if isinstance(role, VoteModifier):
+                    role.on_vote_call()
+
+    def on_vote(self):
+        # Called every time a player votes
+        if not self.isPoisoned:
+            for role in self.abilitieS:
+                if isinstance(role, VoteModifier):
+                    role.on_vote()
+
+    def on_vote_conclusion(self, dies, tie):
+        # returns boolean -- whether the nominee is about to die, whether the vote is tied
+        if not self.isPoisoned:
+            for role in self.abilities:
+                if isinstance(role, VoteModifier):
+                    dies, tie = role.on_vote_conclusion(dies, tie)
+        return dies, tie
+
+    def on_death(self, person, dies):
+        # Returns bool -- does person die
+        if not self.isPoisoned:
+            for role in self.abilities:
+                if isinstance(role, DeathModifier):
+                    dies = role.on_death(person, dies)
         return dies
 
 class Traveler(SeatingOrderModifier):
@@ -1219,6 +1310,17 @@ class WitchHunter(Townsfolk):
         super().__init__(parent)
         self.role_name = 'Witch Hunter'
 
+class Cannibal(Townsfolk, AbilityModifier):
+    # The cannibal
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Cannibal'
+
+    def add_ability(self, role):
+        self.abilities = [role(self.parent)]
+
+# UNFINISHED
 class Atheist(Townsfolk):
     # The atheist
 
@@ -1226,7 +1328,14 @@ class Atheist(Townsfolk):
         super().__init__(parent)
         self.role_name = 'Atheist'
 
-# amnesiac, atheist
+class Amnesiac(Townsfolk):
+    # The amnesiac
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Amnesiac'
+
+# Outsiders
 
 class Drunk(Outsider):
     # The drunk
@@ -1379,7 +1488,7 @@ class Witch(Minion, NominationModifier, DayStartModifier):
         return True
 
     async def on_nomination(self, nominee, nominator, proceed):
-        if self.witched and self.witched == nominator and not self.witched.isGhost and not self.parent.iGhost and not self.isPoisoned:
+        if self.witched and self.witched == nominator and not self.witched.isGhost and not self.parent.isGhost and not self.isPoisoned:
             await self.witched.kill()
         return proceed
 
@@ -1434,18 +1543,6 @@ class AlHadikiar(Demon):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = 'Po'
-
-'''
-class Riot(Demon, NominationModifier):
-    # the riot
-
-    def __init__(self, parent):
-        super().__init__(parent)
-
-    async def on_noms_called(self, nominee, nominator, proceed):
-        if
-'''
-
 
 class Beggar(Traveler):
     # the beggar
@@ -1621,6 +1718,16 @@ with open(os.path.dirname(os.path.realpath(__file__))+'/token.txt') as tokenfile
 
 
 ### Functions
+def str_cleanup(str, chars):
+    str = [str]
+    for char in chars:
+        list = []
+        for x in str:
+            for x in x.split(char):
+                list.append(x)
+        str = list
+    return ''.join([x.capitalize() for x in str])
+
 def str_to_class(str):
     return getattr(sys.modules[__name__], str)
 
@@ -1819,6 +1926,7 @@ def find_all(p, s):
     while i != -1:
         yield i
         i = s.find(p, i+1)
+
 
 ### Event Handling
 @client.event
@@ -2097,7 +2205,7 @@ async def on_message(message):
 
                 characters = []
                 for text in roles:
-                    role = ''.join([''.join([y.capitalize() for y in x.split('-')]) for x in text.split(' ')])
+                    role = str_cleanup(text, [',', ' ', '-', '\''])
                     try:
                         role = str_to_class(role)
                     except AttributeError:
@@ -2177,6 +2285,7 @@ async def on_message(message):
                     else:
                         await memb.remove_roles(travelerRole, ghostRole, deadVoteRole)
                 '''
+
                 await channel.send('{}, welcome to Blood on the Clocktower! Go to sleep.'.format(playerRole.mention))
 
                 messageText = '**Seating Order:**'
@@ -2386,7 +2495,7 @@ async def on_message(message):
                     await message.author.send('Role change cancelled!')
                     return
 
-                role = ''.join([''.join([y.capitalize() for y in x.split('-')]) for x in role.split(' ')])
+                role = str_cleanup(role, [',', ' ', '-', '\''])
                 try:
                     role = str_to_class(role)
                 except AttributeError:
@@ -2435,6 +2544,48 @@ async def on_message(message):
                 await message.author.send('Alignment change successful!')
                 if game != None:
                     backup('current_game.pckl')
+                return
+
+            # Adds an ability to an AbilityModifier character
+            elif command == 'changeability':
+                if game == None:
+                    await message.author.send('There\'s no game right now.')
+                    return
+
+                if not gamemasterRole in server.get_member(message.author.id).roles:
+                    await message.author.send('You don\'t have permission to give abilities.')
+                    return
+
+                person = await select_player(message.author, argument, game.seatingOrder)
+                if person == None:
+                    return
+
+                if not isinstance(person.character, AbilityModifier):
+                    await message.author.send('The {} cannot gain abilities.'.format(person.character.role_name))
+                    return
+
+                msg = await message.author.send('What is the new role?')
+                try:
+                    role = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
+                except asyncio.TimeoutError:
+                    await message.author.send('Timed out.')
+                    return
+
+                role = role.content.lower()
+
+                if role == 'cancel':
+                    await message.author.send('New ability cancelled!')
+                    return
+
+                role = str_cleanup(role, [',', ' ', '-', '\''])
+                try:
+                    role = str_to_class(role)
+                except AttributeError:
+                    await message.author.send('Role not found: {}.'.format(text))
+                    return
+
+                person.character.add_ability(role)
+                await message.author.send('New ability added.')
                 return
 
             # Marks as inactive
@@ -2509,7 +2660,7 @@ async def on_message(message):
 
                 text = text.content
 
-                role = ''.join([''.join([y.capitalize() for y in x.split('-')]) for x in text.split(' ')])
+                role = str_cleanup(text, [',', ' ', '-', '\''])
 
                 try:
                     role = str_to_class(role)
@@ -3043,27 +3194,55 @@ async def on_message(message):
                     backup('current_game.pckl')
                 return
 
-            # Default to no vote
-            elif command == 'defaultno':
+            # Set a default vote
+            elif command == 'defaultvote':
 
                 if argument == '':
-                    time = 3600
-                else:
                     try:
-                        time = int(argument)
-                    except ValueError:
-                        await message.author.send('{} is not a valid number of seconds.'.format(argument))
+                        del preferences[message.author.id]['defaultvote']
+                        await message.author.send('Removed your default vote.')
+                        with open('preferences.pckl', 'wb') as file:
+                            dill.dump(preferences, file)
+                    except KeyError:
+                        await message.author.send('You have no default vote to remove.')
+                    return
+
+                else:
+                    argument = argument.split(' ')
+                    if len(argument) > 2:
+                        await message.author.send('setdefault takes at most two arguments: @setdefault <vote = no> <time = 3600>')
                         return
+                    elif len(argument) == 1:
+                        try:
+                            time = int(argument[0])*60
+                            vt = 0
+                        except ValueError:
+                            if argument[0] in ['yes', 'y', 'no', 'n']:
+                                vt = (argument[0] in ['yes', 'y'])
+                                time = 3600
+                            else:
+                                await message.author.send('{} is not a valid number of minutes or vote.'.format(argument[0]))
+                                return
+                    else:
+                        if argument[0] in ['yes', 'y', 'no', 'n']:
+                            vt = (argument[0] in ['yes', 'y'])
+                        else:
+                            await message.author.send('{} is not a valid vote.'.format(argument[0]))
+                            return
+                        try:
+                            time = int(argument[1])*60
+                        except ValueError:
+                            await message.author.send('{} is not a valid number of minutes.'.format(argument[1]))
 
-                try:
-                    preferences[message.author.id]['defaultno'] = time
-                except KeyError:
-                    preferences[message.author.id] = {'defaultno': time}
+                    try:
+                        preferences[message.author.id]['defaultvote'] = (vt, time)
+                    except KeyError:
+                        preferences[message.author.id] = {'defaultvote': (vt, time)}
 
-                await message.author.send('Successfully set default no vote at {} seconds.'.format(str(time)))
-                with open('preferences.pckl', 'wb') as file:
-                    dill.dump(preferences, file)
-                return
+                    await message.author.send('Successfully set default {} vote at {} minutes.'.format(['no', 'yes'][vt], str(int(time/60))))
+                    with open('preferences.pckl', 'wb') as file:
+                        dill.dump(preferences, file)
+                    return
 
             # Sends pm
             elif command == 'pm' or command == 'message':
@@ -3324,6 +3503,7 @@ exile <<traveler>>: exiles traveler
 revive <<player>>: revives player
 changerole <<player>>: changes player's role
 changealignment <<player>>: changes player's alignment
+changeability <<player>>: changes the ability of player, if applicable to their character (ex apprentice)
 makeinactive <<player>>: marks player as inactive. must be done in all games player is participating in
 undoinactive <<player>>: undoes an inactivity mark. must be done in all games player is participating in
 addtraveler <<player>> or addtraveller <<player>>: adds player as a traveler
@@ -3350,6 +3530,7 @@ pm <<player>> or message <<player>>: sends player a message
 reply: messages the author of the previously received message
 history <<player>>: views your message history with player
 search <<content>>: views all of your messages containing content
+defaultvote <<vote = 'no'>> <<time=60>>: will always vote vote in time minutes. if no arguments given, deletes existing defaults.
 help: displays this dialogue''')
                 return
 
@@ -3393,7 +3574,7 @@ async def on_message_edit(before, after):
                 await after.unpin()
                 return
 
-            if not await get_player(after.author).canNominate:
+            if not (await get_player(after.author)).canNominate:
                 await channel.send('You have already nominated.')
                 await after.unpin()
                 return
@@ -3412,7 +3593,7 @@ async def on_message_edit(before, after):
 
             if len(names) == 1:
 
-                if not await names[0].canBeNominated:
+                if not names[0].canBeNominated:
                     await channel.send('{} has already been nominated.'.format(names[0].nick))
                     await after.unpin()
                     return
@@ -3489,7 +3670,6 @@ async def on_member_update(before, after):
                 (await get_player(after)).nick = after.nick
                 await after.send('Your nickname has been updated.')
                 backup('current_game.pckl')
-
 
 
 ### Event loop
