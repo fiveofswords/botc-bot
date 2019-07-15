@@ -3583,7 +3583,7 @@ async def on_message_edit(before, after):
                 if argument == 'storytellers' or argument == 'the storytellers' or (len(await generate_possibilities(argument, server.members)) == 1 and gamemasterRole in server.get_member((await generate_possibilities(argument, server.members))[0].id).roles):
                     for person in game.seatingOrder:
                         if isinstance(person.character, Storyteller):
-                            await game.days[-1].nomination(person, await get_player(message.author))
+                            await game.days[-1].nomination(person, await get_player(after.author))
                             if game != None:
                                 backup('current_game.pckl')
                             await after.unpin()
