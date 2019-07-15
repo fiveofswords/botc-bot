@@ -2030,7 +2030,7 @@ async def on_message(message):
 
             vote = game.days[-1].votes[-1]
 
-            if vote.order[vote.position].user != await get_player(message.author).user:
+            if vote.order[vote.position].user != (await get_player(message.author)).user:
                 await channel.send('It\'s not your vote right now.')
                 return
 
@@ -3095,7 +3095,7 @@ async def on_message(message):
                         backup('current_game.pckl')
                     return
 
-                if vote.order[vote.position].user != await get_player(message.author).user:
+                if vote.order[vote.position].user != (await get_player(message.author)).user:
                     await message.author.send('It\'s not your vote right now. Do you mean @presetvote?')
                     return
 
