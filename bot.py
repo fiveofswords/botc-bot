@@ -48,28 +48,23 @@ class Game():
         # Reseats the table
 
         # Seating order
-        if self.script.isAtheist and newSeatingOrder[0].alignment != 'neutral':
-            newSeatingOrder.insert(0, self.seatingOrder[0])
         self.seatingOrder = newSeatingOrder
 
         # Seating order message
         messageText = '**Seating Order:**'
         for index, person in enumerate(self.seatingOrder):
 
-            if gamemasterRole not in person.user.roles:
-                if person.isGhost:
-                    if person.deadVotes <= 0:
-                        messageText += '\n{}'.format('~~' + person.nick + '~~ X')
-                    else:
-                        messageText += '\n{}'.format('~~' + person.nick + '~~ ' + 'O' * person.deadVotes)
-
+            if person.isGhost:
+                if person.deadVotes <= 0:
+                    messageText += '\n{}'.format('~~' + person.nick + '~~ X')
                 else:
-                    messageText += '\n{}'.format(person.nick)
+                    messageText += '\n{}'.format('~~' + person.nick + '~~ ' + 'O' * person.deadVotes)
 
-                if isinstance(person.character, SeatingOrderModifier):
-                    messageText += person.character.seating_order_message(self.seatingOrder)
             else:
-                messageText += '\n[Storytellers]'
+                messageText += '\n{}'.format(person.nick)
+
+            if isinstance(person.character, SeatingOrderModifier):
+                messageText += person.character.seating_order_message(self.seatingOrder)
 
             person.position = index
 
@@ -160,12 +155,28 @@ class Day():
     async def nomination(self,nominee,nominator):
         await self.close_pms()
         await self.close_noms()
-        nominee.canBeNominated = False
-        if isinstance(nominee.character, Traveler):
+        if not nominee:
+            proceed = True
+            for person in game.seatingOrder:
+                if isinstance(person.character, NominationModifier):
+                    proceed = await person.character.on_nomination(nominee, nominator, proceed)
+            if not proceed:
+                return
+            self.votes.append(Vote(nominee, nominator))
+            if self.aboutToDie != None:
+                announcement = await channel.send('{}, the storytellers have been nominated by {}. {} to tie, {} to execute.'.format(playerRole.mention, nominator.nick if nominator else 'the storytellers', str(int(np.ceil(max(self.aboutToDie[1].votes, self.votes[-1].majority)))), str(int(np.ceil(self.aboutToDie[1].votes+1)))))
+            else:
+                announcement = await channel.send('{}, the storytellers have been nominated by {}. {} to execute.'.format(playerRole.mention, nominator.nick if nominator else 'the storytellers', str(int(np.ceil(self.votes[-1].majority)))))
+            await announcement.pin()
+            if nominator:
+                nominator.canNominate = False
+        elif isinstance(nominee.character, Traveler):
+            nominee.canBeNominated = False
             self.votes.append(TravelerVote(nominee, nominator))
-            announcement = await channel.send('{}, {} has called for {}\'s exile. {} to exile.'.format(playerRole.mention, nominator.nick if nominator else 'The storytellers', nominee.user.mention if not nominee.user in gamemasterRole.members else 'the storytellers', str(int(np.ceil(self.votes[-1].majority)))))
+            announcement = await channel.send('{}, {} has called for {}\'s exile. {} to exile.'.format(playerRole.mention, nominator.nick if nominator else 'The storytellers', nominee.user.mention, str(int(np.ceil(self.votes[-1].majority)))))
             await announcement.pin()
         else:
+            nominee.canBeNominated = False
             proceed = True
             for person in game.seatingOrder:
                 if isinstance(person.character, NominationModifier):
@@ -215,9 +226,10 @@ class Vote():
     def __init__(self, nominee, nominator):
         self.nominee = nominee
         self.nominator = nominator
-        self.order = game.seatingOrder[game.seatingOrder.index(self.nominee)+1:] + game.seatingOrder[:game.seatingOrder.index(self.nominee)+1]
-        if game.script.isAtheist:
-            self.order.remove(game.seatingOrder[0])
+        if self.nominee != None:
+            self.order = game.seatingOrder[game.seatingOrder.index(self.nominee)+1:] + game.seatingOrder[:game.seatingOrder.index(self.nominee)+1]
+        else:
+            self.order = game.seatingOrder
         self.votes = 0
         self.voted = []
         self.history = []
@@ -248,7 +260,7 @@ class Vote():
         if toCall in self.presetVotes:
             await self.vote(self.presetVotes[toCall])
             return
-        await channel.send('{}, your vote on {}.'.format(toCall.user.mention, self.nominee.nick if not self.nominee.user in gamemasterRole.members else 'the storytellers'))
+        await channel.send('{}, your vote on {}.'.format(toCall.user.mention, self.nominee.nick if self.nominee else 'the storytellers'))
         try:
             default = preferences[toCall.user.id]['defaultvote']
             time = default[1]
@@ -333,15 +345,15 @@ class Vote():
                 msg = await channel.fetch_message(game.days[-1].voteEndMessages[game.days[-1].votes.index(aboutToDie[1])])
                 await msg.edit(content=msg.content[:-31] + ' They are not about to be executed.')
             game.days[-1].aboutToDie = (self.nominee, self)
-            announcement = await channel.send('{} votes on {} (nominated by {}): {}. They are about to be executed.'.format(str(self.votes), self.nominee.nick if not self.nominee.user in gamemasterRole.members else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
+            announcement = await channel.send('{} votes on {} (nominated by {}): {}. They are about to be executed.'.format(str(self.votes), self.nominee.nick if self.nominee else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
         elif tie:
             if aboutToDie != None:
                 msg = await channel.fetch_message(game.days[-1].voteEndMessages[game.days[-1].votes.index(aboutToDie[1])])
                 await msg.edit(content=msg.content[:-31] + ' No one is about to be executed.')
             game.days[-1].aboutToDie = None
-            announcement = await channel.send('{} votes on {} (nominated by {}): {}. No one is about to be executed.'.format(str(self.votes), self.nominee.nick if not self.nominee.user in gamemasterRole.members else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
+            announcement = await channel.send('{} votes on {} (nominated by {}): {}. No one is about to be executed.'.format(str(self.votes), self.nominee.nick if self.nominee else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
         else:
-            announcement = await channel.send('{} votes on {} (nominated by {}): {}. They are not about to be executed.'.format(str(self.votes), self.nominee.nick if not self.nominee.user in gamemasterRole.members else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
+            announcement = await channel.send('{} votes on {} (nominated by {}): {}. They are not about to be executed.'.format(str(self.votes), self.nominee.nick if self.nominee else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
 
         await announcement.pin()
         game.days[-1].voteEndMessages.append(announcement.id)
@@ -391,8 +403,6 @@ class TravelerVote():
         self.nominee = nominee
         self.nominator = nominator
         self.order = game.seatingOrder[game.seatingOrder.index(self.nominee)+1:] + game.seatingOrder[:game.seatingOrder.index(self.nominee)+1]
-        if game.script.isAtheist:
-            self.order.remove(game.seatingOrder[0])
         self.votes = 0
         self.voted = []
         self.history = []
@@ -414,7 +424,7 @@ class TravelerVote():
         if toCall in self.presetVotes:
             await self.vote(self.presetVotes[toCall])
             return
-        await channel.send('{}, your vote on {}.'.format(toCall.user.mention, self.nominee.nick if not self.nominee.user in gamemasterRole.members else 'the storytellers'))
+        await channel.send('{}, your vote on {}.'.format(toCall.user.mention, self.nominee.nick if self.nominee else 'the storytellers'))
         try:
             default = preferences[toCall.user.id]['defaultvote']
             time = default[1]
@@ -463,9 +473,9 @@ class TravelerVote():
         else:
             text = ', '.join([x.nick for x in self.voted[:-1]]) + ', and ' + self.voted[-1].nick
         if self.votes >= self.majority:
-            announcement = await channel.send('{} votes on {} (nominated by {}): {}.'.format(str(self.votes), self.nominee.nick if not self.nominee.user in gamemasterRole.members else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
+            announcement = await channel.send('{} votes on {} (nominated by {}): {}.'.format(str(self.votes), self.nominee.nick if self.nominees else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
         else:
-            announcement = await channel.send('{} votes on {} (nominated by {}): {}. They are not exiled.'.format(str(self.votes), self.nominee.nick if not self.nominee.user in gamemasterRole.members else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
+            announcement = await channel.send('{} votes on {} (nominated by {}): {}. They are not exiled.'.format(str(self.votes), self.nominee.nick if self.nominee else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
 
         await announcement.pin()
         game.days[-1].voteEndMessages.append(announcement.id)
@@ -531,12 +541,6 @@ class Player():
     def __setstate__(self, state):
         self.__dict__.update(state)
         self.user = server.get_member(self.user)
-
-    def __eq__(self, other):
-        if not isinstance(other, Player):
-            return NotImplemented
-
-        return self.user == other.user
 
     async def morning(self):
         if inactiveRole in self.user.roles:
@@ -1174,11 +1178,7 @@ class TeaLady(Townsfolk, DeathModifier):
 
     def on_death(self, person, dies):
         neighbor1 = game.seatingOrder[self.parent.position-1]
-        while isinstance(neighbor1.character, Storyteller) and neighbor1.alignment == 'neutral':
-            neighbor1 = game.seatingOrder[neighbor1.position-1]
         neighbor2 = game.seatingOrder[self.parent.position+1]
-        while isinstance(neighbor2.character, Storyteller) and neighbor2.alignment == 'neutral':
-            neighbor2 = game.seatingOrder[neighbor1.position+1]
         if neighbor1.alignment == 'good' and neighbor2.alignment == 'good' and (person == neighbor1 or person == neighbor2):
             return False
         return True
@@ -1995,6 +1995,9 @@ async def on_message(message):
     # Handles messages
     global game
 
+    if game != None:
+        backup('current_game.pckl')
+
     # Don't respond to self
     if message.author == client.user:
         return
@@ -2281,13 +2284,6 @@ async def on_message(message):
 
                 script = Script(scriptList)
 
-                if script.isAtheist:
-                    for person in server.members:
-                        if gamemasterRole in person.roles and person.nick != 'ben (they/them)':
-                            person = person
-                            break
-                    seatingOrder.insert(0, Player(Storyteller, 'neutral', person))
-
                 '''
                 # Role Stuff
                 for memb in server.members:
@@ -2301,17 +2297,13 @@ async def on_message(message):
                     else:
                         await memb.remove_roles(travelerRole, ghostRole, deadVoteRole)
                 '''
-
                 await channel.send('{}, welcome to Blood on the Clocktower! Go to sleep.'.format(playerRole.mention))
 
                 messageText = '**Seating Order:**'
                 for person in seatingOrder:
-                    if gamemasterRole not in person.user.roles:
-                        messageText += '\n{}'.format(person.nick)
-                        if isinstance(person.character, SeatingOrderModifier):
+                    messageText += '\n{}'.format(person.nick)
+                    if isinstance(person.character, SeatingOrderModifier):
                             messageText += person.character.seating_order_message(seatingOrder)
-                    else:
-                        messageText += '\n[Storytellers]'
                 seatingOrderMessage = await channel.send(messageText)
                 await seatingOrderMessage.pin()
 
@@ -3022,12 +3014,15 @@ async def on_message(message):
 
                 if game.script.isAtheist:
                     if argument == 'storytellers' or argument == 'the storytellers' or (len(await generate_possibilities(argument, server.members)) == 1 and gamemasterRole in server.get_member((await generate_possibilities(argument, server.members))[0].id).roles):
-                        for person in game.seatingOrder:
-                            if isinstance(person.character, Storyteller):
-                                await game.days[-1].nomination(person, await get_player(message.author))
-                                if game != None:
-                                    backup('current_game.pckl')
-                                return
+                        if None in [x.nominee for x in game.days[-1].votes]:
+                            await message.author.send('The storytellers have already been nominated today.')
+                            await after.unpin()
+                            return
+                        await game.days[-1].nomination(None, await get_player(message.author))
+                        if game != None:
+                            backup('current_game.pckl')
+                        await message.unpin()
+                        return
 
                 person = await select_player(message.author, argument, game.seatingOrder)
                 if person == None:
@@ -3597,15 +3592,15 @@ async def on_message_edit(before, after):
 
             if game.script.isAtheist:
                 if argument == 'storytellers' or argument == 'the storytellers' or (len(await generate_possibilities(argument, server.members)) == 1 and gamemasterRole in server.get_member((await generate_possibilities(argument, server.members))[0].id).roles):
-                    for person in game.seatingOrder:
-                        if isinstance(person.character, Storyteller):
-                            await game.days[-1].nomination(person, await get_player(after.author))
-                            if game != None:
-                                backup('current_game.pckl')
-                            await after.unpin()
-                            return
-
-            names = await generate_possibilities(argument, game.seatingOrder)
+                    if None in [x.nominee for x in game.days[-1].votes]:
+                        await channel.send('The storytellers have already been nominated today.')
+                        await after.unpin()
+                        return
+                    await game.days[-1].nomination(None, await get_player(after.author))
+                    if game != None:
+                        backup('current_game.pckl')
+                    await after.unpin()
+                    return
 
             if len(names) == 1:
 
@@ -3623,7 +3618,7 @@ async def on_message_edit(before, after):
             elif len(names) > 1:
 
                 await channel.send('There are too many matching players.')
-                await message.unpin()
+                await after.unpin()
                 return
 
             else:
