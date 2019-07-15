@@ -1927,6 +1927,16 @@ def find_all(p, s):
         yield i
         i = s.find(p, i+1)
 
+async def aexec(code):
+    # Make an async function with the code and `exec` it
+    exec(
+        f'async def __ex(): ' +
+        ''.join(f'\n {l}' for l in code.split('\n'))
+    )
+
+    # Get `__ex` from local variables, call it and return the result
+    return await locals()['__ex']()
+
 
 ### Event Handling
 @client.event
@@ -2036,7 +2046,7 @@ async def on_message(message):
                 # VERY DANGEROUS TESTING COMMAND
                 if message.content[1:message.content.index(' ')].lower() == 'exec':
                     if message.author.id == 149969652141785088:
-                        exec(message.content[message.content.index(' ') + 1:])
+                        await aexec(message.content[message.content.index(' ') + 1:])
                         return
                 command = message.content[1:message.content.index(' ')].lower()
                 argument = message.content[message.content.index(' ') + 1:].lower()
