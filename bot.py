@@ -163,7 +163,7 @@ class Day():
         nominee.canBeNominated = False
         if isinstance(nominee.character, Traveler):
             self.votes.append(TravelerVote(nominee, nominator))
-            announcement = await channel.send('{}, {} has called for {}\'s exile. {} to exile.'.format(playerRole.mention, nominator.nick if nominator else 'The storytellers', nominee.user.mention, str(int(np.ceil(self.votes[-1].majority)))))
+            announcement = await channel.send('{}, {} has called for {}\'s exile. {} to exile.'.format(playerRole.mention, nominator.nick if nominator else 'The storytellers', nominee.user.mention if not nominee.user in gamemasterRole.members else 'the storytellers', str(int(np.ceil(self.votes[-1].majority)))))
             await announcement.pin()
         else:
             proceed = True
@@ -174,9 +174,9 @@ class Day():
                 return
             self.votes.append(Vote(nominee, nominator))
             if self.aboutToDie != None:
-                announcement = await channel.send('{}, {} has been nominated by {}. {} to tie, {} to execute.'.format(playerRole.mention, nominee.user.mention, nominator.nick if nominator else 'the storytellers', str(int(np.ceil(max(self.aboutToDie[1].votes, self.votes[-1].majority)))), str(int(np.ceil(self.aboutToDie[1].votes+1)))))
+                announcement = await channel.send('{}, {} has been nominated by {}. {} to tie, {} to execute.'.format(playerRole.mention, nominee.user.mention if not nominee.user in gamemasterRole.members else 'the storytellers', nominator.nick if nominator else 'the storytellers', str(int(np.ceil(max(self.aboutToDie[1].votes, self.votes[-1].majority)))), str(int(np.ceil(self.aboutToDie[1].votes+1)))))
             else:
-                announcement = await channel.send('{}, {} has been nominated by {}. {} to execute.'.format(playerRole.mention, nominee.user.mention, nominator.nick if nominator else 'the storytellers', str(int(np.ceil(self.votes[-1].majority)))))
+                announcement = await channel.send('{}, {} has been nominated by {}. {} to execute.'.format(playerRole.mention, nominee.user.mention if not nominee.user in gamemasterRole.members else 'the storytellers', nominator.nick if nominator else 'the storytellers', str(int(np.ceil(self.votes[-1].majority)))))
             await announcement.pin()
             if nominator:
                 nominator.canNominate = False
@@ -248,7 +248,7 @@ class Vote():
         if toCall in self.presetVotes:
             await self.vote(self.presetVotes[toCall])
             return
-        await channel.send('{}, your vote on {}.'.format(toCall.user.mention, self.nominee.nick if self.nominee else 'the storytellers'))
+        await channel.send('{}, your vote on {}.'.format(toCall.user.mention, self.nominee.nick if not self.nominee.user in gamemasterRole.members else 'the storytellers'))
         try:
             default = preferences[toCall.user.id]['defaultvote']
             time = default[1]
@@ -333,15 +333,15 @@ class Vote():
                 msg = await channel.fetch_message(game.days[-1].voteEndMessages[game.days[-1].votes.index(aboutToDie[1])])
                 await msg.edit(content=msg.content[:-31] + ' They are not about to be executed.')
             game.days[-1].aboutToDie = (self.nominee, self)
-            announcement = await channel.send('{} votes on {} (nominated by {}): {}. They are about to be executed.'.format(str(self.votes), self.nominee.nick if self.nominee else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
+            announcement = await channel.send('{} votes on {} (nominated by {}): {}. They are about to be executed.'.format(str(self.votes), self.nominee.nick if not self.nominee.user in gamemasterRole.members else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
         elif tie:
             if aboutToDie != None:
                 msg = await channel.fetch_message(game.days[-1].voteEndMessages[game.days[-1].votes.index(aboutToDie[1])])
                 await msg.edit(content=msg.content[:-31] + ' No one is about to be executed.')
             game.days[-1].aboutToDie = None
-            announcement = await channel.send('{} votes on {} (nominated by {}): {}. No one is about to be executed.'.format(str(self.votes), self.nominee.nick if self.nominee else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
+            announcement = await channel.send('{} votes on {} (nominated by {}): {}. No one is about to be executed.'.format(str(self.votes), self.nominee.nick if not self.nominee.user in gamemasterRole.members else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
         else:
-            announcement = await channel.send('{} votes on {} (nominated by {}): {}. They are not about to be executed.'.format(str(self.votes), self.nominee.nick if self.nominee else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
+            announcement = await channel.send('{} votes on {} (nominated by {}): {}. They are not about to be executed.'.format(str(self.votes), self.nominee.nick if not self.nominee.user in gamemasterRole.members else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
 
         await announcement.pin()
         game.days[-1].voteEndMessages.append(announcement.id)
@@ -414,7 +414,7 @@ class TravelerVote():
         if toCall in self.presetVotes:
             await self.vote(self.presetVotes[toCall])
             return
-        await channel.send('{}, your vote on {}.'.format(toCall.user.mention, self.nominee.nick if self.nominee else 'the storytellers'))
+        await channel.send('{}, your vote on {}.'.format(toCall.user.mention, self.nominee.nick if not self.nominee.user in gamemasterRole.members else 'the storytellers'))
         try:
             default = preferences[toCall.user.id]['defaultvote']
             time = default[1]
@@ -463,9 +463,9 @@ class TravelerVote():
         else:
             text = ', '.join([x.nick for x in self.voted[:-1]]) + ', and ' + self.voted[-1].nick
         if self.votes >= self.majority:
-            announcement = await channel.send('{} votes on {} (nominated by {}): {}.'.format(str(self.votes), self.nominee.nick if self.nominee else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
+            announcement = await channel.send('{} votes on {} (nominated by {}): {}.'.format(str(self.votes), self.nominee.nick if not self.nominee.user in gamemasterRole.members else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
         else:
-            announcement = await channel.send('{} votes on {} (nominated by {}): {}. They are not exiled.'.format(str(self.votes), self.nominee.nick if self.nominee else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
+            announcement = await channel.send('{} votes on {} (nominated by {}): {}. They are not exiled.'.format(str(self.votes), self.nominee.nick if not self.nominee.user in gamemasterRole.members else 'the storytellers', self.nominator.nick if self.nominator else 'the storytellers', text))
 
         await announcement.pin()
         game.days[-1].voteEndMessages.append(announcement.id)
