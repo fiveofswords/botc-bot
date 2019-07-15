@@ -3084,7 +3084,7 @@ async def on_message(message):
                     if person == None:
                         return
 
-                    if vote.order[vote.position] != person:
+                    if vote.order[vote.position].user != person.user:
                         await message.author.send('It\'s not their vote right now. Do you mean @presetvote?')
                         return
 
