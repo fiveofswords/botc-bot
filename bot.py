@@ -532,6 +532,12 @@ class Player():
         self.__dict__.update(state)
         self.user = server.get_member(self.user)
 
+    def __eq__(self, other):
+        if not isinstance(other, Player):
+            return NotImplemented
+
+        return self.user == other.user
+
     async def morning(self):
         if inactiveRole in self.user.roles:
             self.isInactive = True
