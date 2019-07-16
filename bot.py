@@ -156,12 +156,6 @@ class Day():
         await self.close_pms()
         await self.close_noms()
         if not nominee:
-            proceed = True
-            for person in game.seatingOrder:
-                if isinstance(person.character, NominationModifier):
-                    proceed = await person.character.on_nomination(nominee, nominator, proceed)
-            if not proceed:
-                return
             self.votes.append(Vote(nominee, nominator))
             if self.aboutToDie != None:
                 announcement = await channel.send('{}, the storytellers have been nominated by {}. {} to tie, {} to execute.'.format(playerRole.mention, nominator.nick if nominator else 'the storytellers', str(int(np.ceil(max(self.aboutToDie[1].votes, self.votes[-1].majority)))), str(int(np.ceil(self.aboutToDie[1].votes+1)))))
@@ -170,6 +164,13 @@ class Day():
             await announcement.pin()
             if nominator:
                 nominator.canNominate = False
+            proceed = True
+            for person in game.seatingOrder:
+                if isinstance(person.character, NominationModifier):
+                    proceed = await person.character.on_nomination(nominee, nominator, proceed)
+            if not proceed:
+                await self.votes[-1].delete()
+                return
         elif isinstance(nominee.character, Traveler):
             nominee.canBeNominated = False
             self.votes.append(TravelerVote(nominee, nominator))
@@ -177,12 +178,6 @@ class Day():
             await announcement.pin()
         else:
             nominee.canBeNominated = False
-            proceed = True
-            for person in game.seatingOrder:
-                if isinstance(person.character, NominationModifier):
-                    proceed = await person.character.on_nomination(nominee, nominator, proceed)
-            if not proceed:
-                return
             self.votes.append(Vote(nominee, nominator))
             if self.aboutToDie != None:
                 announcement = await channel.send('{}, {} has been nominated by {}. {} to tie, {} to execute.'.format(playerRole.mention, nominee.user.mention if not nominee.user in gamemasterRole.members else 'the storytellers', nominator.nick if nominator else 'the storytellers', str(int(np.ceil(max(self.aboutToDie[1].votes, self.votes[-1].majority)))), str(int(np.ceil(self.aboutToDie[1].votes+1)))))
@@ -191,6 +186,13 @@ class Day():
             await announcement.pin()
             if nominator:
                 nominator.canNominate = False
+            proceed = True
+            for person in game.seatingOrder:
+                if isinstance(person.character, NominationModifier):
+                    proceed = await person.character.on_nomination(nominee, nominator, proceed)
+            if not proceed:
+                await self.votes[-1].delete()
+                return
         self.votes[-1].announcements.append(announcement.id)
         await self.votes[-1].call_next()
 
@@ -1429,6 +1431,18 @@ class Sweetheart(Outsider):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = 'Sweetheart'
+
+class Golem(Outsider, NominationModifier):
+    # The golem
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Golem'
+
+    async def on_nomination(self, nominee, nominator, proceed):
+        if nominator == self.parent and not isinstance(nominee.character, Demon) and not self.isPoisoned and not self.parent.isGhost:
+            await nominee.kill()
+        return proceed
 
 class Godfather(Minion):
     # The godfather
