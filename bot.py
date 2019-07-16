@@ -2028,44 +2028,51 @@ async def on_message(message):
                     backup('current_game.pckl')
 
         # Votes
-        if '@vote' in message.content.lower() or ',vote' in message.content.lower():
+        if message.content.startswith(prefixes):
 
-            argument = message.content.lower()[message.content.lower().index('vote ')+5:]
+            if ' ' in message.content:
+                command = message.content[1:message.content.index(' ')].lower()
+                argument = message.content[message.content.index(' ') + 1:].lower()
+            else:
+                command = message.content[1:].lower()
+                argument = ''
 
-            if game == None:
-                await channel.send('There\'s no game right now.')
+            if command == 'vote':
+
+                if game == None:
+                    await channel.send('There\'s no game right now.')
+                    return
+
+                if game.isDay == False:
+                    await channel.send('It\'s not day right now.')
+                    return
+
+                if game.days[-1].votes == [] or game.days[-1].votes[-1].done == True:
+                    await channel.send('There\'s no vote right now.')
+                    return
+
+                if argument != 'yes' and argument != 'y' and argument != 'no' and argument != 'n':
+                    await channel.send('{} is not a valid vote. Use \'yes\', \'y\', \'no\', or \'n\'.'.format(argument))
+                    return
+
+                vote = game.days[-1].votes[-1]
+
+                if vote.order[vote.position].user != (await get_player(message.author)).user:
+                    await channel.send('It\'s not your vote right now.')
+                    return
+
+                vt = int(argument == 'yes' or argument == 'y')
+
+                await vote.vote(vt)
+                if game != None:
+                    backup('current_game.pckl')
                 return
-
-            if game.isDay == False:
-                await channel.send('It\'s not day right now.')
-                return
-
-            if game.days[-1].votes == [] or game.days[-1].votes[-1].done == True:
-                await channel.send('There\'s no vote right now.')
-                return
-
-            if argument != 'yes' and argument != 'y' and argument != 'no' and argument != 'n':
-                await channel.send('{} is not a valid vote. Use \'yes\', \'y\', \'no\', or \'n\'.'.format(argument))
-                return
-
-            vote = game.days[-1].votes[-1]
-
-            if vote.order[vote.position].user != (await get_player(message.author)).user:
-                await channel.send('It\'s not your vote right now.')
-                return
-
-            vt = int(argument == 'yes' or argument == 'y')
-
-            await vote.vote(vt)
-            if game != None:
-                backup('current_game.pckl')
-            return
 
     # Responding to dms
     if message.guild == None:
 
         # Check if command
-        if message.content.startswith('@') or message.content.startswith(','):
+        if message.content.startswith(prefixes):
 
             # Generate command and arguments
             if ' ' in message.content:
