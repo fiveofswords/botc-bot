@@ -3697,6 +3697,7 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
                 embed.add_field(name='presetvote <<yes/no>> or prevote <<yes/no>>', value='submits a preset vote. will not work if it is your turn to vote. not reccomended -- contact the storytellers instead', inline=False)
                 embed.add_field(name='cancelpreset', value='cancels an existing preset', inline=False)
                 embed.add_field(name='defaultvote <<vote = \'no\'>> <<time=60>>', value='will always vote vote in time minutes. if no arguments given, deletes existing defaults.', inline=False)
+                embed.add_field(name='makealias <<alias>> <<command>>', value='creats an alias for a command', inline=False)
                 embed.add_field(name='clear', value='returns whitespace', inline=False)
                 embed.add_field(name='notactive', value='lists players who are yet to speak', inline=False)
                 embed.add_field(name='cannominate', value='lists players who are yet to nominate or skip', inline=False)
