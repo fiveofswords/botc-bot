@@ -1338,6 +1338,20 @@ class Cannibal(Townsfolk, AbilityModifier):
     def add_ability(self, role):
         self.abilities = [role(self.parent)]
 
+class Nightwatchman(Townsfolk):
+    # The nightwatchman
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Nightwatchman'
+
+class Balloonist(Townsfolk):
+    # The balloonist
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Balloonist'
+
 # UNFINISHED
 class Atheist(Townsfolk):
     # The atheist
@@ -1488,6 +1502,20 @@ class Poisoner(Minion):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = 'Poisoner'
+
+class Harpy(Minion):
+    # The harpy
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Harpy'
+
+class Widow(Minion):
+    # The widow
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Widow'
 
 class Witch(Minion, NominationModifier, DayStartModifier):
     # The witch
