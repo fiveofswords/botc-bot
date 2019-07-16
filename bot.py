@@ -2982,6 +2982,12 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
                 messageText = '**Grimoire:**'
                 for player in game.seatingOrder:
                     messageText += '\n{}: {}'.format(player.nick, player.character.role_name)
+                    if player.character.isPoisoned and player.isGhost:
+                        messageText += ' (Poisoned, Dead)'
+                    elif player.character.isPoisoned and not player.isGhost:
+                        messageText += ' (Poisoned)'
+                    elif not player.character.isPoisoned and player.isGhost:
+                        messageText += ' (Dead)'
 
                 await message.author.send(messageText)
                 return
@@ -3597,52 +3603,106 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
             # Help dialogue
             elif command == 'help':
                 if gamemasterRole in server.get_member(message.author.id).roles:
-                    gamemasterEmbed = discord.Embed(title='Storyteller Commands', description='Multiple arguments are space-separated.')
-                    gamemasterEmbed.add_field(name='startgame', value='starts the game', inline=False)
-                    gamemasterEmbed.add_field(name='endgame <<team>>', value=' ends the game, with winner team', inline=False)
-                    gamemasterEmbed.add_field(name='openpms', value=' opens pms', inline=False)
-                    gamemasterEmbed.add_field(name='opennoms', value=' opens nominations', inline=False)
-                    gamemasterEmbed.add_field(name='open', value=' opens pms and nominations', inline=False)
-                    gamemasterEmbed.add_field(name='closepms', value=' closes pms', inline=False)
-                    gamemasterEmbed.add_field(name='closenoms', value=' closes nominations', inline=False)
-                    gamemasterEmbed.add_field(name='close', value=' closes pms and nominations', inline=False)
-                    gamemasterEmbed.add_field(name='startday <<players>>', value=' starts the day, killing players', inline=False)
-                    gamemasterEmbed.add_field(name='endday', value=' ends the day. if there is an execution, execute is preferred', inline=False)
-                    gamemasterEmbed.add_field(name='kill <<player>>', value=' kills player', inline=False)
-                    gamemasterEmbed.add_field(name='execute <<player>>', value=' executes player', inline=False)
-                    gamemasterEmbed.add_field(name='exile <<traveler>>', value=' exiles traveler', inline=False)
-                    gamemasterEmbed.add_field(name='revive <<player>>', value=' revives player', inline=False)
-                    gamemasterEmbed.add_field(name='changerole <<player>>', value=' changes player\'s role', inline=False)
-                    gamemasterEmbed.add_field(name='changealignment <<player>>', value=' changes player\'s alignment', inline=False)
-                    gamemasterEmbed.add_field(name='changeability <<player>>', value=' changes player\'s ability, if applicable to their character (ex apprentice)', inline=False)
-                    gamemasterEmbed.add_field(name='makeinactive <<player>>', value=' marks player as inactive. must be done in all games player is participating in', inline=False)
-                    gamemasterEmbed.add_field(name='undoinactive <<player>>', value=' undoes an inactivity mark. must be done in all games player is participating in', inline=False)
-                    gamemasterEmbed.add_field(name='addtraveler <<player>> or addtraveller <<player>>', value=' adds player as a traveler', inline=False)
-                    gamemasterEmbed.add_field(name='removetraveler <<traveler>> or removetraveller <<traveler>>', value=' removes traveler from the game', inline=False)
-                    gamemasterEmbed.add_field(name='reseat', value=' reseats the game', inline=False)
-                    gamemasterEmbed.add_field(name='cancelnomination', value=' cancels the previous nomination', inline=False)
-                    gamemasterEmbed.add_field(name='setdeadline <time>', value=' sends a message with time in UTC as the deadline', inline=False)
-                    gamemasterEmbed.add_field(name='givedeadvote <<player>>', value=' adds a dead vote for player', inline=False)
-                    gamemasterEmbed.add_field(name='removedeadvote <<player>>', value=' removes a dead vote from player. not necessary for ordinary usage', inline=False)
-                    gamemasterEmbed.add_field(name='poison <<player>>', value=' poisons player', inline=False)
-                    gamemasterEmbed.add_field(name='unpoison <<player>>', value=' unpoisons player', inline=False)
-                    gamemasterEmbed.add_field(name='history <<player1>> <<player2>>', value=' views the message history between player1 and player2', inline=False)
-                    await message.author.send(embed = gamemasterEmbed)
+                    if argument == '':
+                        embed = discord.Embed(title='Storyteller Help', description='Welcome to the storyteller help dialogue!')
+                        embed.add_field(name='New to storytelling online?', value='Try the tutorial command! (not yet implemented)', inline=False)
+                        embed.add_field(name='Formatting commands', value='Prefixes are server-level customizable, but default to \'@\' and \',\'; any multiple arguments are space-separated')
+                        embed.add_field(name='Looking for a TL;DR of common commands?', value='help basic', inline=False)
+                        embed.add_field(name='help common', value='Prints commonly used storyteller commands.', inline=False)
+                        embed.add_field(name='help progression', value='Prints commands which progress game-time.', inline=False)
+                        embed.add_field(name='help day', value='Prints commands related to the day..', inline=False)
+                        embed.add_field(name='help gamestate', value='Prints commands which affect the game-state.', inline=False)
+                        embed.add_field(name='help info', value='Prints commands which display game information.', inline=False)
+                        embed.add_field(name='help player', value='Prints the player help dialogue.', inline=False)
+                        embed.add_field(name='help misc', value='Prints miscellaneous commands.', inline=False)
+                        embed.add_field(name='Bot Questions?', value='Ask Ben (nihilistkitten#6937)', inline=False)
+                        await message.author.send(embed=embed)
+                        return
+                    elif argument == 'common':
+                        embed = discord.Embed(title='Common Commands', description='Multiple arguments are space-separated.')
+                        embed.add_field(name='startgame', value='starts the game', inline=False)
+                        embed.add_field(name='endgame <<team>>', value='ends the game, with winner team', inline=False)
+                        embed.add_field(name='startday <<players>>', value='starts the day, killing players', inline=False)
+                        embed.add_field(name='endday', value='ends the day. if there is an execution, execute is preferred', inline=False)
+                        embed.add_field(name='kill <<player>>', value='kills player', inline=False)
+                        embed.add_field(name='execute <<player>>', value='executes player', inline=False)
+                        embed.add_field(name='exile <<traveler>>', value='exiles traveler', inline=False)
+                        embed.add_field(name='setdeadline <time>', value='sends a message with time in UTC as the deadline and opens nominations', inline=False)
+                        embed.add_field(name='poison <<player>>', value='poisons player', inline=False)
+                        embed.add_field(name='unpoison <<player>>', value='unpoisons player', inline=False)
+                        await message.author.send(embed=embed)
+                        return
+                    elif argument == 'player':
+                        pass
+                    elif argument == 'progression':
+                        embed = discord.Embed(title='Game Progression', description='Commands which progress game-time.')
+                        embed.add_field(name='startgame', value='starts the game', inline=False)
+                        embed.add_field(name='endgame <<team>>', value='ends the game, with winner team', inline=False)
+                        embed.add_field(name='startday <<players>>', value='starts the day, killing players', inline=False)
+                        embed.add_field(name='endday', value='ends the day. if there is an execution, execute is preferred', inline=False)
+                        await message.author.send(embed=embed)
+                        return
+                    elif argument == 'day':
+                        embed = discord.Embed(title='Day-related', description='Commands which affect variables related to the day.')
+                        embed.add_field(name='setdeadline <time>', value='sends a message with time in UTC as the deadline and opens nominations', inline=False)
+                        embed.add_field(name='openpms', value='opens pms', inline=False)
+                        embed.add_field(name='opennoms', value='opens nominations', inline=False)
+                        embed.add_field(name='open', value='opens pms and nominations', inline=False)
+                        embed.add_field(name='closepms', value='closes pms', inline=False)
+                        embed.add_field(name='closenoms', value='closes nominations', inline=False)
+                        embed.add_field(name='close', value='closes pms and nominations', inline=False)
+                        embed.add_field(name='vote', value='votes for the current player', inline=False)
+                        await message.author.send(embed=embed)
+                        return
+                    elif argument == 'gamestate':
+                        embed = discord.Embed(title='Game State', description='Commands which directly affect the game state.')
+                        embed.add_field(name='kill <<player>>', value='kills player', inline=False)
+                        embed.add_field(name='execute <<player>>', value='executes player', inline=False)
+                        embed.add_field(name='exile <<traveler>>', value='exiles traveler', inline=False)
+                        embed.add_field(name='revive <<player>>', value='revives player', inline=False)
+                        embed.add_field(name='changerole <<player>>', value='changes player\'s role', inline=False)
+                        embed.add_field(name='changealignment <<player>>', value='changes player\'s alignment', inline=False)
+                        embed.add_field(name='changeability <<player>>', value='changes player\'s ability, if applicable to their character (ex apprentice)', inline=False)
+                        embed.add_field(name='givedeadvote <<player>>', value='adds a dead vote for player', inline=False)
+                        embed.add_field(name='removedeadvote <<player>>', value='removes a dead vote from player. not necessary for ordinary usage', inline=False)
+                        embed.add_field(name='poison <<player>>', value='poisons player', inline=False)
+                        embed.add_field(name='unpoison <<player>>', value='unpoisons player', inline=False)
+                        await message.author.send(embed=embed)
+                        return
+                    elif argument == 'info':
+                        embed = discord.Embed(title='Informative', description='Commands which display information about the game.')
+                        embed.add_field(name='history <<player1>> <<player2>>', value='views the message history between player1 and player2', inline=False)
+                        embed.add_field(name='history <<player>>', value='views all of player\'s messages', inline=False)
+                        embed.add_field(name='search <<content>>', value='views all messages containing content', inline=False)
+                        embed.add_field(name='info <<player>>', value='views game information about player', inline=False)
+                        embed.add_field(name='grimoire', value='views the grimoire', inline=False)
+                        await message.author.send(embed=embed)
+                        return
+                    elif argument == 'misc':
+                        embed = discord.Embed(title='Miscellaneous', description='Commands with miscellaneous uses, primarily for troubleshooting and seating.')
+                        embed.add_field(name='makeinactive <<player>>', value='marks player as inactive. must be done in all games player is participating in', inline=False)
+                        embed.add_field(name='undoinactive <<player>>', value='undoes an inactivity mark. must be done in all games player is participating in', inline=False)
+                        embed.add_field(name='addtraveler <<player>> or addtraveller <<player>>', value='adds player as a traveler', inline=False)
+                        embed.add_field(name='removetraveler <<traveler>> or removetraveller <<traveler>>', value='removes traveler from the game', inline=False)
+                        embed.add_field(name='cancelnomination', value='cancels the previous nomination', inline=False)
+                        embed.add_field(name='reseat', value='reseats the game', inline=False)
+                        await message.author.send(embed=embed)
+                        return
                 embed = discord.Embed(title='Player Commands', description='Multiple arguments are space-separated.')
-                embed.add_field(name='clear', value=' returns whitespace', inline=False)
-                embed.add_field(name='notactive', value=' lists players who are yet to speak', inline=False)
-                embed.add_field(name='cannominate', value=' lists players who are yet to nominate or skip', inline=False)
-                embed.add_field(name='canbenominated', value=' lists players who are yet to be nominated', inline=False)
-                embed.add_field(name='nominate <<player>>', value=' nominates player', inline=False)
-                embed.add_field(name='vote <<yes/no>>', value=' votes on an ongoing nomination', inline=False)
-                embed.add_field(name='presetvote <<yes/no>> or prevote <<yes/no>>', value=' submits a preset vote. will not work if it is your turn to vote. not reccomended -- contact the storytellers instead', inline=False)
-                embed.add_field(name='cancelpreset', value=' cancels an existing preset', inline=False)
-                embed.add_field(name='pm <<player>> or message <<player>>', value=' sends player a message', inline=False)
-                embed.add_field(name='reply', value=' messages the author of the previously received message', inline=False)
-                embed.add_field(name='history <<player>>', value=' views your message history with player', inline=False)
-                embed.add_field(name='search <<content>>', value=' views all of your messages containing content', inline=False)
-                embed.add_field(name='defaultvote <<vote = \'no\'>> <<time=60>>', value=' will always vote vote in time minutes. if no arguments given, deletes existing defaults.', inline=False)
-                embed.add_field(name='help', value=' displays this dialogue', inline=False)
+                embed.add_field(name='clear', value='returns whitespace', inline=False)
+                embed.add_field(name='notactive', value='lists players who are yet to speak', inline=False)
+                embed.add_field(name='cannominate', value='lists players who are yet to nominate or skip', inline=False)
+                embed.add_field(name='canbenominated', value='lists players who are yet to be nominated', inline=False)
+                embed.add_field(name='nominate <<player>>', value='nominates player', inline=False)
+                embed.add_field(name='vote <<yes/no>>', value='votes on an ongoing nomination', inline=False)
+                embed.add_field(name='presetvote <<yes/no>> or prevote <<yes/no>>', value='submits a preset vote. will not work if it is your turn to vote. not reccomended -- contact the storytellers instead', inline=False)
+                embed.add_field(name='cancelpreset', value='cancels an existing preset', inline=False)
+                embed.add_field(name='pm <<player>> or message <<player>>', value='sends player a message', inline=False)
+                embed.add_field(name='reply', value='messages the author of the previously received message', inline=False)
+                embed.add_field(name='history <<player>>', value='views your message history with player', inline=False)
+                embed.add_field(name='search <<content>>', value='views all of your messages containing content', inline=False)
+                embed.add_field(name='defaultvote <<vote = \'no\'>> <<time=60>>', value='will always vote vote in time minutes. if no arguments given, deletes existing defaults.', inline=False)
+                embed.add_field(name='help', value='displays this dialogue', inline=False)
                 await message.author.send(embed = embed)
                 return
 
