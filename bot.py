@@ -262,6 +262,10 @@ class Vote():
             return
         await channel.send('{}, your vote on {}.'.format(toCall.user.mention, self.nominee.nick if self.nominee else 'the storytellers'))
         try:
+            preferences = {}
+            if os.path.isfile(os.path.dirname(os.getcwd()) + '/preferences.pckl'):
+                with open(os.path.dirname(os.getcwd()) + '/preferences.pckl', 'rb') as file:
+                    preferences = dill.load(file)
             default = preferences[toCall.user.id]['defaultvote']
             time = default[1]
             await toCall.user.send('Will enter a {} vote in {} minutes.'.format(['no', 'yes'][default[0]],str(int(default[1]/60))))
@@ -426,6 +430,10 @@ class TravelerVote():
             return
         await channel.send('{}, your vote on {}.'.format(toCall.user.mention, self.nominee.nick if self.nominee else 'the storytellers'))
         try:
+            preferences = {}
+            if os.path.isfile(os.path.dirname(os.getcwd()) + '/preferences.pckl'):
+                with open(os.path.dirname(os.getcwd()) + '/preferences.pckl', 'rb') as file:
+                    preferences = dill.load(file)
             default = preferences[toCall.user.id]['defaultvote']
             time = default[1]
             await toCall.user.send('Will enter a {} vote in {} minutes.'.format(['no', 'yes'][default[0]],str(int(default[1]/60))))
@@ -1755,7 +1763,7 @@ async def choices(user, possibilities, text):
         messageText = 'Who do you mean? or use \'cancel\''
     else:
         messageText = 'Who do you mean by {}? or use \'cancel\''.format(text)
-    for index,person in enumerate(possibilities):
+    for index, person in enumerate(possibilities):
         messageText += '\n({}). {}'.format(index + 1, person.nick if person.nick else person.name)
 
     # Request clarifciation from user
@@ -1949,7 +1957,7 @@ async def aexec(code):
 async def on_ready():
     # On startup
 
-    global server, channel, playerRole, travelerRole, ghostRole, deadVoteRole, gamemasterRole, inactiveRole, game, preferences
+    global server, channel, playerRole, travelerRole, ghostRole, deadVoteRole, gamemasterRole, inactiveRole, game
     game = None
 
     server = client.get_guild(serverid)
@@ -1975,13 +1983,6 @@ async def on_ready():
 
     else:
         print('No backup found.')
-
-    if os.path.isfile('preferences.pckl'):
-        with open('preferences.pckl', 'rb') as file:
-            preferences = dill.load(file)
-
-    else:
-        preferences = {}
 
     await update_presence(client)
     print('Logged in as')
@@ -2062,6 +2063,15 @@ async def on_message(message):
             else:
                 command = message.content[1:].lower()
                 argument = ''
+
+            try:
+                preferences = {}
+                if os.path.isfile(os.path.dirname(os.getcwd()) + '/preferences.pckl'):
+                    with open(os.path.dirname(os.getcwd()) + '/preferences.pckl', 'rb') as file:
+                        preferences = dill.load(file)
+                command = preferences[message.author.id]['aliases'][command]
+            except KeyError:
+                pass
 
             # Opens pms
             if command == 'openpms':
@@ -2198,6 +2208,13 @@ async def on_message(message):
 
                 order = order.content.split('\n')
 
+                users = []
+                for person in order:
+                    name = await select_player(message.author, person, server.members)
+                    if name == None:
+                        return
+                    users.append(name)
+
                 msg = await message.author.send('What are the corresponding roles? (also separated with line breaks)')
                 try:
                     roles = await client.wait_for('message', check=(lambda x: x.author==message.author and x.channel==msg.channel), timeout=200)
@@ -2215,13 +2232,6 @@ async def on_message(message):
                     await message.author.send('Players and roles do not match.')
                     return
 
-                users = []
-                for person in order:
-                    name = await select_player(message.author, person, server.members)
-                    if name == None:
-                        return
-                    users.append(name)
-
                 characters = []
                 for text in roles:
                     role = str_cleanup(text, [',', ' ', '-', '\''])
@@ -2231,6 +2241,16 @@ async def on_message(message):
                         await message.author.send('Role not found: {}.'.format(text))
                         return
                     characters.append(role)
+
+                # Role Stuff
+                rls = {playerRole, travelerRole, deadVoteRole, travelerRole}
+                for memb in server.members:
+                    print(memb)
+                    if gamemasterRole in server.get_member(memb.id).roles:
+                        pass
+                    else:
+                        for rl in set(server.get_member(memb.id).roles).intersection(rls):
+                            await memb.remove_roles(rl)
 
                 for index, user in enumerate(users):
                     await user.add_roles(playerRole)
@@ -2284,19 +2304,6 @@ async def on_message(message):
 
                 script = Script(scriptList)
 
-                '''
-                # Role Stuff
-                for memb in server.members:
-                    print(memb)
-                    if gamemasterRole in server.get_member(memb.id).roles:
-                        pass
-                    elif not memb in users:
-                        await memb.remove_roles(playerRole, travelerRole, ghostRole, deadVoteRole)
-                    elif isinstance(characters[users.index(memb)], Traveler):
-                        await memb.remove_roles(ghostRole, deadVoteRole)
-                    else:
-                        await memb.remove_roles(travelerRole, ghostRole, deadVoteRole)
-                '''
                 await channel.send('{}, welcome to Blood on the Clocktower! Go to sleep.'.format(playerRole.mention))
 
                 messageText = '**Seating Order:**'
@@ -3208,11 +3215,16 @@ async def on_message(message):
             # Set a default vote
             elif command == 'defaultvote':
 
+                preferences = {}
+                if os.path.isfile(os.path.dirname(os.getcwd()) + '/preferences.pckl'):
+                    with open(os.path.dirname(os.getcwd()) + '/preferences.pckl', 'rb') as file:
+                        preferences = dill.load(file)
+
                 if argument == '':
                     try:
                         del preferences[message.author.id]['defaultvote']
                         await message.author.send('Removed your default vote.')
-                        with open('preferences.pckl', 'wb') as file:
+                        with open(os.path.dirname(os.getcwd()) + '/preferences.pckl', 'wb') as file:
                             dill.dump(preferences, file)
                     except KeyError:
                         await message.author.send('You have no default vote to remove.')
@@ -3251,7 +3263,7 @@ async def on_message(message):
                         preferences[message.author.id] = {'defaultvote': (vt, time)}
 
                     await message.author.send('Successfully set default {} vote at {} minutes.'.format(['no', 'yes'][vt], str(int(time/60))))
-                    with open('preferences.pckl', 'wb') as file:
+                    with open(os.path.dirname(os.getcwd()) + '/preferences.pckl', 'wb') as file:
                         dill.dump(preferences, file)
                     return
 
@@ -3363,7 +3375,7 @@ async def on_message(message):
 
                 if gamemasterRole in server.get_member(message.author.id).roles:
 
-                    argument = argument.split(', ')
+                    argument = argument.split(' ')
                     if len(argument) > 2:
                         await message.author.send('There must be exactly one or two comma-separated inputs.')
                         return
@@ -3494,10 +3506,38 @@ async def on_message(message):
                 await message.author.send(messageText)
                 return
 
+            # Create custom alias
+            elif command == 'makealias':
+
+                argument = argument.split(' ')
+                if len(argument) != 2:
+                    await message.author.send('makealias takes exactly two arguments: @makealias <alias> <command>')
+                    return
+
+                preferences = {}
+                if os.path.isfile(os.path.dirname(os.getcwd()) + '/preferences.pckl'):
+                    with open(os.path.dirname(os.getcwd()) + '/preferences.pckl', 'rb') as file:
+                        preferences = dill.load(file)
+
+                try:
+                    preferences[message.author.id]['aliases'][argument[0]] = argument[1]
+                except KeyError:
+                    try:
+                        preferences[message.author.id]['aliases'] = {argument[0]: argument[1]}
+                    except KeyError:
+                        preferences[message.author.id] = {'aliases': {argument[0]: argument[1]}}
+
+                await message.author.send('Successfully created alias {} for command {}.'.format(argument[0], argument[1]))
+                with open(os.path.dirname(os.getcwd()) + '/preferences.pckl', 'wb') as file:
+                    dill.dump(preferences, file)
+                return
+
+
+
             # Help dialogue
             elif command == 'help':
                 if gamemasterRole in server.get_member(message.author.id).roles:
-                    await message.author.send('''**Storyteller Commands (multiple arguments are always comma-separated):**
+                    await message.author.send('''**Storyteller Commands (multiple arguments are always space-separated):**
 startgame: starts the game
 endgame <<team>>: ends the game, with winner team
 openpms: opens pms
@@ -3528,14 +3568,14 @@ poison <<player>>: poisons player
 unpoison <<player>>: unpoisons player
 history <<player1>> <<player2>>: views the message history between player1 and player2''')
                 await message.author.send('''
-**Player Commands:**
+**Player Commands (multiple arguments are always space-separated):**
 clear: returns whitespace
 notactive: lists players who are yet to speak
 cannominate: lists players who are yet to nominate or skip
 canbenominated: lists players who are yet to be nominated
 nominate <<player>>: nominates player
 vote <<yes/no>>: votes on an ongoing nomination
-presetvote <<yes/no>>: submits a preset vote. will not work if it is your turn to vote. not reccomended -- contact the storytellers instead
+presetvote <<yes/no>> or prevote <<yes/no>>: submits a preset vote. will not work if it is your turn to vote. not reccomended -- contact the storytellers instead
 cancelpreset: cancels an existing preset
 pm <<player>> or message <<player>>: sends player a message
 reply: messages the author of the previously received message
