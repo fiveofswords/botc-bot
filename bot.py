@@ -1904,7 +1904,7 @@ async def update_presence(client):
         await client.change_presence(status = discord.Status.online, activity = discord.Game(name = 'PMs {}, Nominations {}!'.format(clopen[game.days[-1].isPms],clopen[game.days[-1].isNoms])))
 
 def backup(fileName):
-# Backs up the game state
+# Backs up the game-state
 
     objects = [x for x in dir(game) if not x.startswith('__') and not callable(getattr(game,x))]
     with open(fileName, 'wb') as file:
@@ -1918,7 +1918,7 @@ def backup(fileName):
                 dill.dump(getattr(game, obj), file)
 
 async def load(fileName):
-# Loads the game state
+# Loads the game-state
 
     with open(fileName, 'rb') as file:
         objects = dill.load(file)
@@ -3607,10 +3607,9 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
                         embed = discord.Embed(title='Storyteller Help', description='Welcome to the storyteller help dialogue!')
                         embed.add_field(name='New to storytelling online?', value='Try the tutorial command! (not yet implemented)', inline=False)
                         embed.add_field(name='Formatting commands', value='Prefixes are server-level customizable, but default to \'@\' and \',\'; any multiple arguments are space-separated')
-                        embed.add_field(name='Looking for a TL;DR of common commands?', value='help basic', inline=False)
                         embed.add_field(name='help common', value='Prints commonly used storyteller commands.', inline=False)
                         embed.add_field(name='help progression', value='Prints commands which progress game-time.', inline=False)
-                        embed.add_field(name='help day', value='Prints commands related to the day..', inline=False)
+                        embed.add_field(name='help day', value='Prints commands related to the day.', inline=False)
                         embed.add_field(name='help gamestate', value='Prints commands which affect the game-state.', inline=False)
                         embed.add_field(name='help info', value='Prints commands which display game information.', inline=False)
                         embed.add_field(name='help player', value='Prints the player help dialogue.', inline=False)
@@ -3655,7 +3654,7 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
                         await message.author.send(embed=embed)
                         return
                     elif argument == 'gamestate':
-                        embed = discord.Embed(title='Game State', description='Commands which directly affect the game state.')
+                        embed = discord.Embed(title='Game-State', description='Commands which directly affect the game-state.')
                         embed.add_field(name='kill <<player>>', value='kills player', inline=False)
                         embed.add_field(name='execute <<player>>', value='executes player', inline=False)
                         embed.add_field(name='exile <<traveler>>', value='exiles traveler', inline=False)
@@ -3689,20 +3688,19 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
                         await message.author.send(embed=embed)
                         return
                 embed = discord.Embed(title='Player Commands', description='Multiple arguments are space-separated.')
-                embed.add_field(name='clear', value='returns whitespace', inline=False)
-                embed.add_field(name='notactive', value='lists players who are yet to speak', inline=False)
-                embed.add_field(name='cannominate', value='lists players who are yet to nominate or skip', inline=False)
-                embed.add_field(name='canbenominated', value='lists players who are yet to be nominated', inline=False)
-                embed.add_field(name='nominate <<player>>', value='nominates player', inline=False)
-                embed.add_field(name='vote <<yes/no>>', value='votes on an ongoing nomination', inline=False)
-                embed.add_field(name='presetvote <<yes/no>> or prevote <<yes/no>>', value='submits a preset vote. will not work if it is your turn to vote. not reccomended -- contact the storytellers instead', inline=False)
-                embed.add_field(name='cancelpreset', value='cancels an existing preset', inline=False)
                 embed.add_field(name='pm <<player>> or message <<player>>', value='sends player a message', inline=False)
                 embed.add_field(name='reply', value='messages the author of the previously received message', inline=False)
                 embed.add_field(name='history <<player>>', value='views your message history with player', inline=False)
                 embed.add_field(name='search <<content>>', value='views all of your messages containing content', inline=False)
+                embed.add_field(name='vote <<yes/no>>', value='votes on an ongoing nomination', inline=False)
+                embed.add_field(name='nominate <<player>>', value='nominates player', inline=False)
+                embed.add_field(name='presetvote <<yes/no>> or prevote <<yes/no>>', value='submits a preset vote. will not work if it is your turn to vote. not reccomended -- contact the storytellers instead', inline=False)
+                embed.add_field(name='cancelpreset', value='cancels an existing preset', inline=False)
                 embed.add_field(name='defaultvote <<vote = \'no\'>> <<time=60>>', value='will always vote vote in time minutes. if no arguments given, deletes existing defaults.', inline=False)
-                embed.add_field(name='help', value='displays this dialogue', inline=False)
+                embed.add_field(name='clear', value='returns whitespace', inline=False)
+                embed.add_field(name='notactive', value='lists players who are yet to speak', inline=False)
+                embed.add_field(name='cannominate', value='lists players who are yet to nominate or skip', inline=False)
+                embed.add_field(name='canbenominated', value='lists players who are yet to be nominated', inline=False)
                 await message.author.send(embed = embed)
                 return
 
