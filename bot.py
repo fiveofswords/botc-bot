@@ -12,7 +12,7 @@ class Game():
         self.script = script
         self.seatingOrder = seatingOrder
         self.seatingOrderMessage = seatingOrderMessage
-        self.storytellers = [Player(Storyteller, 'neutral', person) for person in server.members]
+        self.storytellers = [Player(Storyteller, 'neutral', person) for person in gamemasterRole.members]
 
     async def end(self, winner):
         # Ends the game
@@ -260,8 +260,8 @@ class Vote():
         if toCall.isGhost and toCall.deadVotes < 1:
             await self.vote(0)
             return
-        if toCall in self.presetVotes:
-            await self.vote(self.presetVotes[toCall])
+        if toCall.id in self.presetVotes:
+            await self.vote(self.presetVotes[toCall.user.id])
             return
         await channel.send('{}, your vote on {}.'.format(toCall.user.mention, self.nominee.nick if self.nominee else 'the storytellers'))
         try:
@@ -382,10 +382,10 @@ class Vote():
                 await operator.send('{} does not have any dead votes. They must vote no.'.format(voter.nick))
             return
 
-        self.presetVotes[person] = vt
+        self.presetVotes[person.user.id] = vt
 
     async def cancel_preset(self, person):
-        del self.presetVotes[person]
+        del self.presetVotes[person.user.id]
 
     async def delete(self):
         # Undoes an unintentional nomination
@@ -428,8 +428,8 @@ class TravelerVote():
         if toCall.isGhost and toCall.deadVotes < 1:
             await self.vote(0)
             return
-        if toCall in self.presetVotes:
-            await self.vote(self.presetVotes[toCall])
+        if toCall.user.id in self.presetVotes:
+            await self.vote(self.presetVotes[toCall.user.id])
             return
         await channel.send('{}, your vote on {}.'.format(toCall.user.mention, self.nominee.nick if self.nominee else 'the storytellers'))
         try:
@@ -500,10 +500,10 @@ class TravelerVote():
         await game.days[-1].open_pms()
 
     async def preset_vote(self, person, vt, operator=None):
-        self.presetVotes[person] = vt
+        self.presetVotes[person.user.id] = vt
 
     async def cancel_preset(self, person):
-        del self.presetVotes[person]
+        del self.presetVotes[person.user.id]
 
     async def delete(self):
         # Undoes an unintentional nomination
