@@ -12,6 +12,7 @@ class Game():
         self.script = script
         self.seatingOrder = seatingOrder
         self.seatingOrderMessage = seatingOrderMessage
+        self.storytellers = [Player(Storyteller, 'neutral', person) for person in server.members]
 
     async def end(self, winner):
         # Ends the game
@@ -3382,12 +3383,9 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
                     await message.author.send('You are not in the game. You may not send messages.')
                     return
 
-                person = await select_player(message.author, argument, game.seatingOrder + [x for x in server.members if gamemasterRole in x.roles])
+                person = await select_player(message.author, argument, game.seatingOrder + game.storytellers)
                 if person == None:
                     return
-
-                if person not in game.seatingOrder:
-                    person = Player(Storyteller, 'neutral', person)
 
                 messageText = 'Messaging {}. What would you like to send?'.format(person.nick)
                 reply = await message.author.send(messageText)
@@ -3525,7 +3523,7 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
                     await message.author.send('You are not in the game. You have no message history.')
                     return
 
-                person = await select_player(message.author, argument, game.seatingOrder)
+                person = await select_player(message.author, argument, game.seatingOrder + game.storytellers)
                 if person == None:
                     return
 
@@ -3634,7 +3632,7 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
                     if argument == '':
                         embed = discord.Embed(title='Storyteller Help', description='Welcome to the storyteller help dialogue!')
                         embed.add_field(name='New to storytelling online?', value='Try the tutorial command! (not yet implemented)', inline=False)
-                        embed.add_field(name='Formatting commands', value='Prefixes are server-level customizable, but default to \'@\' and \',\'; any multiple arguments are space-separated')
+                        embed.add_field(name='Formatting commands', value='Prefixes on this server are {}; any multiple arguments are space-separated'.format('\'' + list(prefixes).join('\', \'')))
                         embed.add_field(name='help common', value='Prints commonly used storyteller commands.', inline=False)
                         embed.add_field(name='help progression', value='Prints commands which progress game-time.', inline=False)
                         embed.add_field(name='help day', value='Prints commands related to the day.', inline=False)
@@ -3716,6 +3714,8 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
                         await message.author.send(embed=embed)
                         return
                 embed = discord.Embed(title='Player Commands', description='Multiple arguments are space-separated.')
+                embed.add_field(name='New to playing online?', value='Try the tutorial command! (not yet implemented)', inline=False)
+                embed.add_field(name='Formatting commands', value='Prefixes on this server are {}; any multiple arguments are space-separated'.format('\'' + list(prefixes).join('\', \'')))
                 embed.add_field(name='pm <<player>> or message <<player>>', value='sends player a message', inline=False)
                 embed.add_field(name='reply', value='messages the author of the previously received message', inline=False)
                 embed.add_field(name='history <<player>>', value='views your message history with player', inline=False)
@@ -3730,6 +3730,7 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
                 embed.add_field(name='notactive', value='lists players who are yet to speak', inline=False)
                 embed.add_field(name='cannominate', value='lists players who are yet to nominate or skip', inline=False)
                 embed.add_field(name='canbenominated', value='lists players who are yet to be nominated', inline=False)
+                embed.add_field(name='Bot Questions?', value='Ask Ben (nihilistkitten#6937)', inline=False)
                 await message.author.send(embed = embed)
                 return
 
@@ -3872,6 +3873,13 @@ async def on_member_update(before, after):
                 (await get_player(after)).nick = after.nick
                 await after.send('Your nickname has been updated.')
                 backup('current_game.pckl')
+
+        if gamamsterRole in after.roles and not gamemasterRole in before.roles:
+            game.storytellers.append(Player(Storyteller, 'neutral', after))
+        elif gamemasterRole in before.roles and not gamemasterRole in after.roles:
+            for st in game.storytellers:
+                if st.user.id == after.id:
+                    game.storytellers.remove(st)
 
 
 ### Event loop
