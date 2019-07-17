@@ -921,7 +921,7 @@ class AbilityModifier(SeatingOrderModifier, DayStartModifier, NomsCalledModifier
     def on_vote(self):
         # Called every time a player votes
         if not self.isPoisoned:
-            for role in self.abilitieS:
+            for role in self.abilities:
                 if isinstance(role, VoteModifier):
                     role.on_vote()
 
@@ -3791,6 +3791,8 @@ async def on_message_edit(before, after):
                     await after.unpin()
                     return
 
+            names = await generate_possibilities(argument, game.seatingOrder)
+
             if len(names) == 1:
 
                 if not names[0].canBeNominated:
@@ -3874,7 +3876,7 @@ async def on_member_update(before, after):
                 await after.send('Your nickname has been updated.')
                 backup('current_game.pckl')
 
-        if gamamsterRole in after.roles and not gamemasterRole in before.roles:
+        if gamemasterRole in after.roles and not gamemasterRole in before.roles:
             game.storytellers.append(Player(Storyteller, 'neutral', after))
         elif gamemasterRole in before.roles and not gamemasterRole in after.roles:
             for st in game.storytellers:
