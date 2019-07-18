@@ -3511,7 +3511,8 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
                             await message.author.send(messageText)
                             messageText = ''
                         while msg['day'] != day:
-                            await message.author.send(messageText)
+                            if messageText != '':
+                                await message.author.send(messageText)
                             day += 1
                             messageText = '**Day {}:**'.format(str(day))
                         messageText += '\nFrom: {} | To: {} | Time: {}\n**{}**'.format(msg['from'].nick,msg['to'].nick,msg['time'].strftime("%m/%d, %H:%M:%S"),msg['content'])
@@ -3536,7 +3537,8 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
                         await message.author.send(messageText)
                         messageText = ''
                     while msg['day'] != day:
-                        await message.author.send(messageText)
+                        if messageText != '':
+                            await message.author.send(messageText)
                         day += 1
                         messageText = '\n\n**Day {}:**'.format(str(day))
                     messageText += '\nFrom: {} | To: {} | Time: {}\n**{}**'.format(msg['from'].nick,msg['to'].nick,msg['time'].strftime("%m/%d, %H:%M:%S"),msg['content'])
