@@ -1455,10 +1455,13 @@ class Golem(Outsider, NominationModifier):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = 'Golem'
+        self.hasNominated = False
 
     async def on_nomination(self, nominee, nominator, proceed):
-        if nominator == self.parent and not isinstance(nominee.character, Demon) and not self.isPoisoned and not self.parent.isGhost:
-            await nominee.kill()
+        if nominator == self.parent:
+            if not isinstance(nominee.character, Demon) and not self.isPoisoned and not self.parent.isGhost and not self.hasNominated == True:
+                await nominee.kill()
+            self.hasNominated = True
         return proceed
 
 class Godfather(Minion):
@@ -2903,6 +2906,8 @@ async def on_message(message):
                 if game.days[-1].votes == [] or game.days[-1].votes[-1].done == True:
                     await message.author.send('There\'s no vote right now.')
                     return
+
+                game.days[-1].votes[-1].nominator.canNominate = True
 
                 await game.days[-1].votes[-1].delete()
                 await game.days[-1].open_pms()
