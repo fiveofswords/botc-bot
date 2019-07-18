@@ -260,7 +260,7 @@ class Vote():
         if toCall.isGhost and toCall.deadVotes < 1:
             await self.vote(0)
             return
-        if toCall.id in self.presetVotes:
+        if toCall.user.id in self.presetVotes:
             await self.vote(self.presetVotes[toCall.user.id])
             return
         await channel.send('{}, your vote on {}.'.format(toCall.user.mention, self.nominee.nick if self.nominee else 'the storytellers'))
