@@ -3634,7 +3634,7 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
                     if argument == '':
                         embed = discord.Embed(title='Storyteller Help', description='Welcome to the storyteller help dialogue!')
                         embed.add_field(name='New to storytelling online?', value='Try the tutorial command! (not yet implemented)', inline=False)
-                        embed.add_field(name='Formatting commands', value='Prefixes on this server are {}; any multiple arguments are space-separated'.format('\'' + list(prefixes).join('\', \'')))
+                        embed.add_field(name='Formatting commands', value='Prefixes on this server are {}; any multiple arguments are space-separated'.format('\'' + '.join(list(prefixes)) + '\''))
                         embed.add_field(name='help common', value='Prints commonly used storyteller commands.', inline=False)
                         embed.add_field(name='help progression', value='Prints commands which progress game-time.', inline=False)
                         embed.add_field(name='help day', value='Prints commands related to the day.', inline=False)
@@ -3717,7 +3717,7 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
                         return
                 embed = discord.Embed(title='Player Commands', description='Multiple arguments are space-separated.')
                 embed.add_field(name='New to playing online?', value='Try the tutorial command! (not yet implemented)', inline=False)
-                embed.add_field(name='Formatting commands', value='Prefixes on this server are {}; any multiple arguments are space-separated'.format('\'' + list(prefixes).join('\', \'')))
+                embed.add_field(name='Formatting commands', value='Prefixes on this server are {}; any multiple arguments are space-separated'.format('\'' + ''.join(list(prefixes)) + '\''))
                 embed.add_field(name='pm <<player>> or message <<player>>', value='sends player a message', inline=False)
                 embed.add_field(name='reply', value='messages the author of the previously received message', inline=False)
                 embed.add_field(name='history <<player>>', value='views your message history with player', inline=False)
