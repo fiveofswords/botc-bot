@@ -1606,6 +1606,13 @@ class AlHadikiar(Demon):
         super().__init__(parent)
         self.role_name = 'Po'
 
+class Legion(Demon):
+    # the legion
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Legion'
+
 class Beggar(Traveler):
     # the beggar
 
