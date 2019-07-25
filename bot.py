@@ -205,16 +205,10 @@ class Day():
                 person.character.on_day_end()
 
         for msg in self.voteEndMessages:
-            try:
-                await (await channel.fetch_message(msg)).unpin()
-            except discord.errors.NotFound:
-                print('Message not found.')
+            await (await channel.fetch_message(msg)).unpin()
 
         for msg in self.deadlineMessages:
-            try:
-                await (await channel.fetch_message(msg)).unpin()
-            except discord.errors.NotFound:
-                print('Message not found.')
+            await (await channel.fetch_message(msg)).unpin()
 
         for msg in self.skipMessages:
             await (await channel.fetch_message(msg)).unpin()
@@ -372,10 +366,7 @@ class Vote():
         game.days[-1].voteEndMessages.append(announcement.id)
 
         for msg in self.announcements:
-            try:
-                await (await channel.fetch_message(msg)).unpin()
-            except discord.errors.NotFound:
-                pass
+            await (await channel.fetch_message(msg)).unpin()
 
         self.done = True
 
@@ -406,10 +397,7 @@ class Vote():
         await channel.send('Nomination canceled!')
 
         for msg in self.announcements:
-            try:
-                await (await channel.fetch_message(msg)).unpin()
-            except discord.errors.NotFound:
-                pass
+            await (await channel.fetch_message(msg)).unpin()
 
         self.done = True
 
@@ -504,10 +492,7 @@ class TravelerVote():
         game.days[-1].voteEndMessages.append(announcement.id)
 
         for msg in self.announcements:
-            try:
-                await (await channel.fetch_message(msg)).unpin()
-            except discord.errors.NotFound:
-                pass
+            await (await channel.fetch_message(msg)).unpin()
 
         self.done = True
 
@@ -530,10 +515,7 @@ class TravelerVote():
         channel.send('Nomination canceled.')
 
         for msg in self.announcements:
-            try:
-                await (await channel.fetch_message(msg)).unpin()
-            except discord.errors.NotFound:
-                pass
+            await (await channel.fetch_message(msg)).unpin()
 
         self.done = True
 
@@ -2958,10 +2940,7 @@ async def on_message(message):
                     return
 
                 if len(game.days[-1].deadlineMessages) > 0:
-                    try:
-                        await (await channel.fetch_message(game.days[-1].deadlineMessages[-1])).unpin()
-                    except discord.errors.NotFound:
-                        pass
+                    await (await channel.fetch_message(game.days[-1].deadlineMessages[-1])).unpin()
 
                 if is_dst():
                     announcement = await channel.send('{}, nominations are open. The deadline is {} PDT / {} EDT / {} UTC unless someone nominates or everyone skips.'.format(playerRole.mention, time.astimezone(pytz.timezone('US/Pacific')).strftime('%-I:%M %p'), time.astimezone(pytz.timezone('US/Eastern')).strftime('%-I:%M %p'), time.astimezone(pytz.utc).strftime('%H:%M')))
