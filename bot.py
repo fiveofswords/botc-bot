@@ -208,13 +208,13 @@ class Day():
             try:
                 await (await channel.fetch_message(msg)).unpin()
             except discord.errors.NotFound:
-                pass
+                print('Message not found.')
 
         for msg in self.deadlineMessages:
             try:
                 await (await channel.fetch_message(msg)).unpin()
             except discord.errors.NotFound:
-                pass
+                print('Message not found.')
 
         for msg in self.skipMessages:
             await (await channel.fetch_message(msg)).unpin()
