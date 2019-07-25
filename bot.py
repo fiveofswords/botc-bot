@@ -205,10 +205,16 @@ class Day():
                 person.character.on_day_end()
 
         for msg in self.voteEndMessages:
-            await (await channel.fetch_message(msg)).unpin()
+            try:
+                await (await channel.fetch_message(msg)).unpin()
+            except discord.errors.NotFound:
+                pass
 
         for msg in self.deadlineMessages:
-            await (await channel.fetch_message(msg)).unpin()
+            try:
+                await (await channel.fetch_message(msg)).unpin()
+            except discord.errors.NotFound:
+                pass
 
         for msg in self.skipMessages:
             await (await channel.fetch_message(msg)).unpin()
@@ -366,7 +372,10 @@ class Vote():
         game.days[-1].voteEndMessages.append(announcement.id)
 
         for msg in self.announcements:
-            await (await channel.fetch_message(msg)).unpin()
+            try:
+                await (await channel.fetch_message(msg)).unpin()
+            except discord.errors.NotFound:
+                pass
 
         self.done = True
 
@@ -397,7 +406,10 @@ class Vote():
         await channel.send('Nomination canceled!')
 
         for msg in self.announcements:
-            await (await channel.fetch_message(msg)).unpin()
+            try:
+                await (await channel.fetch_message(msg)).unpin()
+            except discord.errors.NotFound:
+                pass
 
         self.done = True
 
@@ -492,7 +504,10 @@ class TravelerVote():
         game.days[-1].voteEndMessages.append(announcement.id)
 
         for msg in self.announcements:
-            await (await channel.fetch_message(msg)).unpin()
+            try:
+                await (await channel.fetch_message(msg)).unpin()
+            except discord.errors.NotFound:
+                pass
 
         self.done = True
 
@@ -515,7 +530,10 @@ class TravelerVote():
         channel.send('Nomination canceled.')
 
         for msg in self.announcements:
-            await (await channel.fetch_message(msg)).unpin()
+            try:
+                await (await channel.fetch_message(msg)).unpin()
+            except discord.errors.NotFound:
+                pass
 
         self.done = True
 
@@ -2940,7 +2958,10 @@ async def on_message(message):
                     return
 
                 if len(game.days[-1].deadlineMessages) > 0:
-                    await (await channel.fetch_message(game.days[-1].deadlineMessages[-1])).unpin()
+                    try:
+                        await (await channel.fetch_message(game.days[-1].deadlineMessages[-1])).unpin()
+                    except discord.errors.NotFound:
+                        pass
 
                 if is_dst():
                     announcement = await channel.send('{}, nominations are open. The deadline is {} PDT / {} EDT / {} UTC unless someone nominates or everyone skips.'.format(playerRole.mention, time.astimezone(pytz.timezone('US/Pacific')).strftime('%-I:%M %p'), time.astimezone(pytz.timezone('US/Eastern')).strftime('%-I:%M %p'), time.astimezone(pytz.utc).strftime('%H:%M')))
@@ -3052,7 +3073,7 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
                 notActive = [player for player in game.seatingOrder if player.isActive == False and player.alignment != 'neutral']
 
                 if notActive == []:
-                    message.author.send('Everyone has spoken!')
+                    await message.author.send('Everyone has spoken!')
                     return
 
                 messageText = 'These players have not spoken:'
@@ -3075,7 +3096,7 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
 
                 canNominate = [player for player in game.seatingOrder if player.canNominate == True and player.hasSkipped == False and player.alignment != 'neutral']
                 if canNominate == []:
-                    message.author.send('Everyone has nominated or skipped!')
+                    await message.author.send('Everyone has nominated or skipped!')
                     return
 
                 messageText = 'These players have not nominated or skipped:'
@@ -3098,7 +3119,7 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
 
                 canBeNominated = [player for player in game.seatingOrder if player.canBeNominated == True]
                 if canBeNominated == []:
-                    message.author.send('Everyone has been nominated!')
+                    await message.author.send('Everyone has been nominated!')
                     return
 
                 messageText = 'These players have not been nominated:'
