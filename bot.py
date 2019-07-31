@@ -1170,6 +1170,20 @@ class Professor(Townsfolk):
         super().__init__(parent)
         self.role_name = 'Professor'
 
+class Noble(Townsfolk):
+    # The noble
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Noble'
+
+class Preacher(Townsfolk):
+    # The preacher
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Preacher'
+
 class Sailor(Townsfolk):
     # The sailor
 
@@ -1322,13 +1336,6 @@ class PoppyGrower(Townsfolk):
         super().__init__(parent)
         self.role_name = 'Poppy Grower'
 
-class WitchHunter(Townsfolk):
-    # The witch hunter
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = 'Witch Hunter'
-
 class Cannibal(Townsfolk, AbilityModifier):
     # The cannibal
 
@@ -1376,6 +1383,14 @@ class Drunk(Outsider):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = 'Drunk'
+        self.isPoisoned = True
+
+class Goon(Outsider):
+    # The goon
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Goon'
         self.isPoisoned = True
 
 class Butler(Outsider):
@@ -1521,6 +1536,20 @@ class Widow(Minion):
         super().__init__(parent)
         self.role_name = 'Widow'
 
+class ScarletWoman(Minion):
+    # The scarlet woman
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Scarlet Woman'
+
+class Baron(Minion):
+    # The baron
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Baron'
+
 class Witch(Minion, NominationModifier, DayStartModifier):
     # The witch
 
@@ -1591,6 +1620,20 @@ class Po(Demon):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = 'Po'
+
+class Vigmormortis(Demon):
+    # The vigormortis
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Vigormortis'
+
+class LilMonsta(Demon):
+    # The lil' monsta
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Lil\' Monsta'
 
 class Leviathan(Demon):
     # The leviathan
