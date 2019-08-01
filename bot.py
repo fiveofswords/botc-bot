@@ -1091,10 +1091,10 @@ class Virgin(Townsfolk, NominationModifier):
         # Returns bool -- whether the nomination proceeds
         if nominee == self:
             if not self.beenNominated:
+                self.beenNominated = True
                 if isinstance(nominator.character, Townsfolk) and not self.isPoisoned:
                     if not nominator.isGhost:
                         await nominator.kill()
-                self.beenNominated = True
         return proceed
 
 class Chambermaid(Townsfolk):
@@ -1621,7 +1621,7 @@ class Po(Demon):
         super().__init__(parent)
         self.role_name = 'Po'
 
-class Vigmormortis(Demon):
+class Vigormortis(Demon):
     # The vigormortis
 
     def __init__(self, parent):
@@ -1797,7 +1797,7 @@ class Thief(Traveler, DayStartModifier, VoteBeginningModifier):
             self.target = None
             return True
 
-        msg = await origin.send('Who is bureaucrated?')
+        msg = await origin.send('Who is thiefed?')
         try:
             reply = await client.wait_for('message', check=(lambda x: x.author==origin and x.channel==msg.channel), timeout=200)
         except asyncio.TimeoutError:
