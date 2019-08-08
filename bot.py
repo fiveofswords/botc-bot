@@ -1206,7 +1206,7 @@ class TeaLady(Townsfolk, DeathModifier):
     def on_death(self, person, dies):
         neighbor1 = game.seatingOrder[self.parent.position-1]
         neighbor2 = game.seatingOrder[self.parent.position+1]
-        if neighbor1.alignment == 'good' and neighbor2.alignment == 'good' and (person == neighbor1 or person == neighbor2):
+        if neighbor1.alignment == 'good' and neighbor2.alignment == 'good' and (person == neighbor1 or person == neighbor2) and self.isPoisoned == False:
             return False
         return True
 
@@ -1391,7 +1391,7 @@ class Goon(Outsider):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = 'Goon'
-        self.isPoisoned = True
+        self.isPoisoned = False
 
 class Butler(Outsider):
     # The butler
@@ -1550,6 +1550,21 @@ class Baron(Minion):
         super().__init__(parent)
         self.role_name = 'Baron'
 
+class Assassin(Minion):
+    # The assassin
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Assassin'
+
+class DevilSAdvocate(Minion):
+    # The devil's advocate
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Devil\'s Advocate'
+
+
 class Witch(Minion, NominationModifier, DayStartModifier):
     # The witch
 
@@ -1648,6 +1663,13 @@ class AlHadikiar(Demon):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = 'Po'
+
+class Zombuul(Demon):
+    # the zombuul
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Zombuul'
 
 class Legion(Demon):
     # the legion
