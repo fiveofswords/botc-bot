@@ -394,7 +394,6 @@ class Vote():
             self.nominator.canNominate = True
         if self.nominee:
             self.nominee.canBeNominated = True
-        await channel.send('Nomination canceled!')
 
         for msg in self.announcements:
             await (await channel.fetch_message(msg)).unpin()
@@ -512,7 +511,6 @@ class TravelerVote():
             self.nominator.canNominate = True
         if self.nominee:
             self.nominee.canBeNominated = True
-        channel.send('Nomination canceled.')
 
         for msg in self.announcements:
             await (await channel.fetch_message(msg)).unpin()
@@ -1564,7 +1562,6 @@ class DevilSAdvocate(Minion):
         super().__init__(parent)
         self.role_name = 'Devil\'s Advocate'
 
-
 class Witch(Minion, NominationModifier, DayStartModifier):
     # The witch
 
@@ -1596,6 +1593,19 @@ class Witch(Minion, NominationModifier, DayStartModifier):
     async def on_nomination(self, nominee, nominator, proceed):
         if self.witched and self.witched == nominator and not self.witched.isGhost and not self.parent.isGhost and not self.isPoisoned:
             await self.witched.kill()
+        return proceed
+
+class OrganGrinder(Minion, NominationModifier):
+    # The organ grinder
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Organ Grinder'
+
+    async def on_nomination(self, nominee, nominator, proceed):
+        if not self.isPoisoned and not self.parent.isGhost:
+            await channel.send('Organ grinder is in play. Message your votes to the storytellers.')
+            return False
         return proceed
 
 class FangGu(Demon):
@@ -2984,6 +2994,7 @@ async def on_message(message):
                 await game.days[-1].votes[-1].delete()
                 await game.days[-1].open_pms()
                 await game.days[-1].open_noms()
+                await channel.send('Nomination canceled!')
                 if game != None:
                     backup('current_game.pckl')
                 return
