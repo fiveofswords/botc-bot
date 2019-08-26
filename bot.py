@@ -424,9 +424,6 @@ class TravelerVote():
         # Calls for person to vote
 
         toCall = self.order[self.position]
-        if toCall.isGhost and toCall.deadVotes < 1:
-            await self.vote(0)
-            return
         if toCall.user.id in self.presetVotes:
             await self.vote(self.presetVotes[toCall.user.id])
             return
