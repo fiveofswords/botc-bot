@@ -1229,21 +1229,21 @@ class Dreamer(Townsfolk):
 class Flowergirl(Townsfolk):
      # The flowergirl
 
-     def __init__(self):
+     def __init__(self, parent):
          super().__init__()
          self.role_name = 'Flowergirl'
 
 class Juggler(Townsfolk):
      # The juggler
 
-     def __init__(self):
+     def __init__(self, parent):
          super().__init__()
          self.role_name = 'Juggler'
 
 class Mathematician(Townsfolk):
      # The mathematician
 
-     def __init__(self):
+     def __init__(self, parent):
          super().__init__()
          self.role_name = 'Mathematician'
 
@@ -1285,7 +1285,7 @@ class Seamstress(Townsfolk):
 class SnakeCharmer(Townsfolk):
      # The snake charmer
 
-     def __init__(self):
+     def __init__(self, parent):
          super().__init__()
          self.role_name = 'Snake Charmer'
 
@@ -1604,6 +1604,34 @@ class OrganGrinder(Minion, NominationModifier):
             await channel.send('Organ grinder is in play. Message your votes to the storytellers.')
             return False
         return proceed
+
+class EvilTwin(Minion):
+    # The evil twin
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Evil Twin'
+
+class Cerenovus(Minion):
+    # The cerenovus
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Cerenovus'
+
+class PitHag(Minion):
+    # The pit-hag
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Pit-Hag'
+
+class Vortox(Demon):
+    # The fang gu
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Vortox'
 
 class FangGu(Demon):
     # The fang gu
