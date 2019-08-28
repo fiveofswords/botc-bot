@@ -1230,21 +1230,21 @@ class Flowergirl(Townsfolk):
      # The flowergirl
 
      def __init__(self, parent):
-         super().__init__()
+         super().__init__(parent)
          self.role_name = 'Flowergirl'
 
 class Juggler(Townsfolk):
      # The juggler
 
      def __init__(self, parent):
-         super().__init__()
+         super().__init__(parent)
          self.role_name = 'Juggler'
 
 class Mathematician(Townsfolk):
      # The mathematician
 
      def __init__(self, parent):
-         super().__init__()
+         super().__init__(parent)
          self.role_name = 'Mathematician'
 
 class Oracle(Townsfolk):
@@ -1286,7 +1286,7 @@ class SnakeCharmer(Townsfolk):
      # The snake charmer
 
      def __init__(self, parent):
-         super().__init__()
+         super().__init__(parent)
          self.role_name = 'Snake Charmer'
 
 class TownCrier(Townsfolk):
