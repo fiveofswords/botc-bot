@@ -1409,12 +1409,12 @@ class Recluse(Outsider):
         super().__init__(parent)
         self.role_name = 'Recluse'
 
-class Regent(Outsider):
-    # The regent
+class Moonchild(Outsider):
+    # The moonchild
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.role_name = 'Regent'
+        self.role_name = 'Moonchild'
 
 class Lunatic(Outsider):
     # The lunatic
@@ -1627,7 +1627,7 @@ class PitHag(Minion):
         self.role_name = 'Pit-Hag'
 
 class Vortox(Demon):
-    # The fang gu
+    # The vortox
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -1690,14 +1690,14 @@ class Leviathan(Demon):
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.role_name = 'Po'
+        self.role_name = 'Leviathan'
 
 class AlHadikiar(Demon):
     # the al-hadikiar
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.role_name = 'Po'
+        self.role_name = 'Al-Hadikiar'
 
 class Zombuul(Demon):
     # the zombuul
