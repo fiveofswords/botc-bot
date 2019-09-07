@@ -2615,7 +2615,7 @@ async def on_message(message):
                 if not isinstance(person.character, Traveler):
                     await message.author.send('{} is not a traveler.'.format(person.nick))
 
-                await person.character.exile(person)
+                await person.character.exile(person, message.author)
                 if game != None:
                     backup('current_game.pckl')
                 return
