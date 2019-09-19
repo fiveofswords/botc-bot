@@ -208,19 +208,19 @@ class Day():
             try:
                 await (await channel.fetch_message(msg)).unpin()
             except discord.errors.NotFound:
-                print('Missing message: msg')
+                print('Missing message: ', str(msg))
 
         for msg in self.deadlineMessages:
             try:
                 await (await channel.fetch_message(msg)).unpin()
             except discord.errors.NotFound:
-                print('Missing message: msg')
+                print('Missing message: ', str(msg))
 
         for msg in self.skipMessages:
             try:
                 await (await channel.fetch_message(msg)).unpin()
             except discord.errors.NotFound:
-                print('Missing message: msg')
+                print('Missing message: ', str(msg))
 
         game.isDay = False
         self.isNoms = False
