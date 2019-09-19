@@ -205,13 +205,22 @@ class Day():
                 person.character.on_day_end()
 
         for msg in self.voteEndMessages:
-            await (await channel.fetch_message(msg)).unpin()
+            try:
+                await (await channel.fetch_message(msg)).unpin()
+            except discord.errors.NotFound:
+                pass
 
         for msg in self.deadlineMessages:
-            await (await channel.fetch_message(msg)).unpin()
+            try:
+                await (await channel.fetch_message(msg)).unpin()
+            except discord.errors.NotFound:
+                pass
 
         for msg in self.skipMessages:
-            await (await channel.fetch_message(msg)).unpin()
+            try:
+                await (await channel.fetch_message(msg)).unpin()
+            except discord.errors.NotFound:
+                pass
 
         game.isDay = False
         self.isNoms = False
