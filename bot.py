@@ -1379,6 +1379,13 @@ class Amnesiac(Townsfolk):
         super().__init__(parent)
         self.role_name = 'Amnesiac'
 
+class Huntsman(Townsfolk):
+    # The huntsman
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Huntsman'
+
 # Outsiders
 
 class Drunk(Outsider):
@@ -1482,6 +1489,21 @@ class Golem(Outsider, NominationModifier):
                 await nominee.kill()
             self.hasNominated = True
         return proceed
+
+class PlagueDoctor(Outsider):
+    # The plague doctor
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Plague Doctor'
+
+class Damsel(Outsider):
+    # The damsel
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Damsel'
+
 
 class Godfather(Minion):
     # The godfather
@@ -1635,6 +1657,13 @@ class PitHag(Minion):
         super().__init__(parent)
         self.role_name = 'Pit-Hag'
 
+class Mephit(Minion):
+    # The mephit
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Mephit'
+
 class Vortox(Demon):
     # The vortox
 
@@ -1728,6 +1757,13 @@ class Legion(Demon):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = 'Legion'
+
+class Ojo(Demon):
+    # the ojo
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Ojo'
 
 class Beggar(Traveler):
     # the beggar
