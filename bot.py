@@ -95,7 +95,7 @@ class Game():
             await person.kill()
         if kills == [] and len(self.days) > 0:
             await channel.send('No one has died.')
-        await channel.send('{}, wake up!'.format(playerRole.mention))
+        await channel.send('{}, wake up! Message the storytellers to set default votes for today.'.format(playerRole.mention))
         self.days.append(Day())
         self.isDay = True
         await update_presence(client)
