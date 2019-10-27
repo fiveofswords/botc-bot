@@ -1709,6 +1709,13 @@ class Po(Demon):
         super().__init__(parent)
         self.role_name = 'Po'
 
+class Pukka(Demon):
+    # The pukka
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Pukka'
+
 class Shabaloth(Demon):
     # The shabaloth
 
