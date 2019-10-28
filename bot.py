@@ -1702,6 +1702,7 @@ class NoDashii(Demon):
         neighbor2.character.isPoisoned = True
         '''
 
+
 class Po(Demon):
     # The po
 
