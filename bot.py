@@ -704,7 +704,7 @@ class Player():
                 for memb in gamemasterRole.members:
                     await memb.send('Everyone has spoken!')
 
-            canNominate = [player for player in game.seatingOrder if player.canNominate == True and player.hasSkipped == False and player.alignment != 'neutral']
+            canNominate = [player for player in game.seatingOrder if player.canNominate == True and player.hasSkipped == False and player.alignment != 'neutral' and player.isGhost == False]
             if len(canNominate) == 1:
                 for memb in gamemasterRole.members:
                     await memb.send('Just waiting on {} to nominate or skip.'.format(canNominate[0].nick))
@@ -2083,7 +2083,7 @@ async def cannot_nominate(user):
     # Uses user's nomination
 
     (await get_player(user)).canNominate = False
-    canNominate = [player for player in game.seatingOrder if player.canNominate == True and player.hasSkipped == False]
+    canNominate = [player for player in game.seatingOrder if player.canNominate == True and player.hasSkipped == False and player.isGhost == False]
     if len(canNominate) == 1:
         for memb in gamemasterRole.members:
             await memb.send('Just waiting on {} to nominate or skip.'.format(canNominate[0].nick))
@@ -3234,7 +3234,7 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
                     await message.author.send('It\'s not day right now.')
                     return
 
-                canNominate = [player for player in game.seatingOrder if player.canNominate == True and player.hasSkipped == False and player.alignment != 'neutral']
+                canNominate = [player for player in game.seatingOrder if player.canNominate == True and player.hasSkipped == False and player.alignment != 'neutral' and player.isGhost == False]
                 if canNominate == []:
                     await message.author.send('Everyone has nominated or skipped!')
                     return
@@ -4015,7 +4015,7 @@ async def on_message_edit(before, after):
             if game != None:
                 backup('current_game.pckl')
 
-            canNominate = [player for player in game.seatingOrder if player.canNominate == True and player.hasSkipped == False and player.alignment != 'neutral']
+            canNominate = [player for player in game.seatingOrder if player.canNominate == True and player.hasSkipped == False and player.alignment != 'neutral' and player.isGhost == False]
             if len(canNominate) == 1:
                 for memb in gamemasterRole.members:
                     await memb.send('Just waiting on {} to nominate or skip.'.format(canNominate[0].nick))
