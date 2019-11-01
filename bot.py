@@ -29,6 +29,7 @@ class Game():
         # announcement
         await channel.send('{}, {} has won. Good game!'.format(playerRole.mention, winner.lower()))
 
+        '''
         # save backup
         i = 0
         while True:
@@ -36,6 +37,7 @@ class Game():
             if not os.path.isfile('game_{}.pckl'.format(str(i))):
                 break
         backup('game_{}.pckl'.format(str(i)))
+        '''
 
         # delete old backup
         remove_backup('current_game.pckl')
@@ -639,12 +641,18 @@ class Player():
         if die:
             die = await self.kill(suppress = True, force = force)
             if die:
-                announcement = await channel.send('{} has been executed.'.format(self.user.mention))
+                announcement = await channel.send('{} has been executed, and dies.'.format(self.user.mention))
                 await announcement.pin()
             else:
-                await channel.send('{} has been executed, but does not die.'.format(self.user.mention))
+                if self.isGhost:
+                    await channel.send('{} has been executed, but is already dead.'.format(self.user.mention))
+                else:
+                    await channel.send('{} has been executed, but does not die.'.format(self.user.mention))
         else:
-            await channel.send('{} has been executed, but does not die.'.format(self.user.mention))
+            if self.isGhost:
+                await channel.send('{} has been executed, but is already dead.'.format(self.user.mention))
+            else:
+                await channel.send('{} has been executed, but does not die.'.format(self.user.mention))
         game.days[-1].isExecutionToday = True
         if end:
             if game.isDay:
@@ -984,9 +992,15 @@ class Traveler(SeatingOrderModifier):
                 announcement = await channel.send('{} has been exiled.'.format(person.user.mention))
                 await announcement.pin()
             else:
-                await channel.send('{} has been exiled, but does not die.'.format(person.user.mention))
+                if self.isGhost:
+                    await channel.send('{} has been exiled, but is already dead.'.format(person.user.mention))
+                else:
+                    await channel.send('{} has been exiled, but does not die.'.format(person.user.mention))
         else:
-            await channel.send('{} has been exiled, but does not die.'.format(person.user.mention))
+            if self.isGhost:
+                await channel.send('{} has been exiled, but is already dead.'.format(person.user.mention))
+            else:
+                await channel.send('{} has been exiled, but does not die.'.format(person.user.mention))
         await person.user.add_roles(travelerRole)
 
 class Storyteller(SeatingOrderModifier):
