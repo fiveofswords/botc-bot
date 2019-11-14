@@ -1407,6 +1407,83 @@ class Huntsman(Townsfolk):
         super().__init__(parent)
         self.role_name = 'Huntsman'
 
+class Alchemist(Townsfolk):
+    # The alchemist
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Alchemist'
+
+class BountyHunter(Townsfolk):
+    # The bounty hunter
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Bounty Hunter'
+
+class Choirboy(Townsfolk):
+    # The choirboy
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Choirboy'
+
+class Courtier(Townsfolk):
+    # The courtier
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Courtier'
+
+class CultLeader(Townsfolk):
+    # The cult leader
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Cult Leader'
+
+class Engineer(Townsfolk):
+    # The engineer
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Engineer'
+
+class King(Townsfolk):
+    # The king
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'King'
+
+class Lycanthrope(Townsfolk):
+    # The lycanthrope
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Lycanthrope'
+
+class Magician(Townsfolk):
+    # The magician
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Magician'
+
+class Shugenja(Townsfolk):
+    # The shugenja
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Shugenja'
+
+class Steward(Townsfolk):
+    # The steward
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Steward'
+
 # Outsiders
 
 class Drunk(Outsider):
@@ -1525,6 +1602,40 @@ class Damsel(Outsider):
         super().__init__(parent)
         self.role_name = 'Damsel'
 
+class Hatter(Outsider):
+    # The hatter
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Hatter'
+
+class Heretic(Outsider):
+    # The heretic
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Heretic'
+
+class Politician(Outsider):
+    # The politician
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Politician'
+
+class Puzzlemaster(Outsider):
+    # The puzzlemaster
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Puzzlemaster'
+
+class Snitch(Outsider):
+    # The snitch
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Snitch'
 
 class Godfather(Minion):
     # The godfather
@@ -1685,6 +1796,34 @@ class Mephit(Minion):
         super().__init__(parent)
         self.role_name = 'Mephit'
 
+class Boomdandy(Minion):
+    # The boomdandy
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Boomdandy'
+
+class Fearmonger(Minion):
+    # The fearmonger
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Fearmonger'
+
+class Psychopath(Minion):
+    # The psychopath
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Psychopath'
+
+class Vizier(Minion):
+    # The vizier
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Vizier'
+
 class Vortox(Demon):
     # The vortox
 
@@ -1793,6 +1932,20 @@ class Ojo(Demon):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = 'Ojo'
+
+class Lleech(Demon):
+    # The lleech
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Lleech'
+
+class Riot(Demon):
+    # The riot
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Riot'
 
 class Beggar(Traveler):
     # the beggar
