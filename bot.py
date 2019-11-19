@@ -4249,12 +4249,14 @@ async def on_member_update(before, after):
                 if st.user.id == after.id:
                     game.storytellers.remove(st)
 
-
 ### Event loop
-while True:
-    try:
-        client.run(TOKEN)
-        print('end')
-        time.sleep(5)
-    except Exception as e:
-        print(str(e))
+def run_client(client, *args, **kwargs):
+    loop = asyncio.get_event_loop()
+    while True:
+        try:
+            loop.run_until_complete(client.start(*args, **kwargs))
+        except Exception as e:
+            print(e)
+            logging.exception('Ignoring exception at %s', exc_info=e)
+
+run_client(client, TOKEN)
