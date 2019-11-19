@@ -1,4 +1,4 @@
-import discord, os, time, dill, sys, asyncio, pytz, datetime, weakref
+import discord, os, time, dill, sys, asyncio, pytz, datetime, weakref, logging
 import numpy as np
 from config import *
 from dateutil.parser import parse
