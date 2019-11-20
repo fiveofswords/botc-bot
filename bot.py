@@ -4263,7 +4263,8 @@ def run_client(client, *args, **kwargs):
             loop.run_until_complete(client.start(*args, **kwargs))
             time.sleep(5)
         except Exception as e:
-            logging.exception('Ignoring exception at %s', exc_info=e)
-            time.sleep(100)
+            print(e)
+            logging.exception('')
+            time.sleep(5)
 
 run_client(client, TOKEN)
