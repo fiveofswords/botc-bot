@@ -413,7 +413,10 @@ class Vote():
             self.nominee.canBeNominated = True
 
         for msg in self.announcements:
-            await (await channel.fetch_message(msg)).unpin()
+            try:
+                await (await channel.fetch_message(msg)).unpin()
+            except discord.errors.NotFound:
+                pass
 
         self.done = True
 
