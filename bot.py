@@ -3726,6 +3726,7 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
                             time = int(argument[1])*60
                         except ValueError:
                             await message.author.send('{} is not a valid number of minutes.'.format(argument[1]))
+                            return
 
                     try:
                         preferences[message.author.id]['defaultvote'] = (vt, time)
@@ -4259,15 +4260,11 @@ async def on_member_update(before, after):
                     game.storytellers.remove(st)
 
 ### Event loop
-def run_client(client, *args, **kwargs):
-    loop = asyncio.get_event_loop()
-    while True:
-        try:
-            loop.run_until_complete(client.start(*args, **kwargs))
-            time.sleep(5)
-        except Exception as e:
-            print(e)
-            logging.exception('')
-            time.sleep(5)
-
-run_client(client, TOKEN)
+while True:
+    try:
+        client.run(TOKEN)
+        print('end')
+        time.sleep(5)
+    except Exception as e:
+        logging.exception('Ignoring exception')
+        print(str(e))
