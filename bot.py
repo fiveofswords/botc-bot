@@ -202,6 +202,37 @@ class Day():
             if not proceed:
                 await self.votes[-1].delete()
                 return
+
+        message_tally = {X: 0 for X in itertools.combinations(game.seatingOrder, 2)}
+        for person in game.seatingOrder:
+            for msg in person.messageHistory:
+                if msg['from'] == person:
+                    if len(self.votes) > 2:
+                        if msg['time'] >= (await channel.fetch_message(self.votes[-3].announcements[0])).created_at:
+                            if (person, msg['to']) in message_tally:
+                                message_tally[(person,msg['to'])] += 1
+                            elif (msg['to'], person) in message_tally:
+                                message_tally[(msg['to'],person)] += 1
+                            else:
+                                message_tally[(person,msg['to'])] = 1
+                    else:
+                        if msg['day'] == len(game.days):
+                            if (person, msg['to']) in message_tally:
+                                message_tally[(person,msg['to'])] += 1
+                            elif (msg['to'], person) in message_tally:
+                                message_tally[(msg['to'],person)] += 1
+                            else:
+                                message_tally[(person,msg['to'])] = 1
+        sorted_tally = sorted(message_tally.items(), key=lambda x: -x[1])
+        messageText = '**Message Tally:**'
+        for pair in sorted_tally:
+            if pair[1] > 0:
+                messageText += '\n> {person1} - {person2}: {n}'.format(person1 = pair[0][0].nick, person2 = pair[0][1].nick, n = pair[1])
+            else:
+                messageText += '\n> All other pairs: 0'
+                break
+        await channel.send(messageText)
+
         self.votes[-1].announcements.append(announcement.id)
         await self.votes[-1].call_next()
 
@@ -238,6 +269,37 @@ class Day():
             await channel.send('No one was executed.')
 
         await channel.send('{}, go to sleep!'.format(playerRole.mention))
+
+        message_tally = {X: 0 for X in itertools.combinations(game.seatingOrder, 2)}
+        for person in game.seatingOrder:
+            for msg in person.messageHistory:
+                if msg['from'] == person:
+                    if len(self.votes) > 2:
+                        if msg['time'] >= (await channel.fetch_message(self.votes[-3].announcements[0])).created_at:
+                            if (person, msg['to']) in message_tally:
+                                message_tally[(person,msg['to'])] += 1
+                            elif (msg['to'], person) in message_tally:
+                                message_tally[(msg['to'],person)] += 1
+                            else:
+                                message_tally[(person,msg['to'])] = 1
+                    else:
+                        if msg['day'] == len(game.days):
+                            if (person, msg['to']) in message_tally:
+                                message_tally[(person,msg['to'])] += 1
+                            elif (msg['to'], person) in message_tally:
+                                message_tally[(msg['to'],person)] += 1
+                            else:
+                                message_tally[(person,msg['to'])] = 1
+        sorted_tally = sorted(message_tally.items(), key=lambda x: -x[1])
+        messageText = '**Message Tally:**'
+        for pair in sorted_tally:
+            if pair[1] > 0:
+                messageText += '\n> {person1} - {person2}: {n}'.format(person1 = pair[0][0].nick, person2 = pair[0][1].nick, n = pair[1])
+            else:
+                messageText += '\n> All other pairs: 0'
+                break
+        await channel.send(messageText)
+
         await update_presence(client)
 
 class Vote():
@@ -700,7 +762,7 @@ class Player():
             if user != self.user:
                 await user.send('**[**{} **>** {}**]** {}'.format(frm.nick, self.nick, content))
 
-        await channel.send('**{}** > **{}**'.format(frm.nick, self.nick))
+        # await channel.send('**{}** > **{}**'.format(frm.nick, self.nick))
 
         await frm.user.send('Message sent!')
         return
