@@ -3402,6 +3402,10 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
             # Checks active players
             elif command == 'notactive':
 
+                if not gamemasterRole in server.get_member(message.author.id).roles:
+                    await message.author.send('You don\'t have permission to view that information.')
+                    return
+
                 if game == None:
                     await message.author.send('There\'s no game right now.')
                     return
