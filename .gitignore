@@ -1,3 +1,8 @@
 token.txt
 config.py
+discord.log
 *.pckl
++class_generator.py
+.DS_Store
+testing.py
+__pycache__
