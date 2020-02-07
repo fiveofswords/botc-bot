@@ -1836,7 +1836,8 @@ class OrganGrinder(Minion, NominationModifier):
 
     async def on_nomination(self, nominee, nominator, proceed):
         if not self.isPoisoned and not self.parent.isGhost:
-            await channel.send('Organ grinder is in play. Message your votes to the storytellers.')
+            msg = await channel.send('Organ grinder is in play. Message your votes to the storytellers.')
+            game.days[-1].votes[-1].announcements += msg.id
             message_tally = {X: 0 for X in itertools.combinations(game.seatingOrder, 2)}
             for person in game.seatingOrder:
                 for msg in person.messageHistory:
@@ -3440,6 +3441,52 @@ async def on_message(message):
                 if game != None:
                     backup('current_game.pckl')
                 return
+
+            # Sends a message tally
+            elif command == 'messagetally':
+                if game == None:
+                    await message.author.send('There\'s no game right now.')
+                    return
+
+                if not gamemasterRole in server.get_member(message.author.id).roles:
+                    await message.author.send('You don\'t have permission to open PMs and nominations.')
+                    return
+
+                if game.days == []:
+                    await message.author.send('There have been no days.')
+                    return
+
+                try:
+                    idn = int(argument)
+                except ValueError:
+                    await message.author.send('Invalid message ID: {}'.format(argument))
+
+                try:
+                    originMsg = await channel.fetch_message(idn)
+                except discord.errors.NotFound:
+                    await message.author.send('Message not found by ID: {}'.format(argument))
+
+                message_tally = {X: 0 for X in itertools.combinations(game.seatingOrder, 2)}
+                for person in game.seatingOrder:
+                    for msg in person.messageHistory:
+                        if msg['from'] == person:
+                            if msg['time'] >= originMsg.created_at:
+                                if (person, msg['to']) in message_tally:
+                                    message_tally[(person,msg['to'])] += 1
+                                elif (msg['to'], person) in message_tally:
+                                    message_tally[(msg['to'],person)] += 1
+                                else:
+                                    message_tally[(person,msg['to'])] = 1
+                sorted_tally = sorted(message_tally.items(), key=lambda x: -x[1])
+                messageText = 'Message Tally:'
+                for pair in sorted_tally:
+                    if pair[1] > 0:
+                        messageText += '\n> {person1} - {person2}: {n}'.format(person1 = pair[0][0].nick, person2 = pair[0][1].nick, n = pair[1])
+                    else:
+                        messageText += '\n> All other pairs: 0'
+                        break
+                await channel.send(messageText)
+
 
             # Views relevant information about a player
             elif command == 'info':
