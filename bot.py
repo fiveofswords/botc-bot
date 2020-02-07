@@ -368,10 +368,11 @@ class Vote():
 
         # Check dead votes
         if vt == 1 and voter.isGhost and voter.deadVotes < 1:
-            if not st:
-                await voter.user.send('You do not have any dead votes. Please vote no.')
+            if not operator:
+                await voter.user.send('You do not have any dead votes. Entering a no vote.')
+                await self.vote(0)
             else:
-                await operator.send('{} does not have any dead votes. They must vote no.'.format(voter.nick))
+                await operator.send('{} does not have any dead votes. They must vote no. If you want them to vote yes, add a dead vote first:\n```\n@givedeadvote [player]\n```'.format(voter.nick))
             return
         if vt == 1 and voter.isGhost:
             await voter.remove_dead_vote()
@@ -1836,6 +1837,35 @@ class OrganGrinder(Minion, NominationModifier):
     async def on_nomination(self, nominee, nominator, proceed):
         if not self.isPoisoned and not self.parent.isGhost:
             await channel.send('Organ grinder is in play. Message your votes to the storytellers.')
+            message_tally = {X: 0 for X in itertools.combinations(game.seatingOrder, 2)}
+            for person in game.seatingOrder:
+                for msg in person.messageHistory:
+                    if msg['from'] == person:
+                        if len(game.days[-1].votes) > 2:
+                            if msg['time'] >= (await channel.fetch_message(game.days[-1].votes[-3].announcements[0])).created_at:
+                                if (person, msg['to']) in message_tally:
+                                    message_tally[(person,msg['to'])] += 1
+                                elif (msg['to'], person) in message_tally:
+                                    message_tally[(msg['to'],person)] += 1
+                                else:
+                                    message_tally[(person,msg['to'])] = 1
+                        else:
+                            if msg['day'] == len(game.days):
+                                if (person, msg['to']) in message_tally:
+                                    message_tally[(person,msg['to'])] += 1
+                                elif (msg['to'], person) in message_tally:
+                                    message_tally[(msg['to'],person)] += 1
+                                else:
+                                    message_tally[(person,msg['to'])] = 1
+            sorted_tally = sorted(message_tally.items(), key=lambda x: -x[1])
+            messageText = '**Message Tally:**'
+            for pair in sorted_tally:
+                if pair[1] > 0:
+                    messageText += '\n> {person1} - {person2}: {n}'.format(person1 = pair[0][0].nick, person2 = pair[0][1].nick, n = pair[1])
+                else:
+                    messageText += '\n> All other pairs: 0'
+                    break
+            await channel.send(messageText)
             return False
         return proceed
 
