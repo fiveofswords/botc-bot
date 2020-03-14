@@ -2695,13 +2695,9 @@ async def on_message(message):
                 botNick = server.get_member(client.user.id).nick
                 channelName = channel.name
                 serverName = server.name
-                storytellers = [(st.nick if st.nick else st.name) for st in gamemasterRole.members]
+                storytellers = [st.display_name for st in gamemasterRole.members]
 
-                if len(storytellers) == 0:
-                    await player.send('Hello! Welcome to Blood on the Clocktower! I\'m {0}, the bot used on #{1} in {2} to run games.\n\nThis is where you\'ll perform your private messaging during the game. To send a pm to a player, type `@pm [name]`.\n\nFor more info, type `@help`.'.format(botNick, channelName, serverName))
-                    await message.author.send('Welcomed {} successfully!'.format(player.nick))
-                    return
-                elif len(storytellers) == 1:
+                if len(storytellers) == 1:
                     text = storytellers[0]
                 elif len(storytellers) == 2:
                     text = storytellers[0] + ' and ' + storytellers[1]
@@ -2709,8 +2705,8 @@ async def on_message(message):
                     text = ', '.join([x for x in storytellers[:-1]]) + ', and ' + storytellers[-1]
 
 
-                await player.send('Hello, {playerNick}! Welcome to Blood on the Clocktower on Discord! I\'m {botNick}, the bot used on #{channelName} in {serverName} to run games.\n\nThis is where you\'ll perform your private messaging during the game. To send a pm to a player, type `@pm [name]`.\n\nFor more info, type `@help`, or ask the storyteller(s): {storytellers}.'.format(botNick = botNick, channelName = channelName, serverName = serverName, storytellers = text, playerNick = (player.nick if player.nick else player.name)))
-                await message.author.send('Welcomed {} successfully!'.format(player.nick if player.nick else player.name))
+                await player.send('Hello, {playerNick}! {storytellerNick} welcomes you to Blood on the Clocktower on Discord! I\'m {botNick}, the bot used on #{channelName} in {serverName} to run games.\n\nThis is where you\'ll perform your private messaging during the game. To send a pm to a player, type `@pm [name]`.\n\nFor more info, type `@help`, or ask the storyteller(s): {storytellers}.'.format(botNick = botNick, channelName = channelName, serverName = serverName, storytellers = text, playerNick = player.display_name, storytellerNick = server.get_member(message.author.id).display_name))
+                await message.author.send('Welcomed {} successfully!'.format(player.display_name))
                 return
 
             # Starts game
