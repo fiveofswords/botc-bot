@@ -2682,6 +2682,37 @@ async def on_message(message):
                     backup('current_game.pckl')
                 return
 
+            # Welcomes players
+            elif command == 'welcome':
+                player = await select_player(message.author, argument, server.members)
+                if player == None:
+                    return
+
+                if not gamemasterRole in server.get_member(message.author.id).roles:
+                    await message.author.send('You don\'t have permission to do that.')
+                    return
+
+                botNick = server.get_member(client.user.id).nick
+                channelName = channel.name
+                serverName = server.name
+                storytellers = [(st.nick if st.nick else st.name) for st in gamemasterRole.members]
+
+                if len(storytellers) == 0:
+                    await player.send('Hello! Welcome to Blood on the Clocktower! I\'m {0}, the bot used on #{1} in {2} to run games.\n\nThis is where you\'ll perform your private messaging during the game. To send a pm to a player, type `@pm [name]`.\n\nFor more info, type `@help`.'.format(botNick, channelName, serverName))
+                    await message.author.send('Welcomed {} successfully!'.format(player.nick))
+                    return
+                elif len(storytellers) == 1:
+                    text = storytellers[0]
+                elif len(storytellers) == 2:
+                    text = storytellers[0] + ' and ' + storytellers[1]
+                else:
+                    text = ', '.join([x for x in storytellers[:-1]]) + ', and ' + storytellers[-1]
+
+
+                await player.send('Hello, {playerNick}! Welcome to Blood on the Clocktower on Discord! I\'m {botNick}, the bot used on #{channelName} in {serverName} to run games.\n\nThis is where you\'ll perform your private messaging during the game. To send a pm to a player, type `@pm [name]`.\n\nFor more info, type `@help`, or ask the storyteller(s): {storytellers}.'.format(botNick = botNick, channelName = channelName, serverName = serverName, storytellers = text, playerNick = (player.nick if player.nick else player.name)))
+                await message.author.send('Welcomed {} successfully!'.format(player.nick if player.nick else player.name))
+                return
+
             # Starts game
             elif command == 'startgame':
 
@@ -4159,7 +4190,7 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
                         embed.add_field(name='help info', value='Prints commands which display game information.', inline=False)
                         embed.add_field(name='help player', value='Prints the player help dialogue.', inline=False)
                         embed.add_field(name='help misc', value='Prints miscellaneous commands.', inline=False)
-                        embed.add_field(name='Bot Questions?', value='Ask Ben (nihilistkitten#6937)', inline=False)
+                        embed.add_field(name='Bot Questions?', value='Ask nihilistkitten#6937', inline=False)
                         await message.author.send(embed=embed)
                         return
                     elif argument == 'common':
@@ -4249,7 +4280,7 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
                 embed.add_field(name='notactive', value='lists players who are yet to speak', inline=False)
                 embed.add_field(name='cannominate', value='lists players who are yet to nominate or skip', inline=False)
                 embed.add_field(name='canbenominated', value='lists players who are yet to be nominated', inline=False)
-                embed.add_field(name='Bot Questions?', value='Ask Ben (nihilistkitten#6937)', inline=False)
+                embed.add_field(name='Bot Questions?', value='Ask nihilistkitten#6937', inline=False)
                 await message.author.send(embed = embed)
                 return
 
