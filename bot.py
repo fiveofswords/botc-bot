@@ -1850,20 +1850,6 @@ class Cannibal(Townsfolk, AbilityModifier):
     def add_ability(self, role):
         self.abilities = [role(self.parent)]
 
-class Balloonist(Townsfolk):
-    # The balloonist
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = 'Balloonist'
-
-class Fisherman(Townsfolk):
-    # The fisherman
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = 'Fisherman'
-
 class Widow(Minion):
     # The widow
 
