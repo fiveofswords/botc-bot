@@ -1840,6 +1840,44 @@ class Thief(Traveler, DayStartModifier, VoteBeginningModifier):
 
         return order, values, majority
 
+class Cannibal(Townsfolk, AbilityModifier):
+    # The cannibal
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Cannibal'
+
+    def add_ability(self, role):
+        self.abilities = [role(self.parent)]
+
+class Balloonist(Townsfolk):
+    # The balloonist
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Balloonist'
+
+class Fisherman(Townsfolk):
+    # The fisherman
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Fisherman'
+
+class Widow(Minion):
+    # The widow
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Widow'
+
+class Goblin(Minion):
+    # The goblin
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = 'Goblin'
+
 class Farmer(Townsfolk):
     # The farmer
 
@@ -2059,13 +2097,6 @@ class Snitch(Outsider):
         self.role_name = 'Snitch'
 
 
-class Cerenovous(Minion):
-    # The cerenovous
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = 'Cerenovous'
-
 class Marionette(Minion):
     # The marionette
 
@@ -2130,27 +2161,6 @@ class OrganGrinder(Minion, NominationModifier):
             await safe_send(channel,messageText)
             return False
         return proceed
-
-class EvilTwin(Minion):
-    # The evil twin
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = 'Evil Twin'
-
-class Cerenovus(Minion):
-    # The cerenovus
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = 'Cerenovus'
-
-class PitHag(Minion):
-    # The pit-hag
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = 'Pit-Hag'
 
 class Mephit(Minion):
     # The mephit
