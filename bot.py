@@ -353,7 +353,7 @@ class Vote():
             for memb in gamemasterRole.members:
                 await safe_send(memb,'{}\'s vote. Their default is {} in {} minutes.'.format(toCall.nick, ['no', 'yes'][default[0]],str(int(default[1]/60))))
             await asyncio.sleep(time)
-            if toCall == self.order[self.position]:
+            if toCall == game.days[-1].votes[-1].order[game.days[-1].votes[-1].position]:
                 await self.vote(default[0])
         except KeyError:
             for memb in gamemasterRole.members:
@@ -518,7 +518,7 @@ class TravelerVote():
             time = default[1]
             await toCall.user.send('Will enter a {} vote in {} minutes.'.format(['no', 'yes'][default[0]],str(int(default[1]/60))))
             await asyncio.sleep(time)
-            if toCall == self.order[self.position]:
+            if toCall == game.days[-1].votes[-1].order[game.days[-1].votes[-1].position]:
                 await self.vote(default[0])
             for memb in gamemasterRole.members:
                 await safe_send(memb,'{}\'s vote. Their default is {} in {} minutes.'.format(toCall.nick, ['no', 'yes'][default[0]],str(int(default[1]/60))))
