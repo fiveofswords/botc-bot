@@ -3697,6 +3697,11 @@ Poisoned: {}'''.format(person.nick, person.character.role_name, person.alignment
                         return
 
                 else:
+
+                    if (await get_player(message.author)).isGhost:
+                        await safe_send(message.author,'You are dead, and so cannot nominate.')
+                        return
+
                     if not (await get_player(message.author)).canNominate:
                         await safe_send(message.author,'You have already nominated.')
                         return
@@ -4316,13 +4321,13 @@ async def on_message_edit(before, after):
                 await after.unpin()
                 return
 
-            if not (await get_player(after.author)).canNominate:
-                await safe_send(channel,'You have already nominated.')
+            if (await get_player(after.author)).isGhost:
+                await safe_send(channel,'You are dead, and so cannot nominate.')
                 await after.unpin()
                 return
 
-            if (await get_player(after.author)).isGhost:
-                await safe_send(channel,'You are dead, and so cannot nominate.')
+            if not (await get_player(after.author)).canNominate:
+                await safe_send(channel,'You have already nominated.')
                 await after.unpin()
                 return
 
