@@ -2587,10 +2587,10 @@ async def on_message(message):
             # Generate command and arguments
             if ' ' in message.content:
                 # VERY DANGEROUS TESTING COMMAND
-                if message.content[1:message.content.index(' ')].lower() == 'exec':
-                    if message.author.id == 149969652141785088:
-                        await aexec(message.content[message.content.index(' ') + 1:])
-                        return
+                # if message.content[1:message.content.index(' ')].lower() == 'exec':
+                    # if message.author.id == 149969652141785088:
+                        # await aexec(message.content[message.content.index(' ') + 1:])
+                        # return
                 command = message.content[1:message.content.index(' ')].lower()
                 argument = message.content[message.content.index(' ') + 1:].lower()
             else:
