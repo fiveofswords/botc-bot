@@ -1798,8 +1798,6 @@ class Bureaucrat(Traveler, DayStartModifier, VoteBeginningModifier):
     def modify_vote_values(self, order, values, majority):
         if self.target and not self.isPoisoned:
             values[self.target] = (values[self.target][0], values[self.target][1] * 3)
-            for person in game.days[-1].votes[-1]:
-                majority += values[person][1]/2.0
 
         return order, values, majority
 
@@ -1834,9 +1832,6 @@ class Thief(Traveler, DayStartModifier, VoteBeginningModifier):
     def modify_vote_values(self, order, values, majority):
         if self.target and not self.isPoisoned:
             values[self.target] = (values[self.target][0], values[self.target][1] * -1)
-            for person in game.seatingOrder:
-                if not person.isGhost and person.alignment != 'neutral':
-                    majority += values[person][1]/2.0
 
         return order, values, majority
 
