@@ -1551,13 +1551,6 @@ class Soldier(Townsfolk):
         self.role_name = "Soldier"
 
 
-class Pixie(Townsfolk):
-    # The pixie
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Pixie"
-
 class Ravenkeeper(Townsfolk):
     # The ravenkeeper
 
@@ -1683,20 +1676,6 @@ class Professor(Townsfolk):
         super().__init__(parent)
         self.role_name = "Professor"
 
-
-class Noble(Townsfolk):
-    # The noble
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = 'Noble'
-
-class Preacher(Townsfolk):
-    # The preacher
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = 'Preacher'
 
 class Sailor(Townsfolk):
     # The sailor
@@ -2369,6 +2348,14 @@ class Fisherman(Townsfolk):
         self.role_name = "Fisherman"
 
 
+class Pixie(Townsfolk):
+    # The pixie
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Pixie"
+
+
 class Widow(Minion):
     # The widow
 
@@ -2385,62 +2372,13 @@ class Goblin(Minion):
         self.role_name = "Goblin"
 
 
-class Farmer(Townsfolk):
-    # The farmer
+class Leviathan(Demon):
+    # The leviathan
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.role_name = "Farmer"
+        self.role_name = "Leviathan"
 
-class Fisherman(Townsfolk):
-    # The fisherman
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = 'Fisherman'
-
-class General(Townsfolk):
-    # The general
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "General"
-
-class Knight(Townsfolk):
-    # The knight
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Knight"
-
-class PoppyGrower(Townsfolk):
-    # The poppy grower
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Poppy Grower"
-
-class Nightwatchman(Townsfolk):
-    # The nightwatchman
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Nightwatchman"
-
-class Balloonist(Townsfolk):
-    # The balloonist
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = 'Balloonist'
-
-# UNFINISHED
-class Atheist(Townsfolk):
-    # The atheist
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Atheist"
 
 class Amnesiac(Townsfolk):
     # The amnesiac
@@ -2449,19 +2387,6 @@ class Amnesiac(Townsfolk):
         super().__init__(parent)
         self.role_name = "Amnesiac"
 
-class Huntsman(Townsfolk):
-    # The huntsman
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Huntsman"
-
-class Alchemist(Townsfolk):
-    # The alchemist
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Alchemist"
 
 class BountyHunter(Townsfolk):
     # The bounty hunter
@@ -2470,33 +2395,6 @@ class BountyHunter(Townsfolk):
         super().__init__(parent)
         self.role_name = "Bounty Hunter"
 
-class Choirboy(Townsfolk):
-    # The choirboy
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Choirboy"
-
-class CultLeader(Townsfolk):
-    # The cult leader
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Cult Leader"
-
-class Engineer(Townsfolk):
-    # The engineer
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Engineer"
-
-class King(Townsfolk):
-    # The king
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "King"
 
 class Lycanthrope(Townsfolk):
     # The lycanthrope
@@ -2505,198 +2403,38 @@ class Lycanthrope(Townsfolk):
         super().__init__(parent)
         self.role_name = "Lycanthrope"
 
-class Magician(Townsfolk):
-    # The magician
+
+class CultLeader(Townsfolk):
+    # The cult leader
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.role_name = "Magician"
+        self.role_name = "Cult Leader"
 
-class Shugenja(Townsfolk):
-    # The shugenja
 
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Shugenja"
-
-class Steward(Townsfolk):
-    # The steward
+class General(Townsfolk):
+    # The general
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.role_name = "Steward"
+        self.role_name = "General"
 
-# Outsiders
-class Golem(Outsider, NominationModifier):
-    # The golem
 
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Golem"
-        self.hasNominated = False
-
-    async def on_nomination(self, nominee, nominator, proceed):
-        if nominator == self.parent:
-            if (
-                not isinstance(nominee.character, Demon)
-                and not self.isPoisoned
-                and not self.parent.isGhost
-                and not self.hasNominated == True
-            ):
-                await nominee.kill()
-        self.hasNominated = True
-        return proceed
-
-class PlagueDoctor(Outsider):
-    # The plague doctor
+class Pixie(Townsfolk):
+    # The pixie
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.role_name = "Plague Doctor"
+        self.role_name = "Pixie"
 
-class Damsel(Outsider):
-    # The damsel
 
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Damsel"
-
-class Hatter(Outsider):
-    # The hatter
+class Acrobat(Outsider):
+    # The acrobat
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.role_name = "Hatter"
+        self.role_name = "Acrobat"
 
-class Heretic(Outsider):
-    # The heretic
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Heretic"
-
-class Politician(Outsider):
-    # The politician
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Politician"
-
-class Puzzlemaster(Outsider):
-    # The puzzlemaster
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Puzzlemaster"
-
-class Snitch(Outsider):
-    # The snitch
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Snitch"
-
-
-class Marionette(Minion):
-    # The marionette
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Marionette"
-        self.isPoisoned = True
-
-class Harpy(Minion):
-    # The harpy
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Harpy"
-
-class Widow(Minion):
-    # The widow
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = 'Widow'
-
-class OrganGrinder(Minion, NominationModifier):
-    # The organ grinder
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Organ Grinder"
-
-    async def on_nomination(self, nominee, nominator, proceed):
-        if not self.isPoisoned and not self.parent.isGhost:
-            msg = await safe_send(channel,'Organ grinder is in play. Message your votes to the storytellers.')
-            game.days[-1].votes[-1].announcements += msg.id
-            message_tally = {X: 0 for X in itertools.combinations(game.seatingOrder, 2)}
-            for person in game.seatingOrder:
-                for msg in person.messageHistory:
-                    if msg['from'] == person:
-                        if len(game.days[-1].votes) > 2:
-                            if msg['time'] >= (await channel.fetch_message(game.days[-1].votes[-3].announcements[0])).created_at:
-                                if (person, msg['to']) in message_tally:
-                                    message_tally[(person,msg['to'])] += 1
-                                elif (msg['to'], person) in message_tally:
-                                    message_tally[(msg['to'],person)] += 1
-                                else:
-                                    message_tally[(person,msg['to'])] = 1
-                        else:
-                            if msg['day'] == len(game.days):
-                                if (person, msg['to']) in message_tally:
-                                    message_tally[(person,msg['to'])] += 1
-                                elif (msg['to'], person) in message_tally:
-                                    message_tally[(msg['to'],person)] += 1
-                                else:
-                                    message_tally[(person,msg['to'])] = 1
-            sorted_tally = sorted(message_tally.items(), key=lambda x: -x[1])
-            messageText = '**Message Tally:**'
-            for pair in sorted_tally:
-                if pair[1] > 0:
-                    messageText += '\n> {person1} - {person2}: {n}'.format(person1 = pair[0][0].nick, person2 = pair[0][1].nick, n = pair[1])
-                else:
-                    messageText += '\n> All other pairs: 0'
-                    break
-            await safe_send(channel,messageText)
-            return False
-        return proceed
-
-
-class Mephit(Minion):
-    # The mephit
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Mephit"
-
-class Boomdandy(Minion):
-    # The boomdandy
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Boomdandy"
-
-class Fearmonger(Minion):
-    # The fearmonger
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Fearmonger"
-
-class Psychopath(Minion):
-    # The psychopath
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Psychopath"
-
-class Vizier(Minion):
-    # The vizier
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Vizier"
 
 class LilMonsta(Demon):
     # The lil' monsta
@@ -2705,47 +2443,22 @@ class LilMonsta(Demon):
         super().__init__(parent)
         self.role_name = "Lil' Monsta"
 
-class Leviathan(Demon):
-    # The leviathan
+
+class Politician(Outsider):
+    # The politician
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.role_name = 'Leviathan'
+        self.role_name = "Politician"
 
-class AlHadikiar(Demon):
-    # the al-hadikiar
 
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Al-Hadikiar"
-
-class Legion(Demon):
-    # the legion
+class Preacher(Townsfolk):
+    # The preacher
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.role_name = "Legion"
+        self.role_name = "Preacher"
 
-class Ojo(Demon):
-    # the ojo
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Ojo"
-
-class Lleech(Demon):
-    # The lleech
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Lleech"
-
-class Riot(Demon):
-    # The riot
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Riot"
 
 
 ### API Stuff
@@ -2754,8 +2467,9 @@ member_cache = discord.MemberCacheFlags(
     voice=True,  # Whether to cache members that are in voice. Members that leave voice are no longer cached.
     joined=True,  # Whether to cache members that joined the guild or are chunked as part of the initial log in flow. Members that leave the guild are no longer cached.
 )
-intents = discord.Intents.default()
+intents = discord.Intents.all()
 intents.members = True
+intents.presences = True
 client = discord.Client(
     intents=intents, member_cache_flags=member_cache
 )  # discord client
@@ -3048,7 +2762,10 @@ async def aexec(code):
 
 
 async def safe_send(target: discord.abc.Messageable, msg: str):
-    """Messages target, with protection from message length errors. Returns the first message."""
+    """Messages target, with protection from message length errors.
+
+    Returns the first message.
+    """
 
     try:
         return await target.send(msg)
