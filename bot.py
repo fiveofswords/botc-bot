@@ -2754,7 +2754,11 @@ member_cache = discord.MemberCacheFlags(
     voice=True,  # Whether to cache members that are in voice. Members that leave voice are no longer cached.
     joined=True,  # Whether to cache members that joined the guild or are chunked as part of the initial log in flow. Members that leave the guild are no longer cached.
 )
-client = discord.Client(member_cache_flags=member_cache)  # discord client
+intents = discord.Intents.default()
+intents.members = True
+client = discord.Client(
+    intents=intents, member_cache_flags=member_cache
+)  # discord client
 
 # Read API Token
 with open(os.path.dirname(os.path.realpath(__file__)) + "/token.txt") as tokenfile:
