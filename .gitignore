@@ -6,4 +6,6 @@ discord.log
 .DS_Store
 testing.py
 __pycache__
+*.iml
+.idea
 requirements.txt
