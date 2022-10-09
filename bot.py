@@ -670,7 +670,7 @@ class Vote:
                 await safe_send(
                     operator,
                     "{} does not have any dead votes. They must vote no.".format(
-                        voter.nick
+                        person.nick
                     ),
                 )
             return
@@ -2705,11 +2705,20 @@ class Psychopath(Minion):
 
 
 ### API Stuff
-member_cache = discord.MemberCacheFlags(
-    online=True,  # Whether to cache members with a status. Members that go offline are no longer cached.
-    voice=True,  # Whether to cache members that are in voice. Members that leave voice are no longer cached.
-    joined=True,  # Whether to cache members that joined the guild or are chunked as part of the initial log in flow. Members that leave the guild are no longer cached.
-)
+try:
+    member_cache = discord.MemberCacheFlags(
+        online=True,  # Whether to cache members with a status. Members that go offline are no longer cached.
+        voice=True,  # Whether to cache members that are in voice. Members that leave voice are no longer cached.
+        joined=True,  # Whether to cache members that joined the guild or are chunked as part of the initial log in flow. Members that leave the guild are no longer cached.
+    )
+except TypeError:
+    # online is not a valid flag name
+    member_cache = discord.MemberCacheFlags(
+        voice=True,
+        joined=True
+    )
+
+
 intents = discord.Intents.all()
 intents.members = True
 intents.presences = True
@@ -3782,7 +3791,7 @@ async def on_message(message):
                 try:
                     role = str_to_class(role)
                 except AttributeError:
-                    await message.author.send("Role not found: {}.".format(text))
+                    await message.author.send("Role not found: {}.".format(role))
                     return
 
                 await person.change_character(role(person))
@@ -3892,7 +3901,7 @@ async def on_message(message):
                 try:
                     role = str_to_class(role)
                 except AttributeError:
-                    await message.author.send("Role not found: {}.".format(text))
+                    await message.author.send("Role not found: {}.".format(role))
                     return
 
                 person.character.add_ability(role)
@@ -4615,7 +4624,7 @@ Poisoned: {}""".format(
                             await message.author.send(
                                 "The storytellers have already been nominated today."
                             )
-                            await after.unpin()
+                            await message.unpin()
                             return
                         await game.days[-1].nomination(
                             None, await get_player(message.author)
