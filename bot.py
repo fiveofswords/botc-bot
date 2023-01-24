@@ -8,13 +8,12 @@ import sys
 import time
 import weakref
 
-import pytz
-from dateutil.parser import parse
-
 import dill
 import discord
 import numpy as np
+import pytz
 from config import *
+from dateutil.parser import parse
 
 logger = logging.getLogger("discord")
 logger.setLevel(logging.WARNING)
@@ -389,10 +388,10 @@ class Day:
                         if (
                             msg["time"]
                             >= (
-                            await channel.fetch_message(
-                                self.votes[-1].announcements[0]
-                            )
-                        ).created_at
+                                await channel.fetch_message(
+                                    self.votes[-1].announcements[0]
+                                )
+                            ).created_at
                         ):
                             if (person, msg["to"]) in message_tally:
                                 message_tally[(person, msg["to"])] += 1
@@ -2348,14 +2347,6 @@ class Fisherman(Townsfolk):
         self.role_name = "Fisherman"
 
 
-class Pixie(Townsfolk):
-    # The pixie
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Pixie"
-
-
 class Widow(Minion):
     # The widow
 
@@ -2458,7 +2449,6 @@ class Preacher(Townsfolk):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Preacher"
-
 
 
 ### API Stuff
