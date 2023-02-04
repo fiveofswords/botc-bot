@@ -2186,6 +2186,14 @@ class Judge(Traveler):
         self.role_name = "Judge"
 
 
+class Voudon(Traveler):
+    # the voudon
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Voudon"
+
+
 class Bishop(Traveler):
     # the bishop
 
