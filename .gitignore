@@ -6,3 +6,4 @@ discord.log
 .DS_Store
 testing.py
 __pycache__
+requirements.txt
