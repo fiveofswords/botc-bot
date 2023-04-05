@@ -2458,6 +2458,251 @@ class Preacher(Townsfolk):
         super().__init__(parent)
         self.role_name = "Preacher"
 
+class Noble(Townsfolk):
+    # The noble
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Noble"
+
+class Farmer(Townsfolk):
+    # The farmer
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Farmer"
+
+class PoppyGrower(Townsfolk):
+    # The poppy grower
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Poppy Grower"
+
+class Nightwatchman(Townsfolk):
+    # The nightwatchman
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Nightwatchman"
+
+class Atheist(Townsfolk):
+    # The atheist
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Atheist"
+
+class Huntsman(Townsfolk):
+    # The huntsman
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Huntsman"
+
+class Alchemist(Townsfolk):
+    # The alchemist
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Alchemist"
+
+class Choirboy(Townsfolk):
+    # The choirboy
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Choirboy"
+
+class Engineer(Townsfolk):
+    # The engineer
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Engineer"
+
+class King(Townsfolk):
+    # The king
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "King"
+
+class Magician(Townsfolk):
+    # The magician
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Magician"
+
+class Golem(Outsider, NominationModifier):
+    # The golem
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Golem"
+        self.hasNominated = False
+
+    async def on_nomination(self, nominee, nominator, proceed):
+        if nominator == self.parent:
+            if (
+                    not isinstance(nominee.character, Demon)
+                    and not self.isPoisoned
+                    and not self.parent.isGhost
+                    and not self.hasNominated == True
+            ):
+                await nominee.kill()
+            self.hasNominated = True
+        return proceed
+
+class Damsel(Outsider):
+    # The damsel
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Damsel"
+
+class Heretic(Outsider):
+    # The heretic
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Heretic"
+
+class Puzzlemaster(Outsider):
+    # The puzzlemaster
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Puzzlemaster"
+
+class Snitch(Outsider):
+    # The snitch
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Snitch"
+
+class Marionette(Minion):
+    # The marionette
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Marionette"
+
+class OrganGrinder(Minion, NominationModifier):
+    # The organ grinder
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Organ Grinder"
+
+    async def on_nomination(self, nominee, nominator, proceed):
+        if not self.isPoisoned and not self.parent.isGhost:
+            msg = await safe_send(
+                channel,
+                "Organ grinder is in play. Message your votes to the storytellers.",
+            )
+            game.days[-1].votes[-1].announcements += msg.id
+            message_tally = {
+                X: 0 for X in itertools.combinations(game.seatingOrder, 2)
+            }
+            for person in game.seatingOrder:
+                for msg in person.messageHistory:
+                    if msg["from"] == person:
+                        if len(game.days[-1].votes) > 2:
+                            if (
+                                    msg["time"]
+                                    >= (
+                                    await channel.fetch_message(
+                                        game.days[-1].votes[-3].announcements[0]
+                                    )
+                            ).created_at
+                            ):
+                                if (person, msg["to"]) in message_tally:
+                                    message_tally[(person, msg["to"])] += 1
+                                elif (msg["to"], person) in message_tally:
+                                    message_tally[(msg["to"], person)] += 1
+                                else:
+                                    message_tally[(person, msg["to"])] = 1
+                        else:
+                            if msg["day"] == len(game.days):
+                                if (person, msg["to"]) in message_tally:
+                                    message_tally[(person, msg["to"])] += 1
+                                elif (msg["to"], person) in message_tally:
+                                    message_tally[(msg["to"], person)] += 1
+                                else:
+                                    message_tally[(person, msg["to"])] = 1
+            sorted_tally = sorted(message_tally.items(), key=lambda x: -x[1])
+            messageText = "**Message Tally:**"
+            for pair in sorted_tally:
+                if pair[1] > 0:
+                    messageText += "\n> {person1} - {person2}: {n}".format(
+                        person1=pair[0][0].nick, person2=pair[0][1].nick, n=pair[1]
+                    )
+                else:
+                    messageText += "\n> All other pairs: 0"
+                    break
+            await safe_send(channel, messageText)
+            return False
+        return proceed
+
+class Mezepheles(Minion):
+    # The mezepheles
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Mezepheles"
+
+class AlHadikhia(Demon):
+    # the al-hadikhia
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Al-Hadikhia"
+
+class Legion(Demon):
+    # the legion
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Legion"
+
+class Lleech(Demon):
+    # The lleech
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Lleech"
+
+class Riot(Demon):
+    # The riot
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Riot"
+
+class Boomdandy(Minion):
+    # The boomdandy
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Boomdandy"
+
+class Fearmonger(Minion):
+    # The fearmonger
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Fearmonger"
+
+class Psychopath(Minion):
+    # The psychopath
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Psychopath"
+
 
 ### API Stuff
 member_cache = discord.MemberCacheFlags(
@@ -2503,7 +2748,6 @@ async def generate_possibilities(text, people):
         ) or text.lower() in person.name.lower():
             possibilities.append(person)
     return possibilities
-
 
 async def choices(user, possibilities, text):
     # Clarifies which user is indended when there are multiple matches
