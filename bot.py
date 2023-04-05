@@ -12,7 +12,6 @@ import dill
 import discord
 import numpy as np
 import pytz
-from discord import HTTPException
 
 from config import *
 from dateutil.parser import parse
@@ -1155,8 +1154,9 @@ class Player:
     async def wipe_roles(self):
         try:
             await self.user.remove_roles(travelerRole, ghostRole, deadVoteRole)
-        except(HTTPException):
+        except discord.HTTPException as e:
             # Cannot remove role from user that does not exist on the server
+            logger.info("could not remove roles for %s: %s", self.nick, e.text)
             pass
 
 
