@@ -4278,32 +4278,31 @@ async def on_message(message):
                         await channel.fetch_message(game.days[-1].deadlineMessages[-1])
                     ).unpin()
 
+                try:
+                    pacificTime = time.astimezone(pytz.timezone("US/Pacific")).strftime("%-I:%M %p")
+                    easternTime = time.astimezone(pytz.timezone("US/Eastern")).strftime("%-I:%M %p")
+                except ValueError:
+                    pacificTime = time.astimezone(pytz.timezone("US/Pacific")).strftime("%I:%M %p")
+                    easternTime = time.astimezone(pytz.timezone("US/Eastern")).strftime("%I:%M %p")
+                utcTime = time.astimezone(pytz.utc).strftime("%H:%M")
                 if is_dst():
                     announcement = await safe_send(
                         channel,
                         "{}, nominations are open. The deadline is {} PST / {} EST / {} UTC unless someone nominates or everyone skips.".format(
                             playerRole.mention,
-                            time.astimezone(pytz.timezone("US/Pacific")).strftime(
-                                "%-I:%M %p"
-                            ),
-                            time.astimezone(pytz.timezone("US/Eastern")).strftime(
-                                "%-I:%M %p"
-                            ),
-                            time.astimezone(pytz.utc).strftime("%H:%M"),
+                            pacificTime,
+                            easternTime,
+                            utcTime,
                         ),
                     )
                 else:
                     announcement = await safe_send(
                         channel,
-                        "{}, nominations are open. The deadline is {} PST / {} EST / {} UTC unless someone nominates or everyone skips.".format(
+                        "{}, nominations are open. The deadline is {} PDT / {} EDT / {} UTC unless someone nominates or everyone skips.".format(
                             playerRole.mention,
-                            time.astimezone(pytz.timezone("US/Pacific")).strftime(
-                                "%-I:%M %p"
-                            ),
-                            time.astimezone(pytz.timezone("US/Eastern")).strftime(
-                                "%-I:%M %p"
-                            ),
-                            time.astimezone(pytz.utc).strftime("%H:%M"),
+                            pacificTime,
+                            easternTime,
+                            utcTime,
                         ),
                     )
                 await announcement.pin()
