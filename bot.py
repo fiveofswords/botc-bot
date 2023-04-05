@@ -2609,7 +2609,7 @@ class OrganGrinder(Minion, NominationModifier):
                 channel,
                 "Organ grinder is in play. Message your votes to the storytellers.",
             )
-            game.days[-1].votes[-1].announcements += msg.id
+            game.days[-1].votes[-1].announcements.append(msg.id)
             message_tally = {
                 X: 0 for X in itertools.combinations(game.seatingOrder, 2)
             }
