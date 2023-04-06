@@ -309,12 +309,12 @@ class Day:
         for person in game.seatingOrder:
             for msg in person.messageHistory:
                 if msg["from"] == person:
-                    if len(self.votes) > 2:
+                    if len(self.votes) > 1:
                         if (
                             msg["time"]
                             >= (
                                 await channel.fetch_message(
-                                    self.votes[-3].announcements[0]
+                                    self.votes[-2].announcements[0]
                                 )
                             ).created_at
                         ):
@@ -2616,12 +2616,12 @@ class OrganGrinder(Minion, NominationModifier):
             for person in game.seatingOrder:
                 for msg in person.messageHistory:
                     if msg["from"] == person:
-                        if len(game.days[-1].votes) > 2:
+                        if len(game.days[-1].votes) > 1:
                             if (
                                     msg["time"]
                                     >= (
                                     await channel.fetch_message(
-                                        game.days[-1].votes[-3].announcements[0]
+                                        game.days[-1].votes[-2].announcements[0]
                                     )
                             ).created_at
                             ):
