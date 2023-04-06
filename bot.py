@@ -240,7 +240,7 @@ class Day:
                         nominee, nominator, proceed
                     )
             if not proceed:
-                await self.votes[-1].delete()
+                # do not proceed with collecting votes
                 return
         elif isinstance(nominee.character, Traveler):
             nominee.canBeNominated = False
@@ -302,7 +302,7 @@ class Day:
                         nominee, nominator, proceed
                     )
             if not proceed:
-                await self.votes[-1].delete()
+                # do not proceed with collecting user input for this vote
                 return
 
         message_tally = {X: 0 for X in itertools.combinations(game.seatingOrder, 2)}
@@ -1590,11 +1590,13 @@ class Virgin(Townsfolk, NominationModifier):
 
     async def on_nomination(self, nominee, nominator, proceed):
         # Returns bool -- whether the nomination proceeds
+        # fixme: in debugging, nominee is equal to self.parent rather than self, fix this after kill is corrected to execute
         if nominee == self:
             if not self.beenNominated:
                 self.beenNominated = True
                 if isinstance(nominator.character, Townsfolk) and not self.isPoisoned:
                     if not nominator.isGhost:
+                        # fixme: nominator should be executed rather than killed
                         await nominator.kill()
         return proceed
 
