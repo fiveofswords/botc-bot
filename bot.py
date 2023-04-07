@@ -22,6 +22,7 @@ handler.setFormatter(
 )
 logger.addHandler(handler)
 
+
 ### Classes
 class Game:
     def __init__(self, seatingOrder, seatingOrderMessage, script):
@@ -809,7 +810,7 @@ class TravelerVote:
                 channel,
                 "{} votes on {} (nominated by {}): {}.".format(
                     str(self.votes),
-                    self.nominee.nick if self.nominees else "the storytellers",
+                    self.nominee.nick if self.nominee else "the storytellers",
                     self.nominator.nick if self.nominator else "the storytellers",
                     text,
                 ),
@@ -1433,7 +1434,7 @@ class Traveler(SeatingOrderModifier):
                 )
                 await announcement.pin()
             else:
-                if self.isGhost:
+                if person.isGhost:
                     await safe_send(
                         channel,
                         "{} has been exiled, but is already dead.".format(
@@ -1448,7 +1449,7 @@ class Traveler(SeatingOrderModifier):
                         ),
                     )
         else:
-            if self.isGhost:
+            if person.isGhost:
                 await safe_send(
                     channel,
                     "{} has been exiled, but is already dead.".format(
