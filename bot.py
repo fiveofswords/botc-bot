@@ -15,6 +15,8 @@ import inspect
 from config import *
 from dateutil.parser import parse
 
+STORYTELLER_ALIGNMENT = "neutral"
+
 logger = logging.getLogger("discord")
 logger.setLevel(logging.WARNING)
 handler = logging.FileHandler(filename="discord.log", encoding="utf-8", mode="w")
@@ -33,7 +35,7 @@ class Game:
         self.seatingOrder = seatingOrder
         self.seatingOrderMessage = seatingOrderMessage
         self.storytellers = [
-            Player(Storyteller, "neutral", person, None)
+            Player(Storyteller, STORYTELLER_ALIGNMENT, person, None)
             for person in gamemasterRole.members
         ]
 
@@ -1105,7 +1107,7 @@ class Player:
             notActive = [
                 player
                 for player in game.seatingOrder
-                if player.isActive == False and player.alignment != "neutral"
+                if player.isActive == False and player.alignment != STORYTELLER_ALIGNMENT
             ]
             if len(notActive) == 1:
                 for memb in gamemasterRole.members:
@@ -1121,7 +1123,7 @@ class Player:
                 for player in game.seatingOrder
                 if player.canNominate == True
                 and player.hasSkipped == False
-                and player.alignment != "neutral"
+                and player.alignment != STORYTELLER_ALIGNMENT
                 and player.isGhost == False
             ]
             if len(canNominate) == 1:
@@ -2937,7 +2939,7 @@ async def make_active(user):
     notActive = [
         player
         for player in game.seatingOrder
-        if player.isActive == False and player.alignment != "neutral"
+        if player.isActive == False and player.alignment != STORYTELLER_ALIGNMENT
     ]
     if len(notActive) == 1:
         for memb in gamemasterRole.members:
@@ -4546,7 +4548,7 @@ async def on_message(message):
                 notActive = [
                     player
                     for player in game.seatingOrder
-                    if player.isActive == False and player.alignment != "neutral"
+                    if player.isActive == False and player.alignment != STORYTELLER_ALIGNMENT
                 ]
 
                 if notActive == []:
@@ -4576,7 +4578,7 @@ async def on_message(message):
                     for player in game.seatingOrder
                     if player.canNominate == True
                     and player.hasSkipped == False
-                    and player.alignment != "neutral"
+                    and player.alignment != STORYTELLER_ALIGNMENT
                     and player.isGhost == False
                 ]
                 if canNominate == []:
@@ -5843,7 +5845,7 @@ async def on_message_edit(before, after):
                 for player in game.seatingOrder
                 if player.canNominate == True
                 and player.hasSkipped == False
-                and player.alignment != "neutral"
+                and player.alignment != STORYTELLER_ALIGNMENT
                 and player.isGhost == False
             ]
             if len(canNominate) == 1:
@@ -5887,7 +5889,7 @@ async def on_member_update(before, after):
                 backup("current_game.pckl")
 
         if gamemasterRole in after.roles and not gamemasterRole in before.roles:
-            game.storytellers.append(Player(Storyteller, "neutral", after))
+            game.storytellers.append(Player(Storyteller, STORYTELLER_ALIGNMENT, after))
         elif gamemasterRole in before.roles and not gamemasterRole in after.roles:
             for st in game.storytellers:
                 if st.user.id == after.id:
