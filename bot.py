@@ -10,6 +10,7 @@ import dill
 import discord
 import math
 import pytz
+import inspect
 
 from config import *
 from dateutil.parser import parse
@@ -1168,6 +1169,9 @@ class Character:
         self.role_name = "Character"
         self.isPoisoned = False
 
+    def extra_info(self):
+        return ""
+
 
 class Townsfolk(Character):
     # A generic townsfolk
@@ -2210,6 +2214,15 @@ class Apprentice(Traveler, AbilityModifier):
     def add_ability(self, role):
         self.abilities = [role(self.parent)]
 
+    def extra_info(self):
+        return "\n".join([
+            inspect.cleandoc("""
+            Apprenticing: {}
+            {}
+            """.format(x.role_name, x.extra_info()))
+            for x in self.abilities
+        ])
+
 class Matron(Traveler):
     # the matron
 
@@ -2377,6 +2390,15 @@ class Cannibal(Townsfolk, AbilityModifier):
 
     def add_ability(self, role):
         self.abilities = [role(self.parent)]
+
+    def extra_info(self):
+        return "\n".join([
+            inspect.cleandoc("""
+            Eaten: {}
+            {}
+            """.format(x.role_name, x.extra_info()))
+            for x in self.abilities
+        ])
 
 
 class Balloonist(Townsfolk):
@@ -4458,21 +4480,16 @@ async def on_message(message):
                 if person is None:
                     return
 
-                await message.author.send(
-                    """Player: {}
-Character: {}
-Alignment: {}
-Alive: {}
-Dead Votes: {}
-Poisoned: {}""".format(
-                        person.nick,
-                        person.character.role_name,
-                        person.alignment,
-                        str(not person.isGhost),
-                        str(person.deadVotes),
-                        str(person.character.isPoisoned),
-                    )
-                )
+                base_info = inspect.cleandoc("""
+                    Player: {}
+                    Character: {}
+                    Alignment: {}
+                    Alive: {}
+                    Dead Votes: {}
+                    Poisoned: {}
+                    """.format(person.nick, person.character.role_name, person.alignment, str(not person.isGhost),
+                               str(person.deadVotes), str(person.character.isPoisoned)))
+                await message.author.send("\n".join([base_info, person.character.extra_info()]))
                 return
 
             # Views the grimoire
