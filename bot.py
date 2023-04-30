@@ -912,13 +912,14 @@ class Player:
 
     async def kill(self, suppress=False, force=False):
         dies = True
-        self.isGhost = True
-        self.deadVotes = 1
         for person in game.seatingOrder:
-            if isinstance(person, DeathModifier):
-                dies = person.on_death(self, dies)
+            if isinstance(person.character, DeathModifier):
+                dies = person.character.on_death(self, dies)
+
         if not dies and not force:
             return dies
+        self.isGhost = True
+        self.deadVotes = 1
         if not suppress:
             announcement = await safe_send(
                 channel, "{} has died.".format(self.user.mention)
@@ -1394,7 +1395,7 @@ class AbilityModifier(
         if not self.isPoisoned:
             for role in self.abilities:
                 if isinstance(role, DeathModifier):
-                    die, deadVotes = role.on_death(person, dies)
+                    dies = role.on_death(person, dies)
         return dies
 
 
@@ -1617,15 +1618,23 @@ class Exorcist(Townsfolk):
         self.role_name = "Exorcist"
 
 
-class Fool(Townsfolk):
+class Fool(Townsfolk, DeathModifier):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Fool"
+        self.can_escape_death = True
 
     def on_death(self, person, dies):
-        if self.parent == person and not self.isPoisoned:
+        if self.parent == person and not self.isPoisoned and self.can_escape_death:
+            self.can_escape_death = False
             return False
-        return True
+        return dies
+
+    def extra_info(self):
+        if(self.can_escape_death):
+            return "Fool: Not Used"
+        return "Fool: Used"
+
 
 
 class Gambler(Townsfolk):
@@ -1705,8 +1714,21 @@ class TeaLady(Townsfolk, DeathModifier):
         self.role_name = "Tea Lady"
 
     def on_death(self, person, dies):
-        neighbor1 = game.seatingOrder[self.parent.position - 1]
-        neighbor2 = game.seatingOrder[self.parent.position + 1]
+        # look left for living neighbor
+        player_count = len(game.seatingOrder)
+        ccw = self.parent.position - 1
+        neighbor1 = game.seatingOrder[ccw]
+        while(neighbor1.isGhost):
+            ccw = ccw - 1
+            neighbor1 = game.seatingOrder[ccw]
+
+        # look right for living neighbor
+        cw = self.parent.position + 1 - player_count
+        neighbor2 = game.seatingOrder[cw]
+        while(neighbor2.isGhost):
+            cw = cw + 1
+            neighbor2 = game.seatingOrder[cw]
+
         if (
             neighbor1.alignment == "good"
             and neighbor2.alignment == "good"
@@ -1714,7 +1736,7 @@ class TeaLady(Townsfolk, DeathModifier):
             and self.isPoisoned == False
         ):
             return False
-        return True
+        return dies
 
 
 class Artist(Townsfolk):
@@ -2178,13 +2200,15 @@ class Scapegoat(Traveler):
         self.role_name = "Scapegoat"
 
 
-class Apprentice(Traveler):
+class Apprentice(Traveler, AbilityModifier):
     # the apprentice
 
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Apprentice"
 
+    def add_ability(self, role):
+        self.abilities = [role(self.parent)]
 
 class Matron(Traveler):
     # the matron
@@ -3699,7 +3723,7 @@ async def on_message(message):
                 if person is None:
                     return
 
-                await person.execute(message.author, force=True)
+                await person.execute(message.author)
                 if game is not None:
                     backup("current_game.pckl")
                 return
