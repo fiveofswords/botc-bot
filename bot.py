@@ -644,7 +644,10 @@ class Vote:
         game.days[-1].voteEndMessages.append(announcement.id)
 
         for msg in self.announcements:
-            await (await channel.fetch_message(msg)).unpin()
+            try:
+                await (await channel.fetch_message(msg)).unpin()
+            except discord.errors.NotFound:
+                print("Missing message: ", str(msg))
 
         self.done = True
 
@@ -830,7 +833,10 @@ class TravelerVote:
         game.days[-1].voteEndMessages.append(announcement.id)
 
         for msg in self.announcements:
-            await (await channel.fetch_message(msg)).unpin()
+            try:
+                await (await channel.fetch_message(msg)).unpin()
+            except discord.errors.NotFound:
+                print("Missing message: ", str(msg))
 
         self.done = True
 
@@ -852,7 +858,10 @@ class TravelerVote:
             self.nominee.canBeNominated = True
 
         for msg in self.announcements:
-            await (await channel.fetch_message(msg)).unpin()
+            try:
+                await (await channel.fetch_message(msg)).unpin()
+            except discord.errors.NotFound:
+                print("Missing message: ", str(msg))
 
         self.done = True
 
@@ -2606,6 +2615,7 @@ class OrganGrinder(Minion, NominationModifier):
             message_tally = {
                 X: 0 for X in itertools.combinations(game.seatingOrder, 2)
             }
+            # fix the createdAt logic for organ grinder tallies
             for person in game.seatingOrder:
                 for msg in person.messageHistory:
                     if msg["from"] == person:
@@ -4267,10 +4277,13 @@ async def on_message(message):
                     return
 
                 if len(game.days[-1].deadlineMessages) > 0:
-                    await (
-                        await channel.fetch_message(game.days[-1].deadlineMessages[-1])
-                    ).unpin()
-
+                    previous_deadline = game.days[-1].deadlineMessages[-1]
+                    try:
+                        await (
+                            await channel.fetch_message(previous_deadline)
+                        ).unpin()
+                    except discord.errors.NotFound:
+                        print("Missing message: ", str(previous_deadline))
                 try:
                     pacificTime = time.astimezone(pytz.timezone("US/Pacific")).strftime("%-I:%M %p")
                     easternTime = time.astimezone(pytz.timezone("US/Eastern")).strftime("%-I:%M %p")
