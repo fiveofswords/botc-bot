@@ -2615,19 +2615,15 @@ class OrganGrinder(Minion, NominationModifier):
             message_tally = {
                 X: 0 for X in itertools.combinations(game.seatingOrder, 2)
             }
+
+            has_had_multiple_votes = len(self.votes) > 0
+            last_vote_message = None if not has_had_multiple_votes else await channel.fetch_message(game.days[-1].votes[-1].announcements[0])
             # fix the createdAt logic for organ grinder tallies
             for person in game.seatingOrder:
                 for msg in person.messageHistory:
                     if msg["from"] == person:
-                        if len(game.days[-1].votes) > 1:
-                            if (
-                                    msg["time"]
-                                    >= (
-                                    await channel.fetch_message(
-                                        game.days[-1].votes[-2].announcements[0]
-                                    )
-                            ).created_at
-                            ):
+                        if has_had_multiple_votes:
+                            if msg["time"] >= last_vote_message.created_at:
                                 if (person, msg["to"]) in message_tally:
                                     message_tally[(person, msg["to"])] += 1
                                 elif (msg["to"], person) in message_tally:
