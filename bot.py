@@ -123,16 +123,18 @@ class Game:
         )
         await announcement.pin()
 
-    async def start_day(self, kills=[], origin=None):
+    async def start_day(self, kills=None, origin=None):
+        if kills is None:
+            kills = []
 
         for person in game.seatingOrder:
             await person.morning()
             if isinstance(person.character, DayStartModifier):
                 if not await person.character.on_day_start(origin, kills):
                     return
-        for person in kills:
-            await person.kill()
-        if kills == [] and len(self.days) > 0:
+
+        deaths = [await person.kill() for person in kills]
+        if deaths == [] and len(self.days) > 0:
             await safe_send(channel, "No one has died.")
         await safe_send(
             channel,
@@ -2033,7 +2035,6 @@ class Witch(Minion, NominationModifier, DayStartModifier):
         self.witched = None
 
     async def on_day_start(self, origin, kills):
-
         if self.parent.isGhost == True or self.parent in kills:
             self.witched = None
             return True
@@ -2729,12 +2730,49 @@ class Legion(Demon):
         super().__init__(parent)
         self.role_name = "Legion"
 
-class Lleech(Demon):
+class Lleech(Demon, DeathModifier, DayStartModifier):
     # The lleech
 
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Lleech"
+        self.hosted = None
+
+    async def on_day_start(self, origin, kills):
+        if(self.hosted or self.parent.isGhost):
+            return True
+
+        msg = await safe_send(origin, "Who is hosted by the Lleech?")
+        try:
+            reply = await client.wait_for(
+                "message",
+                check=(lambda x: x.author == origin and x.channel == msg.channel),
+                timeout=200,
+            )
+        except asyncio.TimeoutError:
+            await safe_send(origin, "Timed out.")
+            return False
+
+        person = await select_player(origin, reply.content, game.seatingOrder)
+        if person is None:
+            return False
+
+        self.hosted = person
+        person.character.isPoisoned = True
+        return True
+
+    def on_death(self, person, dies):
+        if not self.isPoisoned:
+            if not (self.hosted and self.hosted.isGhost):
+                return False
+        return dies
+
+    def extra_info(self):
+        if(self.hosted):
+            return "Leech Host: " + self.hosted.nick
+        else:
+            return ""
+
 
 class Riot(Demon):
     # The riot
