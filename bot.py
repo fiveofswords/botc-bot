@@ -4655,6 +4655,11 @@ Poisoned: {}""".format(
                         backup("current_game.pckl")
                     return
 
+                #  make sure that the nominee has not been nominated yet
+                if not person.canBeNominated:
+                    await safe_send(message.author, "{} has already been nominated".format(person.nick))
+                    return
+
                 await game.days[-1].nomination(person, await get_player(message.author))
                 if game is not None:
                     backup("current_game.pckl")
