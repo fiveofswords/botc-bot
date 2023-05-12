@@ -1701,7 +1701,7 @@ class Professor(Townsfolk):
         self.role_name = "Professor"
 
 
-class Sailor(Townsfolk):
+class Sailor(Townsfolk, DeathModifier):
     # The sailor
 
     def __init__(self, parent):
@@ -1726,18 +1726,19 @@ class TeaLady(Townsfolk, DeathModifier):
         player_count = len(game.seatingOrder)
         ccw = self.parent.position - 1
         neighbor1 = game.seatingOrder[ccw]
-        while(neighbor1.isGhost):
+        while neighbor1.isGhost:
             ccw = ccw - 1
             neighbor1 = game.seatingOrder[ccw]
 
         # look right for living neighbor
         cw = self.parent.position + 1 - player_count
         neighbor2 = game.seatingOrder[cw]
-        while(neighbor2.isGhost):
+        while neighbor2.isGhost:
             cw = cw + 1
             neighbor2 = game.seatingOrder[cw]
 
         if (
+            #fixme: This does not consider neighbors who may folsely register as good or evil (recluse/spy)
             neighbor1.alignment == "good"
             and neighbor2.alignment == "good"
             and (person == neighbor1 or person == neighbor2)
@@ -1869,7 +1870,6 @@ class Drunk(Outsider):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Drunk"
-        self.isPoisoned = True
 
 
 class Goon(Outsider):
@@ -1878,7 +1878,6 @@ class Goon(Outsider):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Goon"
-        self.isPoisoned = False
 
 
 class Butler(Outsider):
@@ -1919,7 +1918,6 @@ class Lunatic(Outsider):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Lunatic"
-        self.isPoisoned = True
 
 
 class Tinker(Outsider):
@@ -2035,6 +2033,7 @@ class Witch(Minion, NominationModifier, DayStartModifier):
         self.witched = None
 
     async def on_day_start(self, origin, kills):
+        # todo: consider minions killed by vigormortis as active
         if self.parent.isGhost == True or self.parent in kills:
             self.witched = None
             return True
@@ -2248,6 +2247,7 @@ class Voudon(Traveler):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Voudon"
+       # todo: consider Voudon when taking away ghost votes
 
 
 class Bishop(Traveler):
@@ -2272,6 +2272,7 @@ class BoneCollector(Traveler):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Bone Collector"
+        # todo: boneCollector makes a dead player regain their ability
 
 
 class Harlot(Traveler):
@@ -2614,7 +2615,7 @@ class Golem(Outsider, NominationModifier):
                     not isinstance(nominee.character, Demon)
                     and not self.isPoisoned
                     and not self.parent.isGhost
-                    and not self.hasNominated == True
+                    and not self.hasNominated
             ):
                 await nominee.kill()
             self.hasNominated = True
@@ -2739,7 +2740,7 @@ class Lleech(Demon, DeathModifier, DayStartModifier):
         self.hosted = None
 
     async def on_day_start(self, origin, kills):
-        if(self.hosted or self.parent.isGhost):
+        if self.hosted or self.parent.isGhost:
             return True
 
         msg = await safe_send(origin, "Who is hosted by the Lleech?")
@@ -2762,13 +2763,14 @@ class Lleech(Demon, DeathModifier, DayStartModifier):
         return True
 
     def on_death(self, person, dies):
-        if not self.isPoisoned:
+        # todo: if the host has died, the lleech should also die
+        if self.parent == person and not self.isPoisoned:
             if not (self.hosted and self.hosted.isGhost):
                 return False
         return dies
 
     def extra_info(self):
-        if(self.hosted):
+        if self.hosted:
             return "Leech Host: " + self.hosted.nick
         else:
             return ""
