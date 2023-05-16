@@ -1300,6 +1300,10 @@ class VoteModifier(Character):
 
 class DeathModifier(Character):
     # A character which triggers on a player's death
+    PROTECTS_OTHERS=1
+    PROTECTS_SELF=2
+    KILLS_SELF=3
+    UNSET=999
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -1307,6 +1311,9 @@ class DeathModifier(Character):
     def on_death(self, person, dies):
         # Returns bool -- does person die
         return dies
+
+    def on_death_priority(self):
+        return DeathModifier.UNSET
 
 
 class AbilityModifier(
@@ -1638,6 +1645,9 @@ class Fool(Townsfolk, DeathModifier):
             return False
         return dies
 
+    def on_death_priority(self):
+        return DeathModifier.PROTECTS_SELF
+
     def extra_info(self):
         if(self.can_escape_death):
             return "Fool: Not Used"
@@ -1711,7 +1721,10 @@ class Sailor(Townsfolk, DeathModifier):
     def on_death(self, person, dies):
         if self.parent == person and not self.isPoisoned:
             return False
-        return True
+        return dies
+
+    def on_death_priority(self):
+        return DeathModifier.PROTECTS_SELF
 
 
 class TeaLady(Townsfolk, DeathModifier):
@@ -1738,7 +1751,7 @@ class TeaLady(Townsfolk, DeathModifier):
             neighbor2 = game.seatingOrder[cw]
 
         if (
-            #fixme: This does not consider neighbors who may folsely register as good or evil (recluse/spy)
+            # fixme: This does not consider neighbors who may falsely register as good or evil (recluse/spy)
             neighbor1.alignment == "good"
             and neighbor2.alignment == "good"
             and (person == neighbor1 or person == neighbor2)
@@ -1746,6 +1759,9 @@ class TeaLady(Townsfolk, DeathModifier):
         ):
             return False
         return dies
+
+    def on_death_priority(self):
+        return DeathModifier.PROTECTS_OTHERS
 
 
 class Artist(Townsfolk):
@@ -1804,12 +1820,24 @@ class Oracle(Townsfolk):
         self.role_name = "Oracle"
 
 
-class Philosopher(Townsfolk):
+class Philosopher(Townsfolk, AbilityModifier):
     # The philosopher
 
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Philosopher"
+
+    def add_ability(self, role):
+        is_set = False
+        for ability in self.abilities:
+            if isinstance(ability, AbilityModifier):
+                ability.add_ability(role)
+                is_set = True
+        if not is_set:
+            self.abilities = [role(self.parent)]
+
+    def extra_info(self):
+        return "\n".join([("Philosophering: {}\n{}".format(x.role_name, x.extra_info())) for x in self.abilities])
 
 
 class Sage(Townsfolk):
@@ -2067,6 +2095,11 @@ class Witch(Minion, NominationModifier, DayStartModifier):
             await self.witched.kill()
         return proceed
 
+    def extra_info(self):
+        if self.witched:
+            return "Witched: {}".format(self.witched.nick)
+
+
 
 class EvilTwin(Minion):
     # The evil twin
@@ -2214,16 +2247,17 @@ class Apprentice(Traveler, AbilityModifier):
         self.role_name = "Apprentice"
 
     def add_ability(self, role):
-        self.abilities = [role(self.parent)]
+        is_set = False
+        for ability in self.abilities:
+            if isinstance(ability, AbilityModifier):
+                ability.add_ability(role)
+                is_set = True
+        if not is_set:
+            self.abilities = [role(self.parent)]
 
     def extra_info(self):
-        return "\n".join([
-            inspect.cleandoc("""
-            Apprenticing: {}
-            {}
-            """.format(x.role_name, x.extra_info()))
-            for x in self.abilities
-        ])
+        return "\n".join([("Apprenticing: {}\n{}".format(x.role_name, x.extra_info())) for x in self.abilities])
+
 
 class Matron(Traveler):
     # the matron
@@ -2393,16 +2427,16 @@ class Cannibal(Townsfolk, AbilityModifier):
         self.role_name = "Cannibal"
 
     def add_ability(self, role):
-        self.abilities = [role(self.parent)]
+        is_set = False
+        for ability in self.abilities:
+            if isinstance(ability, AbilityModifier):
+                ability.add_ability(role)
+                is_set = True
+        if not is_set:
+            self.abilities = [role(self.parent)]
 
     def extra_info(self):
-        return "\n".join([
-            inspect.cleandoc("""
-            Eaten: {}
-            {}
-            """.format(x.role_name, x.extra_info()))
-            for x in self.abilities
-        ])
+        return "\n".join([("Eaten: {}\n{}".format(x.role_name, x.extra_info())) for x in self.abilities])
 
 
 class Balloonist(Townsfolk):
@@ -2768,6 +2802,9 @@ class Lleech(Demon, DeathModifier, DayStartModifier):
             if not (self.hosted and self.hosted.isGhost):
                 return False
         return dies
+
+    def on_death_priority(self):
+        return DeathModifier.KILLS_SELF
 
     def extra_info(self):
         if self.hosted:
