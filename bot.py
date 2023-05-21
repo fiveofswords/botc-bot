@@ -917,9 +917,9 @@ class Player:
 
     async def kill(self, suppress=False, force=False):
         dies = True
-        for person in game.seatingOrder:
-            if isinstance(person.character, DeathModifier):
-                dies = person.character.on_death(self, dies)
+        on_death_characters = sorted([person.character for person in game.seatingOrder if isinstance(person.character, DeathModifier)], key= lambda c: c.on_death_priority())
+        for player_character in on_death_characters:
+            dies = player_character.on_death(self, dies)
 
         if not dies and not force:
             return dies
@@ -1423,6 +1423,15 @@ class AbilityModifier(
                     dies = role.on_death(person, dies)
         return dies
 
+    def on_death_priority(self):
+        priority = DeathModifier.UNSET
+        # Returns bool -- does person die
+        if not self.isPoisoned:
+            for role in self.abilities:
+                if isinstance(role, DeathModifier):
+                    priority = role.on_death_priority()
+        return priority
+
 
 class Traveler(SeatingOrderModifier):
     # A generic traveler
@@ -1650,7 +1659,7 @@ class Fool(Townsfolk, DeathModifier):
         self.can_escape_death = True
 
     def on_death(self, person, dies):
-        if self.parent == person and not self.isPoisoned and self.can_escape_death:
+        if self.parent == person and not self.isPoisoned and self.can_escape_death and dies:
             self.can_escape_death = False
             return False
         return dies
