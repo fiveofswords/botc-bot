@@ -1398,7 +1398,7 @@ class AbilityModifier(
         if not self.isPoisoned:
             for role in self.abilities:
                 if isinstance(role, VoteModifier):
-                    role.on_vote_call()
+                    role.on_vote_call(toCall)
 
     def on_vote(self):
         # Called every time a player votes
