@@ -1335,6 +1335,16 @@ class AbilityModifier(
     def add_ability(self, role):
         self.abilities.append(role(self.parent))
 
+    def clear_ability(self):
+        removed_ability = None
+        for ability in self.abilities:
+            if isinstance(ability, AbilityModifier):
+                removed_ability = ability.clear_ability()
+        if not removed_ability:
+            if len(self.abilities):
+                removed_ability = self.abilities.pop()
+        return removed_ability
+
     def seating_order(self, seatingOrder):
         # returns a seating order after the character's modifications
         for role in self.abilities:
@@ -4046,6 +4056,39 @@ async def on_message(message):
                 await message.author.send("New ability added.")
                 return
 
+            # removes an ability from an AbilityModifier ability (useful if a nested ability is gained)
+            elif command == "removeability":
+                if game is None:
+                    await message.author.send("There's no game right now.")
+                    return
+
+                if not gamemasterRole in server.get_member(message.author.id).roles:
+                    await message.author.send(
+                        "You don't have permission to give abilities."
+                    )
+                    return
+
+                person = await select_player(
+                    message.author, argument, game.seatingOrder
+                )
+                if person is None:
+                    return
+
+                if not isinstance(person.character, AbilityModifier):
+                    await message.author.send(
+                        "The {} cannot gain abilities to clear.".format(
+                            person.character.role_name
+                        )
+                    )
+                    return
+
+                removed_ability = person.character.clear_ability()
+                if(removed_ability):
+                    await message.author.send("Ability removed: {}".format(removed_ability.role_name))
+                else:
+                    await message.author.send("No ability to remove")
+                return
+
             # Marks as inactive
             elif command == "makeinactive":
 
@@ -5606,6 +5649,11 @@ async def on_message(message):
                         embed.add_field(
                             name="changeability <<player>>",
                             value="changes player's ability, if applicable to their character (ex apprentice)",
+                            inline=False,
+                        )
+                        embed.add_field(
+                            name="removeability <<player>>",
+                            value="clears a player's modified ability, if applicable to their character (ex cannibal)",
                             inline=False,
                         )
                         embed.add_field(
