@@ -2969,10 +2969,6 @@ class Riot(Demon, NominationModifier):
         if self.isPoisoned or self.parent.isGhost:
             return True
 
-        if nominee.isGhost:
-            await safe_send(channel, "Riot is in play. The dead cannot be nominated")
-            return False
-
         # handle the soldier jinx - If Riot nominates the Soldier, the Soldier does not die
         soldier_jinx = nominee and nominee and not nominee.character.isPoisoned and has_ability(nominator.character, Riot) and has_ability(nominee.character, Soldier)
         golem_jinx = nominator and nominee and nominator.character.isPoisoned and has_ability(nominee.character, Riot) and has_ability(nominator.character, Golem)
