@@ -917,7 +917,7 @@ class Player:
 
     async def kill(self, suppress=False, force=False):
         dies = True
-        on_death_characters = sorted([person.character for person in game.seatingOrder if isinstance(person.character, DeathModifier)], key= lambda c: c.on_death_priority())
+        on_death_characters = sorted([person.character for person in game.seatingOrder if isinstance(person.character, DeathModifier)], key = lambda c: c.on_death_priority())
         for player_character in on_death_characters:
             dies = player_character.on_death(self, dies)
 
@@ -1755,6 +1755,8 @@ class TeaLady(Townsfolk, DeathModifier):
 
     def on_death(self, person, dies):
         # look left for living neighbor
+        if not dies:
+            return dies
         player_count = len(game.seatingOrder)
         ccw = self.parent.position - 1
         neighbor1 = game.seatingOrder[ccw]
