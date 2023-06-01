@@ -238,8 +238,11 @@ class Day:
             if nominator:
                 nominator.canNominate = False
             proceed = True
+            # FIXME:there might be a case where a player earlier in the seating order makes the nomination not proceed
+            #  but one later in the seating order may be relevant. Short circuit here stops two Riot messages, e.g.
+            #  There may need to be some rework based on NominationModifier priority
             for person in game.seatingOrder:
-                if isinstance(person.character, NominationModifier):
+                if isinstance(person.character, NominationModifier) and proceed:
                     proceed = await person.character.on_nomination(
                         nominee, nominator, proceed
                     )
@@ -300,8 +303,11 @@ class Day:
             if nominator:
                 nominator.canNominate = False
             proceed = True
+            # FIXME:there might be a case where a player earlier in the seating order makes the nomination not proceed
+            #  but one later in the seating order may be relevant. Short circuit here stops two Riot messages, e.g.
+            #  There may need to be some rework based on NominationModifier priority
             for person in game.seatingOrder:
-                if isinstance(person.character, NominationModifier):
+                if isinstance(person.character, NominationModifier) and proceed:
                     proceed = await person.character.on_nomination(
                         nominee, nominator, proceed
                     )
@@ -2945,12 +2951,46 @@ class Lleech(Demon, DeathModifier, DayStartModifier):
             return ""
 
 
-class Riot(Demon):
+def has_ability(player_character, clazz):
+    if isinstance(player_character, clazz):
+        return True
+    if isinstance(player_character, AbilityModifier):
+        return any([has_ability(c, clazz) for c in player_character.abilities])
+
+
+class Riot(Demon, NominationModifier):
     # The riot
 
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Riot"
+
+    async def on_nomination(self, nominee, nominator, proceed):
+        if self.isPoisoned or self.parent.isGhost:
+            return True
+
+        if nominee.isGhost:
+            await safe_send(channel, "Riot is in play. The dead cannot be nominated")
+            return False
+
+        # handle the soldier jinx - If Riot nominates the Soldier, the Soldier does not die
+        soldier_jinx = nominee and nominee and not nominee.character.isPoisoned and has_ability(nominator.character, Riot) and has_ability(nominee.character, Soldier)
+        golem_jinx = nominator and nominee and nominator.character.isPoisoned and has_ability(nominee.character, Riot) and has_ability(nominator.character, Golem)
+        if not(soldier_jinx or golem_jinx):
+            await nominee.kill()
+
+        riot_announcement = "Riot is in play. {} to nominate".format(nominee.user.mention)
+        if len(game.days) < 3:
+            riot_announcement = riot_announcement + " or skip"
+
+        msg = await safe_send(
+            channel,
+            riot_announcement,
+        )
+
+        await game.days[-1].open_noms()
+        return False
+
 
 class Boomdandy(Minion):
     # The boomdandy
