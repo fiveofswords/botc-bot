@@ -4912,7 +4912,9 @@ async def on_message(message):
                     await message.author.send("Nominations aren't open right now.")
                     return
 
-                if not await get_player(message.author):
+                nominator_player = await get_player(message.author)
+
+                if not nominator_player:
                     if not gamemasterRole in server.get_member(message.author.id).roles:
                         await message.author.send(
                             "You aren't in the game, and so cannot nominate."
@@ -4921,15 +4923,13 @@ async def on_message(message):
 
                 else:
 
-                    if (
-                        await get_player(message.author)
-                    ).isGhost :
+                    if nominator_player.isGhost :
                         await safe_send(
                             message.author, "You are dead, and so cannot nominate."
                         )
                         return
 
-                    if not (await get_player(message.author)).canNominate:
+                    if not nominator_player.canNominate:
                         await safe_send(message.author, "You have already nominated.")
                         return
 
@@ -4960,9 +4960,7 @@ async def on_message(message):
                             )
                             await message.unpin()
                             return
-                        await game.days[-1].nomination(
-                            None, await get_player(message.author)
-                        )
+                        await game.days[-1].nomination(None, nominator_player)
                         if game is not None:
                             backup("current_game.pckl")
                         await message.unpin()
@@ -4985,7 +4983,7 @@ async def on_message(message):
                     await safe_send(message.author, "{} has already been nominated".format(person.nick))
                     return
 
-                await game.days[-1].nomination(person, await get_player(message.author))
+                await game.days[-1].nomination(person, nominator_player)
                 if game is not None:
                     backup("current_game.pckl")
                 return
@@ -6002,6 +6000,7 @@ async def on_message_edit(before, after):
         return
 
     # On pin
+    message_author_player = await get_player(after.author)
     if after.channel == channel and before.pinned == False and after.pinned == True:
 
         # Nomination
@@ -6026,19 +6025,19 @@ async def on_message_edit(before, after):
                 await after.unpin()
                 return
 
-            if not await get_player(after.author):
+            if not message_author_player:
                 await safe_send(
                     channel, "You aren't in the game, and so cannot nominate."
                 )
                 await after.unpin()
                 return
 
-            if (await get_player(after.author)).isGhost:
+            if (message_author_player).isGhost:
                 await safe_send(channel, "You are dead, and so cannot nominate.")
                 await after.unpin()
                 return
 
-            if not (await get_player(after.author)).canNominate:
+            if not (message_author_player).canNominate:
                 await safe_send(channel, "You have already nominated.")
                 await after.unpin()
                 return
@@ -6064,7 +6063,7 @@ async def on_message_edit(before, after):
                         )
                         await after.unpin()
                         return
-                    await game.days[-1].nomination(None, await get_player(after.author))
+                    await game.days[-1].nomination(None, message_author_player)
                     if game is not None:
                         backup("current_game.pckl")
                     await after.unpin()
@@ -6081,7 +6080,7 @@ async def on_message_edit(before, after):
                     await after.unpin()
                     return
 
-                await game.days[-1].nomination(names[0], await get_player(after.author))
+                await game.days[-1].nomination(names[0], message_author_player)
                 if game is not None:
                     backup("current_game.pckl")
                 await after.unpin()
@@ -6107,7 +6106,7 @@ async def on_message_edit(before, after):
                 await after.unpin()
                 return
 
-            if not await get_player(after.author):
+            if not message_author_player:
                 await safe_send(
                     channel, "You aren't in the game, and so cannot nominate."
                 )
@@ -6119,7 +6118,7 @@ async def on_message_edit(before, after):
                 await after.unpin()
                 return
 
-            (await get_player(after.author)).hasSkipped = True
+            (message_author_player).hasSkipped = True
             if game is not None:
                 backup("current_game.pckl")
 
@@ -6152,7 +6151,7 @@ async def on_message_edit(before, after):
 
         # Unskip
         if "skip" in after.content.lower():
-            (await get_player(after.author)).hasSkipped = False
+            (message_author_player).hasSkipped = False
             if game is not None:
                 backup("current_game.pckl")
 
