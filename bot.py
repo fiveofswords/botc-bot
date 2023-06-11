@@ -168,6 +168,8 @@ class Day:
         self.deadlineMessages = []
         self.skipMessages = []
         self.aboutToDie = None
+        self.riot_active = False
+        self.st_riot_kill_override = False
 
     async def open_pms(self):
         # Opens PMs
@@ -388,39 +390,40 @@ class Day:
 
         await safe_send(channel, "{}, go to sleep!".format(playerRole.mention))
 
-        message_tally = {X: 0 for X in itertools.combinations(game.seatingOrder, 2)}
-        has_had_multiple_votes = len(self.votes) > 0
-        last_vote_message = None if not has_had_multiple_votes else await channel.fetch_message(self.votes[-1].announcements[0])
-        for person in game.seatingOrder:
-            for msg in person.messageHistory:
-                if msg["from"] == person:
-                    if has_had_multiple_votes:
-                        if msg["time"] >= last_vote_message.created_at:
-                            if (person, msg["to"]) in message_tally:
-                                message_tally[(person, msg["to"])] += 1
-                            elif (msg["to"], person) in message_tally:
-                                message_tally[(msg["to"], person)] += 1
-                            else:
-                                message_tally[(person, msg["to"])] = 1
-                    else:
-                        if msg["day"] == len(game.days):
-                            if (person, msg["to"]) in message_tally:
-                                message_tally[(person, msg["to"])] += 1
-                            elif (msg["to"], person) in message_tally:
-                                message_tally[(msg["to"], person)] += 1
-                            else:
-                                message_tally[(person, msg["to"])] = 1
-        sorted_tally = sorted(message_tally.items(), key=lambda x: -x[1])
-        messageText = "**Message Tally:**"
-        for pair in sorted_tally:
-            if pair[1] > 0:
-                messageText += "\n> {person1} - {person2}: {n}".format(
-                    person1=pair[0][0].nick, person2=pair[0][1].nick, n=pair[1]
-                )
-            else:
-                messageText += "\n> All other pairs: 0"
-                break
-        await safe_send(channel, messageText)
+        if not game.days[-1].riot_active:
+            message_tally = {X: 0 for X in itertools.combinations(game.seatingOrder, 2)}
+            has_had_multiple_votes = len(self.votes) > 0
+            last_vote_message = None if not has_had_multiple_votes else await channel.fetch_message(self.votes[-1].announcements[0])
+            for person in game.seatingOrder:
+                for msg in person.messageHistory:
+                    if msg["from"] == person:
+                        if has_had_multiple_votes:
+                            if msg["time"] >= last_vote_message.created_at:
+                                if (person, msg["to"]) in message_tally:
+                                    message_tally[(person, msg["to"])] += 1
+                                elif (msg["to"], person) in message_tally:
+                                    message_tally[(msg["to"], person)] += 1
+                                else:
+                                    message_tally[(person, msg["to"])] = 1
+                        else:
+                            if msg["day"] == len(game.days):
+                                if (person, msg["to"]) in message_tally:
+                                    message_tally[(person, msg["to"])] += 1
+                                elif (msg["to"], person) in message_tally:
+                                    message_tally[(msg["to"], person)] += 1
+                                else:
+                                    message_tally[(person, msg["to"])] = 1
+            sorted_tally = sorted(message_tally.items(), key=lambda x: -x[1])
+            messageText = "**Message Tally:**"
+            for pair in sorted_tally:
+                if pair[1] > 0:
+                    messageText += "\n> {person1} - {person2}: {n}".format(
+                        person1=pair[0][0].nick, person2=pair[0][1].nick, n=pair[1]
+                    )
+                else:
+                    messageText += "\n> All other pairs: 0"
+                    break
+            await safe_send(channel, messageText)
 
         await update_presence(client)
 
@@ -896,6 +899,7 @@ class Player:
         self.canBeNominated = False
         self.hasSkipped = False
         self.messageHistory = []
+        self.riot_nominee = False
 
         if inactiveRole in self.user.roles:
             self.isInactive = True
@@ -920,6 +924,7 @@ class Player:
         self.canBeNominated = True
         self.isActive = self.isInactive
         self.hasSkipped = self.isInactive
+        self.riot_nominee = False
 
     async def kill(self, suppress=False, force=False):
         dies = True
@@ -2967,17 +2972,57 @@ class Riot(Demon, NominationModifier):
 
     async def on_nomination(self, nominee, nominator, proceed):
         if self.isPoisoned or self.parent.isGhost:
-            return True
+            return proceed
+
+        if not game.days[-1].riot_active:
+            # show tally on first nomination
+            message_tally = {
+                X: 0 for X in itertools.combinations(game.seatingOrder, 2)
+            }
+            for person in game.seatingOrder:
+                for msg in person.messageHistory:
+                    if msg["from"] == person:
+                        if msg["day"] == len(game.days):
+                            if (person, msg["to"]) in message_tally:
+                                message_tally[(person, msg["to"])] += 1
+                            elif (msg["to"], person) in message_tally:
+                                message_tally[(msg["to"], person)] += 1
+                            else:
+                                message_tally[(person, msg["to"])] = 1
+            sorted_tally = sorted(message_tally.items(), key=lambda x: -x[1])
+            messageText = "**Message Tally:**"
+            for pair in sorted_tally:
+                if pair[1] > 0:
+                    messageText += "\n> {person1} - {person2}: {n}".format(
+                        person1=pair[0][0].nick, person2=pair[0][1].nick, n=pair[1]
+                    )
+                else:
+                    messageText += "\n> All other pairs: 0"
+                    break
+            await safe_send(channel, messageText)
+
+        game.days[-1].riot_active = True
 
         # handle the soldier jinx - If Riot nominates the Soldier, the Soldier does not die
-        soldier_jinx = nominee and nominee and not nominee.character.isPoisoned and has_ability(nominator.character, Riot) and has_ability(nominee.character, Soldier)
-        golem_jinx = nominator and nominee and nominator.character.isPoisoned and has_ability(nominee.character, Riot) and has_ability(nominator.character, Golem)
-        if not(soldier_jinx or golem_jinx):
+        # todo: if the nominator is ST, then get feedback on whether the nominee should die
+        soldier_jinx = nominator and nominee and not nominee.character.isPoisoned and has_ability(nominator.character, Riot) and has_ability(nominee.character, Soldier)
+        golem_jinx = nominator and nominee and not nominator.character.isPoisoned and not nominator.isGhost and has_ability(nominee.character, Riot) and has_ability(nominator.character, Golem)
+        if not(nominator):
+            if game.days[-1].st_riot_kill_override:
+                game.days[-1].st_riot_kill_override = False
+                await nominee.kill()
+        elif not(soldier_jinx or golem_jinx):
             await nominee.kill()
 
         riot_announcement = "Riot is in play. {} to nominate".format(nominee.user.mention)
         if len(game.days) < 3:
             riot_announcement = riot_announcement + " or skip"
+
+        if nominator:
+            nominator.riot_nominee = False
+        if nominee:
+            nominee.riot_nominee = True
+            nominee.canNominate = True
 
         msg = await safe_send(
             channel,
@@ -4920,15 +4965,52 @@ async def on_message(message):
                             "You aren't in the game, and so cannot nominate."
                         )
                         return
-
+                    else:
+                        if len([
+                            player for player in game.seatingOrder
+                            if player.character.role_name == "Riot"
+                            if not player.character.isPoisoned
+                            if not player.isGhost
+                        ]) > 0:
+                            # todo: ask if the nominee dies
+                            st_user = message.author
+                            msg = await safe_send(st_user, "Do they die? yes or no")
+                            try:
+                                choice = await client.wait_for(
+                                    "message",
+                                    check=(lambda x: x.author == st_user and x.channel == msg.channel),
+                                    timeout=200,
+                                )
+                            except asyncio.TimeoutError:
+                                await safe_send(st_user, "Message timed out!")
+                                return
+                            # Cancel
+                            if choice.content.lower() == "cancel":
+                                await safe_send(st_user, "Action cancelled!")
+                                return
+                            player_dies = False
+                            # Yes
+                            if choice.content.lower() == "yes" or choice.content.lower() == "y":
+                                player_dies = True
+                            # No
+                            elif choice.content.lower() == "no" or choice.content.lower() == "n":
+                                player_dies = False
+                            else:
+                                await safe_send(
+                                    st_user, "Your answer must be 'yes,' 'y,' 'no,' or 'n' exactly."
+                                )
+                                return
+                            game.days[-1].st_riot_kill_override = player_dies
                 else:
-
-                    if nominator_player.isGhost :
+                    if game.days[-1].riot_active:
+                        if not nominator_player.riot_nominee:
+                            await safe_send(message.author, "Riot is active, you may not nominate.")
+                            return
+                    if nominator_player.isGhost and not nominator_player.riot_nominee:
                         await safe_send(
                             message.author, "You are dead, and so cannot nominate."
                         )
                         return
-
                     if not nominator_player.canNominate:
                         await safe_send(message.author, "You have already nominated.")
                         return
@@ -6032,11 +6114,14 @@ async def on_message_edit(before, after):
                 await after.unpin()
                 return
 
-            if (message_author_player).isGhost:
+            if (message_author_player).isGhost and not message_author_player.riot_nominee:
                 await safe_send(channel, "You are dead, and so cannot nominate.")
                 await after.unpin()
                 return
-
+            if game.days[-1].riot_active and not message_author_player.riot_nominee:
+                await safe_send(channel, "Riot is active. It is not your turn to nominate.")
+                await after.unpin()
+                return
             if not (message_author_player).canNominate:
                 await safe_send(channel, "You have already nominated.")
                 await after.unpin()
