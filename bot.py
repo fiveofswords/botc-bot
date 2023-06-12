@@ -1046,6 +1046,7 @@ class Player:
             channel, "{} has come back to life.".format(self.user.mention)
         )
         await announcement.pin()
+        self.character.refresh()
         await self.user.remove_roles(ghostRole, deadVoteRole)
         await game.reseat(game.seatingOrder)
 
@@ -1172,6 +1173,10 @@ class Character:
         self.parent = parent
         self.role_name = "Character"
         self.isPoisoned = False
+        self.refresh()
+
+    def refresh(self):
+        pass
 
     def extra_info(self):
         return ""
@@ -1333,6 +1338,10 @@ class AbilityModifier(
         super().__init__(parent)
         self.abilities = []
 
+    def refresh(self):
+        super().refresh()
+        self.abilities = []
+
     def add_ability(self, role):
         self.abilities.append(role(self.parent))
 
@@ -1426,11 +1435,10 @@ class AbilityModifier(
 
     def on_death_priority(self):
         priority = DeathModifier.UNSET
-        # Returns bool -- does person die
-        if not self.isPoisoned:
+        if not self.isPoisoned and not self.parent.isGhost:
             for role in self.abilities:
                 if isinstance(role, DeathModifier):
-                    priority = role.on_death_priority()
+                    priority = min(priority, role.on_death_priority())
         return priority
 
 
@@ -1622,6 +1630,9 @@ class Virgin(Townsfolk, NominationModifier):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Virgin"
+
+    def refresh(self):
+        super().refresh()
         self.beenNominated = False
 
     async def on_nomination(self, nominee, nominator, proceed):
@@ -1657,6 +1668,9 @@ class Fool(Townsfolk, DeathModifier):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Fool"
+
+    def refresh(self):
+        super().refresh()
         self.can_escape_death = True
 
     def on_death(self, person, dies):
@@ -1848,6 +1862,10 @@ class Philosopher(Townsfolk, AbilityModifier):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Philosopher"
+
+    def refresh(self):
+        super().refresh()
+        self.abilities = []
 
     def add_ability(self, role):
         is_set = False
@@ -2064,6 +2082,9 @@ class Assassin(Minion, DayStartModifier, DeathModifier):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Assassin"
+
+    def refresh(self):
+        super().refresh()
         self.target = None
 
     def extra_info(self):
@@ -2073,7 +2094,7 @@ class Assassin(Minion, DayStartModifier, DeathModifier):
         if self.isPoisoned or self.parent.isGhost or self.target or len(game.days) < 1:
             return True
         else:
-            msg = await safe_send(origin, "Does Assassin kill?")
+            msg = await safe_send(origin, "Does {} use Assassin ability?".format(self.parent.nick))
             try:
                 choice = await client.wait_for(
                     "message",
@@ -2143,6 +2164,9 @@ class Witch(Minion, NominationModifier, DayStartModifier):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Witch"
+
+    def refresh(self):
+        super().refresh()
         self.witched = None
 
     async def on_day_start(self, origin, kills):
@@ -2331,6 +2355,10 @@ class Apprentice(Traveler, AbilityModifier):
         super().__init__(parent)
         self.role_name = "Apprentice"
 
+    def refresh(self):
+        super().refresh()
+        self.abilities = []
+
     def add_ability(self, role):
         is_set = False
         for ability in self.abilities:
@@ -2436,7 +2464,7 @@ class Bureaucrat(Traveler, DayStartModifier, VoteBeginningModifier):
 
     async def on_day_start(self, origin, kills):
 
-        if self.parent.isGhost == True or self.parent in kills:
+        if self.isPoisoned or self.parent.isGhost == True or self.parent in kills:
             self.target = None
             return True
 
@@ -2459,7 +2487,7 @@ class Bureaucrat(Traveler, DayStartModifier, VoteBeginningModifier):
         return True
 
     def modify_vote_values(self, order, values, majority):
-        if self.target and not self.isPoisoned:
+        if self.target and not self.isPoisoned and not self.parent.isGhost:
             values[self.target] = (values[self.target][0], values[self.target][1] * 3)
 
         return order, values, majority
@@ -2498,7 +2526,7 @@ class Thief(Traveler, DayStartModifier, VoteBeginningModifier):
         return True
 
     def modify_vote_values(self, order, values, majority):
-        if self.target and not self.isPoisoned:
+        if self.target and not self.isPoisoned and not self.parent.isGhost:
             values[self.target] = (values[self.target][0], values[self.target][1] * -1)
 
         return order, values, majority
@@ -2685,12 +2713,25 @@ class Huntsman(Townsfolk):
         super().__init__(parent)
         self.role_name = "Huntsman"
 
-class Alchemist(Townsfolk):
+class Alchemist(Townsfolk, AbilityModifier):
     # The alchemist
 
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Alchemist"
+
+    def extra_info(self):
+        return "\n".join([("Alchemy: {}\n{}".format(x.role_name, x.extra_info())) for x in self.abilities])
+
+    def add_ability(self, role):
+        is_set = False
+        for ability in self.abilities:
+            if isinstance(ability, AbilityModifier):
+                ability.add_ability(role)
+                is_set = True
+        if not is_set:
+            self.abilities = [role(self.parent)]
+
 
 class Choirboy(Townsfolk):
     # The choirboy
@@ -2726,6 +2767,9 @@ class Golem(Outsider, NominationModifier):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Golem"
+
+    def refresh(self):
+        super().refresh()
         self.hasNominated = False
 
     async def on_nomination(self, nominee, nominator, proceed):
@@ -2739,6 +2783,7 @@ class Golem(Outsider, NominationModifier):
                 await nominee.kill()
             self.hasNominated = True
         return proceed
+
 
 class Damsel(Outsider):
     # The damsel
@@ -2856,6 +2901,9 @@ class Lleech(Demon, DeathModifier, DayStartModifier):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Lleech"
+
+    def refresh(self):
+        super().refresh()
         self.hosted = None
 
     async def on_day_start(self, origin, kills):
@@ -2878,7 +2926,6 @@ class Lleech(Demon, DeathModifier, DayStartModifier):
             return False
 
         self.hosted = person
-        person.character.isPoisoned = True
         return True
 
     def on_death(self, person, dies):
