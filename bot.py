@@ -2102,7 +2102,7 @@ class Assassin(Minion, DayStartModifier, DeathModifier):
         return "Assassinated: {}".format(self.target and self.target.nick)
 
     async def on_day_start(self, origin, kills):
-        if self.isPoisoned or self.parent.isGhost or self.target or len(game.days) < 1:
+        if self.parent.isGhost or self.target or len(game.days) < 1:
             return True
         else:
             msg = await safe_send(origin, "Does {} use Assassin ability?".format(self.parent.nick))
