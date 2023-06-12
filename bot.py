@@ -2784,6 +2784,7 @@ class Golem(Outsider, NominationModifier):
         self.hasNominated = False
 
     async def on_nomination(self, nominee, nominator, proceed):
+        # fixme: golem instantly kills a recluse when it should be ST decision
         if nominator == self.parent:
             if (
                     not isinstance(nominee.character, Demon)
