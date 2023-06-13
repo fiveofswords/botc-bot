@@ -2972,7 +2972,7 @@ class Riot(Demon, NominationModifier):
         self.role_name = "Riot"
 
     async def on_nomination(self, nominee, nominator, proceed):
-        if self.isPoisoned or self.parent.isGhost:
+        if self.isPoisoned or self.parent.isGhost or not nominee:
             return proceed
 
         if not game.days[-1].riot_active:
