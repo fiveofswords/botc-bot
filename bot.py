@@ -267,6 +267,18 @@ class Day:
         else:
             nominee.canBeNominated = False
             self.votes.append(Vote(nominee, nominator))
+            # FIXME:there might be a case where a player earlier in the seating order makes the nomination not proceed
+            #  but one later in the seating order may be relevant. Short circuit here stops two Riot messages, e.g.
+            #  There may need to be some rework based on NominationModifier priority
+            proceed = True
+            for person in game.seatingOrder:
+                if isinstance(person.character, NominationModifier) and proceed:
+                    proceed = await person.character.on_nomination(
+                        nominee, nominator, proceed
+                    )
+            if not proceed:
+                # do not proceed with collecting votes
+                return
             if self.aboutToDie is not None:
                 announcement = await safe_send(
                     channel,
