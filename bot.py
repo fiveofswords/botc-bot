@@ -2777,12 +2777,22 @@ class King(Townsfolk):
         super().__init__(parent)
         self.role_name = "King"
 
+
 class Magician(Townsfolk):
     # The magician
 
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Magician"
+
+
+class HighPriestess(Townsfolk):
+    # The Hight Pristess
+
+    def __init(self, parent):
+        super().__init__(parent)
+        self.role_name = "High Priestess"
+
 
 class Golem(Outsider, NominationModifier):
     # The golem
