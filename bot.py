@@ -2787,9 +2787,9 @@ class Magician(Townsfolk):
 
 
 class HighPriestess(Townsfolk):
-    # The Hight Pristess
+    # The high priestess
 
-    def __init(self, parent):
+    def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "High Priestess"
 
