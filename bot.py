@@ -604,6 +604,8 @@ class Vote:
         for person in game.seatingOrder:
             if isinstance(person.character, VoteModifier):
                 dies, tie = person.character.on_vote_conclusion(dies, tie)
+        for person in game.seatingOrder:
+            person.riot_nominee = False
         if len(self.voted) == 0:
             text = "no one"
         elif len(self.voted) == 1:
@@ -2866,13 +2868,14 @@ class OrganGrinder(Minion, NominationModifier):
         if not self.isPoisoned and not self.parent.isGhost:
             nominee_nick = nominator.nick if nominator else "the storytellers"
             nominator_mention = nominee.user.mention if nominee else "the storytellers"
-            msg = await safe_send(
+            announcement = await safe_send(
                 channel,
                 "{}, {} has been nominated by {}. Organ Grinder is in play. Message your votes to the storytellers"
                 .format(playerRole.mention, nominator_mention, nominee_nick),
             )
+            await announcement.pin()
             this_day = game.days[-1]
-            this_day.votes[-1].announcements.append(msg.id)
+            this_day.votes[-1].announcements.append(announcement.id)
             message_tally = {
                 X: 0 for X in itertools.combinations(game.seatingOrder, 2)
             }
@@ -3002,7 +3005,17 @@ class Riot(Demon, NominationModifier):
         if self.isPoisoned or self.parent.isGhost or not nominee:
             return proceed
 
-        if not game.days[-1].riot_active:
+        nominee_nick = nominator.nick if nominator else "the storytellers"
+        announcemnt = await safe_send(
+            channel,
+            "{}, {} has been nominated by {}."
+            .format(playerRole.mention, nominee.user.mention, nominee_nick),
+        )
+        await announcemnt.pin()
+        this_day = game.days[-1]
+        this_day.votes[-1].announcements.append(announcemnt.id)
+
+        if not this_day.riot_active:
             # show tally on first nomination
             message_tally = {
                 X: 0 for X in itertools.combinations(game.seatingOrder, 2)
@@ -3029,15 +3042,15 @@ class Riot(Demon, NominationModifier):
                     break
             await safe_send(channel, messageText)
 
-        game.days[-1].riot_active = True
+        this_day.riot_active = True
 
         # handle the soldier jinx - If Riot nominates the Soldier, the Soldier does not die
         # todo: if the nominator is ST, then get feedback on whether the nominee should die
         soldier_jinx = nominator and nominee and not nominee.character.isPoisoned and has_ability(nominator.character, Riot) and has_ability(nominee.character, Soldier)
         golem_jinx = nominator and nominee and not nominator.character.isPoisoned and not nominator.isGhost and has_ability(nominee.character, Riot) and has_ability(nominator.character, Golem)
         if not(nominator):
-            if game.days[-1].st_riot_kill_override:
-                game.days[-1].st_riot_kill_override = False
+            if this_day.st_riot_kill_override:
+                this_day.st_riot_kill_override = False
                 await nominee.kill()
         elif not(soldier_jinx or golem_jinx):
             await nominee.kill()
@@ -3057,7 +3070,7 @@ class Riot(Demon, NominationModifier):
             riot_announcement,
         )
 
-        await game.days[-1].open_noms()
+        await this_day.open_noms()
         return False
 
 
