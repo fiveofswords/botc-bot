@@ -6030,11 +6030,6 @@ async def on_message(message):
                     inline=False,
                 )
                 embed.add_field(
-                    name="reply",
-                    value="messages the author of the previously received message",
-                    inline=False,
-                )
-                embed.add_field(
                     name="history <<player>>",
                     value="views your message history with player",
                     inline=False,
