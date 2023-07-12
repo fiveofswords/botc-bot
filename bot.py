@@ -206,6 +206,7 @@ class Day:
     async def nomination(self, nominee, nominator):
         await self.close_pms()
         await self.close_noms()
+        # todo: if organ grinder ability is active, then this first message should not be output.
         if not nominee:
             self.votes.append(Vote(nominee, nominator))
             if self.aboutToDie is not None:
@@ -2863,18 +2864,22 @@ class OrganGrinder(Minion, NominationModifier):
 
     async def on_nomination(self, nominee, nominator, proceed):
         if not self.isPoisoned and not self.parent.isGhost:
+            nominee_nick = nominator.nick if nominator else "the storytellers"
+            nominator_mention = nominee.user.mention if nominee else "the storytellers"
             msg = await safe_send(
                 channel,
-                "Organ grinder is in play. Message your votes to the storytellers.",
+                "{}, {} has been nominated by {}. Organ Grinder is in play. Message your votes to the storytellers"
+                .format(playerRole.mention, nominator_mention, nominee_nick),
             )
-            game.days[-1].votes[-1].announcements.append(msg.id)
+            this_day = game.days[-1]
+            this_day.votes[-1].announcements.append(msg.id)
             message_tally = {
                 X: 0 for X in itertools.combinations(game.seatingOrder, 2)
             }
 
-            has_had_multiple_votes = len(self.votes) > 0
-            last_vote_message = None if not has_had_multiple_votes else await channel.fetch_message(game.days[-1].votes[-1].announcements[0])
-            # fix the createdAt logic for organ grinder tallies
+            has_had_multiple_votes = len(this_day.votes) > 1
+            last_vote_message = None if not has_had_multiple_votes else await channel.fetch_message(
+                this_day.votes[-2].announcements[0])
             for person in game.seatingOrder:
                 for msg in person.messageHistory:
                     if msg["from"] == person:
