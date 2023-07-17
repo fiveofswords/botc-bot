@@ -2797,6 +2797,21 @@ class HighPriestess(Townsfolk):
         self.role_name = "High Priestess"
 
 
+class Steward(Townsfolk):
+    # The steward
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Steward"
+
+class Knight(Townsfolk):
+    # The knight
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Knight"
+
+
 class Golem(Outsider, NominationModifier):
     # The golem
 
@@ -2829,6 +2844,7 @@ class Damsel(Outsider):
         super().__init__(parent)
         self.role_name = "Damsel"
 
+
 class Heretic(Outsider):
     # The heretic
 
@@ -2836,12 +2852,14 @@ class Heretic(Outsider):
         super().__init__(parent)
         self.role_name = "Heretic"
 
+
 class Puzzlemaster(Outsider):
     # The puzzlemaster
 
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Puzzlemaster"
+
 
 class Snitch(Outsider):
     # The snitch
