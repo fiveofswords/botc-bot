@@ -28,7 +28,7 @@ logger.addHandler(handler)
 
 ### Classes
 class Game:
-    def __init__(self, seatingOrder, seatingOrderMessage, script):
+    def __init__(self, seatingOrder, seatingOrderMessage, script, skip_storytellers=False):
         self.days = []
         self.isDay = False
         self.script = script
@@ -37,7 +37,7 @@ class Game:
         self.storytellers = [
             Player(Storyteller, STORYTELLER_ALIGNMENT, person, None)
             for person in gamemasterRole.members
-        ]
+        ] if not skip_storytellers else []
 
     async def end(self, winner):
         # Ends the game
@@ -72,7 +72,7 @@ class Game:
 
         # turn off
         global game
-        game = None
+        game = NULL_GAME
         await update_presence(client)
 
     async def reseat(self, newSeatingOrder):
@@ -3245,7 +3245,7 @@ async def yes_no(user, text):
 
 async def get_player(user):
     # returns the Player object corresponding to user
-    if game is None:
+    if game is NULL_GAME:
         return
 
     for person in game.seatingOrder:
@@ -3307,7 +3307,7 @@ async def cannot_nominate(user):
 async def update_presence(client):
     # Updates Discord Presence
 
-    if game is None:
+    if game is NULL_GAME:
         await client.change_presence(
             status=discord.Status.dnd, activity=discord.Game(name="No ongoing game!")
         )
@@ -3431,7 +3431,7 @@ async def on_ready():
     # On startup
 
     global server, channel, playerRole, travelerRole, ghostRole, deadVoteRole, gamemasterRole, inactiveRole, game
-    game = None
+    game = NULL_GAME
 
     server = client.get_guild(serverid)
     channel = client.get_channel(channelid)
@@ -3469,7 +3469,7 @@ async def on_message(message):
     # Handles messages
     global game
 
-    if game is not None:
+    if game is not NULL_GAME:
         backup("current_game.pckl")
 
     # Don't respond to self
@@ -3478,10 +3478,10 @@ async def on_message(message):
 
     # Update activity
     if message.channel == channel:
-        if game is not None:
+        if game is not NULL_GAME:
             if game.isDay:
                 await make_active(message.author)
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
 
         # Votes
@@ -3496,7 +3496,7 @@ async def on_message(message):
 
             if command == "vote":
 
-                if game is None:
+                if game is NULL_GAME:
                     await safe_send(channel, "There's no game right now.")
                     return
 
@@ -3534,7 +3534,7 @@ async def on_message(message):
                 vt = int(argument == "yes" or argument == "y")
 
                 await vote.vote(vt)
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
@@ -3570,7 +3570,7 @@ async def on_message(message):
 
             # Opens pms
             if command == "openpms":
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -3583,12 +3583,12 @@ async def on_message(message):
                     return
 
                 await game.days[-1].open_pms()
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
 
             # Opens nominations
             elif command == "opennoms":
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -3603,12 +3603,12 @@ async def on_message(message):
                     return
 
                 await game.days[-1].open_noms()
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
 
             # Opens pms and nominations
             elif command == "open":
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -3624,12 +3624,12 @@ async def on_message(message):
 
                 await game.days[-1].open_pms()
                 await game.days[-1].open_noms()
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
 
             # Closes pms
             elif command == "closepms":
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -3642,12 +3642,12 @@ async def on_message(message):
                     return
 
                 await game.days[-1].close_pms()
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
 
             # Closes nominations
             elif command == "closenoms":
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -3662,12 +3662,12 @@ async def on_message(message):
                     return
 
                 await game.days[-1].close_noms()
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
 
             # Closes pms and nominations
             elif command == "close":
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -3683,7 +3683,7 @@ async def on_message(message):
 
                 await game.days[-1].close_pms()
                 await game.days[-1].close_noms()
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
@@ -3734,7 +3734,7 @@ async def on_message(message):
             # Starts game
             elif command == "startgame":
 
-                if game is not None:
+                if game is not NULL_GAME:
                     await message.author.send("There's already an ongoing game!")
                     return
 
@@ -3953,7 +3953,7 @@ async def on_message(message):
             # Ends game
             elif command == "endgame":
 
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -3970,14 +3970,14 @@ async def on_message(message):
                     return
 
                 await game.end(argument.lower())
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
             # Starts day
             elif command == "startday":
 
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -3993,7 +3993,7 @@ async def on_message(message):
 
                 if argument == "":
                     await game.start_day(origin=message.author)
-                    if game is not None:
+                    if game is not NULL_GAME:
                         backup("current_game.pckl")
                     return
 
@@ -4005,14 +4005,14 @@ async def on_message(message):
                     return
 
                 await game.start_day(kills=people, origin=message.author)
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
             # Ends day
             elif command == "endday":
 
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4027,14 +4027,14 @@ async def on_message(message):
                     return
 
                 await game.days[-1].end()
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
             # Kills a player
             elif command == "kill":
 
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4055,14 +4055,14 @@ async def on_message(message):
                     return
 
                 await person.kill(force=True)
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
             # Executes a player
             elif command == "execute":
 
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4079,14 +4079,14 @@ async def on_message(message):
                     return
 
                 await person.execute(message.author)
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
             # Exiles a traveler
             elif command == "exile":
 
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4108,14 +4108,14 @@ async def on_message(message):
                     )
 
                 await person.character.exile(person, message.author)
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
             # Revives a player
             elif command == "revive":
 
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4136,14 +4136,14 @@ async def on_message(message):
                     return
 
                 await person.revive()
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
             # Changes role
             elif command == "changerole":
 
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4188,14 +4188,14 @@ async def on_message(message):
 
                 await person.change_character(role(person))
                 await message.author.send("Role change successful!")
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
             # Changes alignment
             elif command == "changealignment":
 
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4239,13 +4239,13 @@ async def on_message(message):
 
                 await person.change_alignment(alignment)
                 await message.author.send("Alignment change successful!")
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
             # Adds an ability to an AbilityModifier character
             elif command == "changeability":
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4302,7 +4302,7 @@ async def on_message(message):
 
             # removes an ability from an AbilityModifier ability (useful if a nested ability is gained)
             elif command == "removeability":
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4336,7 +4336,7 @@ async def on_message(message):
             # Marks as inactive
             elif command == "makeinactive":
 
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4353,14 +4353,14 @@ async def on_message(message):
                     return
 
                 await person.make_inactive()
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
             # Marks as inactive
             elif command == "undoinactive":
 
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4377,14 +4377,14 @@ async def on_message(message):
                     return
 
                 await person.undo_inactive()
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
             # Adds traveler
             elif command == "addtraveler" or command == "addtraveller":
 
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4502,14 +4502,14 @@ async def on_message(message):
                 await game.add_traveler(
                     Player(role, alignment.content.lower(), person, pos)
                 )
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
             # Removes traveler
             elif command == "removetraveler" or command == "removetraveller":
 
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4526,13 +4526,13 @@ async def on_message(message):
                     return
 
                 await game.remove_traveler(person)
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
             # Resets the seating chart
             elif command == "resetseats":
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
 
                 if not gamemasterRole in server.get_member(message.author.id).roles:
@@ -4547,7 +4547,7 @@ async def on_message(message):
             # Changes seating chart
             elif command == "reseat":
 
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
 
                 if not gamemasterRole in server.get_member(message.author.id).roles:
@@ -4588,13 +4588,13 @@ async def on_message(message):
                     return
 
                 await game.reseat(order)
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
             # Poisons
             elif command == "poison":
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4618,7 +4618,7 @@ async def on_message(message):
 
             # Unpoisons
             elif command == "unpoison":
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4642,7 +4642,7 @@ async def on_message(message):
 
             # Cancels a nomination
             elif command == "cancelnomination":
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4668,13 +4668,13 @@ async def on_message(message):
                 await game.days[-1].open_pms()
                 await game.days[-1].open_noms()
                 await safe_send(channel, "Nomination canceled!")
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
             # Sets a deadline
             elif command == "setdeadline":
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4733,7 +4733,7 @@ async def on_message(message):
 
             # Gives a dead vote
             elif command == "givedeadvote":
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4750,13 +4750,13 @@ async def on_message(message):
                     return
 
                 await person.add_dead_vote()
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
             # Removes a dead vote
             elif command == "removedeadvote":
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4773,13 +4773,13 @@ async def on_message(message):
                     return
 
                 await person.remove_dead_vote()
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
             # Sends a message tally
             elif command == "messagetally":
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4830,7 +4830,7 @@ async def on_message(message):
 
             # Views relevant information about a player
             elif command == "info":
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4860,7 +4860,7 @@ async def on_message(message):
 
             # Views the grimoire
             elif command == "grimoire":
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4901,7 +4901,7 @@ async def on_message(message):
                     )
                     return
 
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4929,7 +4929,7 @@ async def on_message(message):
             # Checks who can nominate
             elif command == "cannominate":
 
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4959,7 +4959,7 @@ async def on_message(message):
             # Checks who can be nominated
             elif command == "canbenominated":
 
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -4986,7 +4986,7 @@ async def on_message(message):
             # Nominates
             elif command == "nominate":
 
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -5084,7 +5084,7 @@ async def on_message(message):
                             await message.unpin()
                             return
                         await game.days[-1].nomination(None, nominator_player)
-                        if game is not None:
+                        if game is not NULL_GAME:
                             backup("current_game.pckl")
                         await message.unpin()
                         return
@@ -5097,7 +5097,7 @@ async def on_message(message):
 
                 if gamemasterRole in server.get_member(message.author.id).roles:
                     await game.days[-1].nomination(person, None)
-                    if game is not None:
+                    if game is not NULL_GAME:
                         backup("current_game.pckl")
                     return
 
@@ -5107,14 +5107,14 @@ async def on_message(message):
                     return
 
                 await game.days[-1].nomination(person, nominator_player)
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
             # Votes
             elif command == "vote":
 
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -5178,7 +5178,7 @@ async def on_message(message):
                     vt = int(argument == "yes" or argument == "y")
 
                     await vote.vote(vt, operator=message.author)
-                    if game is not None:
+                    if game is not NULL_GAME:
                         backup("current_game.pckl")
                     return
 
@@ -5194,14 +5194,14 @@ async def on_message(message):
                 vt = int(argument == "yes" or argument == "y")
 
                 await vote.vote(vt)
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
             # Presets a vote
             elif command == "presetvote" or command == "prevote":
 
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -5260,7 +5260,7 @@ async def on_message(message):
 
                     await vote.preset_vote(person, vt, operator=message.author)
                     await message.author.send("Successfully preset!")
-                    if game is not None:
+                    if game is not NULL_GAME:
                         backup("current_game.pckl")
                     return
 
@@ -5270,14 +5270,14 @@ async def on_message(message):
                 await message.author.send(
                     "Successfully preset! For more nuanced presets, contact the storytellers."
                 )
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
             # Cancels a preset vote
             elif command == "cancelpreset":
 
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -5321,7 +5321,7 @@ async def on_message(message):
 
                     await vote.cancel_preset(person)
                     await message.author.send("Successfully canceled!")
-                    if game is not None:
+                    if game is not NULL_GAME:
                         backup("current_game.pckl")
                     return
 
@@ -5329,7 +5329,7 @@ async def on_message(message):
                 await message.author.send(
                     "Successfully canceled! For more nuanced presets, contact the storytellers."
                 )
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
@@ -5414,7 +5414,7 @@ async def on_message(message):
             # Sends pm
             elif command == "pm" or command == "message":
 
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -5471,13 +5471,13 @@ async def on_message(message):
                 )
                 if not (await get_player(message.author)).isActive:
                     await make_active(message.author)
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
             # Message history
             elif command == "history":
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -5604,7 +5604,7 @@ async def on_message(message):
 
             # Message search
             elif command == "search":
-                if game is None:
+                if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
                     return
 
@@ -6128,7 +6128,7 @@ async def on_message_edit(before, after):
                 after.content.lower().index("nominate ") + 9 :
             ]
 
-            if game is None:
+            if game is NULL_GAME:
                 await safe_send(channel, "There's no game right now.")
                 await after.unpin()
                 return
@@ -6185,7 +6185,7 @@ async def on_message_edit(before, after):
                         await after.unpin()
                         return
                     await game.days[-1].nomination(None, message_author_player)
-                    if game is not None:
+                    if game is not NULL_GAME:
                         backup("current_game.pckl")
                     await after.unpin()
                     return
@@ -6202,7 +6202,7 @@ async def on_message_edit(before, after):
                     return
 
                 await game.days[-1].nomination(names[0], message_author_player)
-                if game is not None:
+                if game is not NULL_GAME:
                     backup("current_game.pckl")
                 await after.unpin()
                 return
@@ -6222,7 +6222,7 @@ async def on_message_edit(before, after):
         # Skip
         elif "skip" in after.content.lower():
 
-            if game is None:
+            if game is NULL_GAME:
                 await safe_send(channel, "There's no game right now.")
                 await after.unpin()
                 return
@@ -6240,7 +6240,7 @@ async def on_message_edit(before, after):
                 return
 
             (message_author_player).hasSkipped = True
-            if game is not None:
+            if game is not NULL_GAME:
                 backup("current_game.pckl")
 
             canNominate = [
@@ -6273,7 +6273,7 @@ async def on_message_edit(before, after):
         # Unskip
         if "skip" in after.content.lower():
             (message_author_player).hasSkipped = False
-            if game is not None:
+            if game is not NULL_GAME:
                 backup("current_game.pckl")
 
 
@@ -6284,7 +6284,7 @@ async def on_member_update(before, after):
     if after == client.user:
         return
 
-    if game is not None:
+    if game is not NULL_GAME:
         if await get_player(after):
             if before.nick != after.nick:
                 (await get_player(after)).nick = after.nick
@@ -6298,6 +6298,8 @@ async def on_member_update(before, after):
                 if st.user.id == after.id:
                     game.storytellers.remove(st)
 
+
+NULL_GAME = Game(seatingOrder=[], seatingOrderMessage=0, script=[], skip_storytellers=True)
 
 ### Event loop
 while True:
