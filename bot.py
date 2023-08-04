@@ -2868,12 +2868,14 @@ class Snitch(Outsider):
         super().__init__(parent)
         self.role_name = "Snitch"
 
+
 class Marionette(Minion):
     # The marionette
 
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Marionette"
+
 
 class OrganGrinder(Minion, NominationModifier):
     # The organ grinder
@@ -2934,12 +2936,22 @@ class OrganGrinder(Minion, NominationModifier):
             return False
         return proceed
 
+
 class Mezepheles(Minion):
     # The mezepheles
 
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Mezepheles"
+
+
+class Harpy(Minion):
+    # The harpy
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Harpy"
+
 
 class AlHadikhia(Demon):
     # the al-hadikhia
