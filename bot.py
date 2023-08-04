@@ -2890,7 +2890,7 @@ class OrganGrinder(Minion, NominationModifier):
             nominator_mention = nominee.user.mention if nominee else "the storytellers"
             announcement = await safe_send(
                 channel,
-                "{}, {} has been nominated by {}. Organ Grinder is in play. Message your votes to the storytellers"
+                "{}, {} has been nominated by {}. Organ Grinder is in play. Message your votes to the storytellers."
                 .format(playerRole.mention, nominator_mention, nominee_nick),
             )
             await announcement.pin()
