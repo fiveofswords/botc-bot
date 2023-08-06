@@ -449,7 +449,7 @@ class Vote:
         self.nominator = nominator
         if self.nominee is not None:
             self.order = (
-                game.seatingOrder[game.seatingOrder.index(self.nominee) + 1 :]
+                game.seatingOrder[game.seatingOrder.index(self.nominee) + 1:]
                 + game.seatingOrder[: game.seatingOrder.index(self.nominee) + 1]
             )
         else:
@@ -499,9 +499,7 @@ class Vote:
         try:
             preferences = {}
             if os.path.isfile(os.path.dirname(os.getcwd()) + "/preferences.pckl"):
-                with open(
-                    os.path.dirname(os.getcwd()) + "/preferences.pckl", "rb"
-                ) as file:
+                with open(os.path.dirname(os.getcwd()) + "/preferences.pckl", "rb") as file:
                     preferences = dill.load(file)
             default = preferences[toCall.user.id]["defaultvote"]
             time = default[1]
@@ -520,10 +518,7 @@ class Vote:
                     ),
                 )
             await asyncio.sleep(time)
-            if (
-                toCall
-                == game.days[-1].votes[-1].order[game.days[-1].votes[-1].position]
-            ):
+            if toCall == game.days[-1].votes[-1].order[game.days[-1].votes[-1].position]:
                 await self.vote(default[0])
         except KeyError:
             for memb in gamemasterRole.members:
@@ -613,11 +608,7 @@ class Vote:
         elif len(self.voted) == 2:
             text = self.voted[0].nick + " and " + self.voted[1].nick
         else:
-            text = (
-                ", ".join([x.nick for x in self.voted[:-1]])
-                + ", and "
-                + self.voted[-1].nick
-            )
+            text = (", ".join([x.nick for x in self.voted[:-1]]) + ", and " + self.voted[-1].nick)
         if dies:
             if aboutToDie is not None:
                 msg = await channel.fetch_message(
@@ -730,7 +721,7 @@ class TravelerVote:
         self.nominee = nominee
         self.nominator = nominator
         self.order = (
-            game.seatingOrder[game.seatingOrder.index(self.nominee) + 1 :]
+            game.seatingOrder[game.seatingOrder.index(self.nominee) + 1:]
             + game.seatingOrder[: game.seatingOrder.index(self.nominee) + 1]
         )
         self.votes = 0
@@ -760,9 +751,7 @@ class TravelerVote:
         try:
             preferences = {}
             if os.path.isfile(os.path.dirname(os.getcwd()) + "/preferences.pckl"):
-                with open(
-                    os.path.dirname(os.getcwd()) + "/preferences.pckl", "rb"
-                ) as file:
+                with open(os.path.dirname(os.getcwd()) + "/preferences.pckl", "rb") as file:
                     preferences = dill.load(file)
             default = preferences[toCall.user.id]["defaultvote"]
             time = default[1]
@@ -772,10 +761,7 @@ class TravelerVote:
                 )
             )
             await asyncio.sleep(time)
-            if (
-                toCall
-                == game.days[-1].votes[-1].order[game.days[-1].votes[-1].position]
-            ):
+            if toCall == game.days[-1].votes[-1].order[game.days[-1].votes[-1].position]:
                 await self.vote(default[0])
             for memb in gamemasterRole.members:
                 await safe_send(
@@ -832,11 +818,7 @@ class TravelerVote:
         elif len(self.voted) == 2:
             text = self.voted[0].nick + " and " + self.voted[1].nick
         else:
-            text = (
-                ", ".join([x.nick for x in self.voted[:-1]])
-                + ", and "
-                + self.voted[-1].nick
-            )
+            text = (", ".join([x.nick for x in self.voted[:-1]]) + ", and " + self.voted[-1].nick)
         if self.votes >= self.majority:
             announcement = await safe_send(
                 channel,
@@ -943,7 +925,7 @@ class Player:
 
     async def kill(self, suppress=False, force=False):
         dies = True
-        on_death_characters = sorted([person.character for person in game.seatingOrder if isinstance(person.character, DeathModifier)], key = lambda c: c.on_death_priority())
+        on_death_characters = sorted([person.character for person in game.seatingOrder if isinstance(person.character, DeathModifier)], key=lambda c: c.on_death_priority())
         for player_character in on_death_characters:
             dies = player_character.on_death(self, dies)
 
@@ -1151,9 +1133,9 @@ class Player:
                 player
                 for player in game.seatingOrder
                 if player.canNominate == True
-                and player.hasSkipped == False
-                and player.alignment != STORYTELLER_ALIGNMENT
-                and player.isGhost == False
+                   and player.hasSkipped == False
+                   and player.alignment != STORYTELLER_ALIGNMENT
+                   and player.isGhost == False
             ]
             if len(canNominate) == 1:
                 for memb in gamemasterRole.members:
@@ -1331,11 +1313,11 @@ class VoteModifier(Character):
 
 class DeathModifier(Character):
     # A character which triggers on a player's death
-    PROTECTS_OTHERS=1
-    PROTECTS_SELF=2
-    KILLS_SELF=3
-    FORCES_KILL=1000
-    UNSET=999
+    PROTECTS_OTHERS = 1
+    PROTECTS_SELF = 2
+    KILLS_SELF = 3
+    FORCES_KILL = 1000
+    UNSET = 999
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -1508,9 +1490,7 @@ class Traveler(SeatingOrderModifier):
         if die:
             die = await person.kill(suppress=True)
             if die:
-                announcement = await safe_send(
-                    channel, "{} has been exiled.".format(person.user.mention)
-                )
+                announcement = await safe_send(channel, "{} has been exiled.".format(person.user.mention))
                 await announcement.pin()
             else:
                 if person.isGhost:
@@ -1709,10 +1689,9 @@ class Fool(Townsfolk, DeathModifier):
         return DeathModifier.PROTECTS_SELF
 
     def extra_info(self):
-        if(self.can_escape_death):
+        if (self.can_escape_death):
             return "Fool: Not Used"
         return "Fool: Used"
-
 
 
 class Gambler(Townsfolk):
@@ -1817,7 +1796,7 @@ class TeaLady(Townsfolk, DeathModifier):
             neighbor1.alignment == "good"
             and neighbor2.alignment == "good"
             and (person == neighbor1 or person == neighbor2)
-            and self.isPoisoned == False
+            and not self.isPoisoned
         ):
             return False
         return dies
@@ -2235,7 +2214,6 @@ class Witch(Minion, NominationModifier, DayStartModifier):
             return "Witched: {}".format(self.witched.nick)
 
 
-
 class EvilTwin(Minion):
     # The evil twin
 
@@ -2420,7 +2398,7 @@ class Voudon(Traveler):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Voudon"
-       # todo: consider Voudon when taking away ghost votes
+        # todo: consider Voudon when taking away ghost votes
 
 
 class Bishop(Traveler):
@@ -2697,12 +2675,14 @@ class Preacher(Townsfolk):
         super().__init__(parent)
         self.role_name = "Preacher"
 
+
 class Noble(Townsfolk):
     # The noble
 
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Noble"
+
 
 class Farmer(Townsfolk):
     # The farmer
@@ -2711,12 +2691,14 @@ class Farmer(Townsfolk):
         super().__init__(parent)
         self.role_name = "Farmer"
 
+
 class PoppyGrower(Townsfolk):
     # The poppy grower
 
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Poppy Grower"
+
 
 class Nightwatchman(Townsfolk):
     # The nightwatchman
@@ -2725,6 +2707,7 @@ class Nightwatchman(Townsfolk):
         super().__init__(parent)
         self.role_name = "Nightwatchman"
 
+
 class Atheist(Townsfolk):
     # The atheist
 
@@ -2732,12 +2715,14 @@ class Atheist(Townsfolk):
         super().__init__(parent)
         self.role_name = "Atheist"
 
+
 class Huntsman(Townsfolk):
     # The huntsman
 
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Huntsman"
+
 
 class Alchemist(Townsfolk, AbilityModifier):
     # The alchemist
@@ -2766,12 +2751,14 @@ class Choirboy(Townsfolk):
         super().__init__(parent)
         self.role_name = "Choirboy"
 
+
 class Engineer(Townsfolk):
     # The engineer
 
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Engineer"
+
 
 class King(Townsfolk):
     # The king
@@ -2804,6 +2791,7 @@ class Steward(Townsfolk):
         super().__init__(parent)
         self.role_name = "Steward"
 
+
 class Knight(Townsfolk):
     # The knight
 
@@ -2827,10 +2815,10 @@ class Golem(Outsider, NominationModifier):
         # fixme: golem instantly kills a recluse when it should be ST decision
         if nominator == self.parent:
             if (
-                    not isinstance(nominee.character, Demon)
-                    and not self.isPoisoned
-                    and not self.parent.isGhost
-                    and not self.hasNominated
+                not isinstance(nominee.character, Demon)
+                and not self.isPoisoned
+                and not self.parent.isGhost
+                and not self.hasNominated
             ):
                 await nominee.kill()
             self.hasNominated = True
@@ -2960,12 +2948,14 @@ class AlHadikhia(Demon):
         super().__init__(parent)
         self.role_name = "Al-Hadikhia"
 
+
 class Legion(Demon):
     # the legion
 
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Legion"
+
 
 class Lleech(Demon, DeathModifier, DayStartModifier):
     # The lleech
@@ -3078,11 +3068,11 @@ class Riot(Demon, NominationModifier):
         # todo: if the nominator is ST, then get feedback on whether the nominee should die
         soldier_jinx = nominator and nominee and not nominee.character.isPoisoned and has_ability(nominator.character, Riot) and has_ability(nominee.character, Soldier)
         golem_jinx = nominator and nominee and not nominator.character.isPoisoned and not nominator.isGhost and has_ability(nominee.character, Riot) and has_ability(nominator.character, Golem)
-        if not(nominator):
+        if not (nominator):
             if this_day.st_riot_kill_override:
                 this_day.st_riot_kill_override = False
                 await nominee.kill()
-        elif not(soldier_jinx or golem_jinx):
+        elif not (soldier_jinx or golem_jinx):
             await nominee.kill()
 
         riot_announcement = "Riot is in play. {} to nominate".format(nominee.user.mention)
@@ -3111,12 +3101,14 @@ class Boomdandy(Minion):
         super().__init__(parent)
         self.role_name = "Boomdandy"
 
+
 class Fearmonger(Minion):
     # The fearmonger
 
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Fearmonger"
+
 
 class Psychopath(Minion):
     # The psychopath
@@ -3139,7 +3131,6 @@ except TypeError:
         voice=True,
         joined=True
     )
-
 
 intents = discord.Intents.all()
 intents.members = True
@@ -3179,6 +3170,7 @@ async def generate_possibilities(text, people):
         ) or text.lower() in person.name.lower():
             possibilities.append(person)
     return possibilities
+
 
 async def choices(user, possibilities, text):
     # Clarifies which user is indended when there are multiple matches
@@ -3320,8 +3312,8 @@ async def cannot_nominate(user):
         player
         for player in game.seatingOrder
         if player.canNominate == True
-        and player.hasSkipped == False
-        and player.isGhost == False
+           and player.hasSkipped == False
+           and player.isGhost == False
     ]
     if len(canNominate) == 1:
         for memb in gamemasterRole.members:
@@ -3399,7 +3391,6 @@ async def load(fileName):
 
 
 def remove_backup(fileName):
-
     os.remove(fileName)
     for obj in [
         x
@@ -3410,7 +3401,6 @@ def remove_backup(fileName):
 
 
 def is_dst():
-
     x = datetime.datetime(
         datetime.datetime.now().year, 1, 1, 0, 0, 0, tzinfo=pytz.timezone("US/Eastern")
     )  # Jan 1 of this year
@@ -3419,7 +3409,6 @@ def is_dst():
 
 
 def find_all(p, s):
-
     i = s.find(p)
     while i != -1:
         yield i
@@ -3518,8 +3507,8 @@ async def on_message(message):
         if message.content.startswith(prefixes):
 
             if " " in message.content:
-                command = message.content[1 : message.content.index(" ")].lower()
-                argument = message.content[message.content.index(" ") + 1 :].lower()
+                command = message.content[1: message.content.index(" ")].lower()
+                argument = message.content[message.content.index(" ") + 1:].lower()
             else:
                 command = message.content[1:].lower()
                 argument = ""
@@ -3581,8 +3570,8 @@ async def on_message(message):
                 # if message.author.id == 149969652141785088:
                 # await aexec(message.content[message.content.index(' ') + 1:])
                 # return
-                command = message.content[1 : message.content.index(" ")].lower()
-                argument = message.content[message.content.index(" ") + 1 :].lower()
+                command = message.content[1: message.content.index(" ")].lower()
+                argument = message.content[message.content.index(" ") + 1:].lower()
             else:
                 command = message.content[1:].lower()
                 argument = ""
@@ -3782,7 +3771,7 @@ async def on_message(message):
                         "message",
                         check=(
                             lambda x: x.author == message.author
-                            and x.channel == msg.channel
+                                      and x.channel == msg.channel
                         ),
                         timeout=200,
                     )
@@ -3811,7 +3800,7 @@ async def on_message(message):
                         "message",
                         check=(
                             lambda x: x.author == message.author
-                            and x.channel == msg.channel
+                                      and x.channel == msg.channel
                         ),
                         timeout=200,
                     )
@@ -3869,7 +3858,7 @@ async def on_message(message):
                                 "message",
                                 check=(
                                     lambda x: x.author == message.author
-                                    and x.channel == msg.channel
+                                              and x.channel == msg.channel
                                 ),
                                 timeout=200,
                             )
@@ -3914,7 +3903,7 @@ async def on_message(message):
                         "message",
                         check=(
                             lambda x: x.author == message.author
-                            and x.channel == msg.channel
+                                      and x.channel == msg.channel
                         ),
                         timeout=200,
                     )
@@ -4195,7 +4184,7 @@ async def on_message(message):
                         "message",
                         check=(
                             lambda x: x.author == message.author
-                            and x.channel == msg.channel
+                                      and x.channel == msg.channel
                         ),
                         timeout=200,
                     )
@@ -4247,7 +4236,7 @@ async def on_message(message):
                         "message",
                         check=(
                             lambda x: x.author == message.author
-                            and x.channel == msg.channel
+                                      and x.channel == msg.channel
                         ),
                         timeout=200,
                     )
@@ -4305,7 +4294,7 @@ async def on_message(message):
                         "message",
                         check=(
                             lambda x: x.author == message.author
-                            and x.channel == msg.channel
+                                      and x.channel == msg.channel
                         ),
                         timeout=200,
                     )
@@ -4357,7 +4346,7 @@ async def on_message(message):
                     return
 
                 removed_ability = person.character.clear_ability()
-                if(removed_ability):
+                if (removed_ability):
                     await message.author.send("Ability removed: {}".format(removed_ability.role_name))
                 else:
                     await message.author.send("No ability to remove")
@@ -4440,10 +4429,7 @@ async def on_message(message):
                 try:
                     text = await client.wait_for(
                         "message",
-                        check=(
-                            lambda x: x.author == message.author
-                            and x.channel == msg.channel
-                        ),
+                        check=(lambda x: x.author == message.author and x.channel == msg.channel),
                         timeout=200,
                     )
                 except asyncio.TimeoutError:
@@ -4475,10 +4461,7 @@ async def on_message(message):
                 try:
                     pos = await client.wait_for(
                         "message",
-                        check=(
-                            lambda x: x.author == message.author
-                            and x.channel == msg.channel
-                        ),
+                        check=(lambda x: x.author == message.author and x.channel == msg.channel),
                         timeout=200,
                     )
 
@@ -4505,10 +4488,7 @@ async def on_message(message):
                 try:
                     alignment = await client.wait_for(
                         "message",
-                        check=(
-                            lambda x: x.author == message.author
-                            and x.channel == msg.channel
-                        ),
+                        check=(lambda x: x.author == message.author and x.channel == msg.channel),
                         timeout=200,
                     )
 
@@ -4592,10 +4572,7 @@ async def on_message(message):
                 try:
                     order = await client.wait_for(
                         "message",
-                        check=(
-                            lambda x: x.author == message.author
-                            and x.channel == msg.channel
-                        ),
+                        check=(lambda x: x.author == message.author and x.channel == msg.channel),
                         timeout=200,
                     )
 
@@ -4971,9 +4948,9 @@ async def on_message(message):
                     player
                     for player in game.seatingOrder
                     if player.canNominate == True
-                    and player.hasSkipped == False
-                    and player.alignment != STORYTELLER_ALIGNMENT
-                    and player.isGhost == False
+                       and player.hasSkipped == False
+                       and player.alignment != STORYTELLER_ALIGNMENT
+                       and player.isGhost == False
                 ]
                 if canNominate == []:
                     await message.author.send("Everyone has nominated or skipped!")
@@ -5091,22 +5068,7 @@ async def on_message(message):
                         return
 
                 if game.script.isAtheist:
-                    if (
-                        argument == "storytellers"
-                        or argument == "the storytellers"
-                        or (
-                            len(await generate_possibilities(argument, server.members))
-                            == 1
-                            and gamemasterRole
-                            in server.get_member(
-                                (
-                                    await generate_possibilities(
-                                        argument, server.members
-                                    )
-                                )[0].id
-                            ).roles
-                        )
-                    ):
+                    if await is_storyteller(argument):
                         if None in [x.nominee for x in game.days[-1].votes]:
                             await message.author.send(
                                 "The storytellers have already been nominated today."
@@ -5176,10 +5138,7 @@ async def on_message(message):
                     try:
                         reply = await client.wait_for(
                             "message",
-                            check=(
-                                lambda x: x.author == message.author
-                                and x.channel == msg.channel
-                            ),
+                            check=(lambda x: x.author == message.author and x.channel == msg.channel),
                             timeout=200,
                         )
 
@@ -5263,10 +5222,7 @@ async def on_message(message):
                     try:
                         reply = await client.wait_for(
                             "message",
-                            check=(
-                                lambda x: x.author == message.author
-                                and x.channel == msg.channel
-                            ),
+                            check=(lambda x: x.author == message.author and x.channel == msg.channel),
                             timeout=200,
                         )
 
@@ -5326,10 +5282,7 @@ async def on_message(message):
                     try:
                         reply = await client.wait_for(
                             "message",
-                            check=(
-                                lambda x: x.author == message.author
-                                and x.channel == msg.channel
-                            ),
+                            check=(lambda x: x.author == message.author and x.channel == msg.channel),
                             timeout=200,
                         )
 
@@ -5477,10 +5430,7 @@ async def on_message(message):
                 try:
                     intendedMessage = await client.wait_for(
                         "message",
-                        check=(
-                            lambda x: x.author == message.author
-                            and x.channel == reply.channel
-                        ),
+                        check=(lambda x: x.author == message.author and x.channel == reply.channel),
                         timeout=200,
                     )
 
@@ -6141,6 +6091,13 @@ async def on_message(message):
                 )
 
 
+async def is_storyteller(arg):
+    if arg == "storytellers" or arg == "the storytellers":
+        return True
+    options = await generate_possibilities(arg, server.members)
+    return len(options) == 1 and gamemasterRole in server.get_member((options)[0].id).roles
+
+
 @client.event
 async def on_message_edit(before, after):
     # Handles messages on modification
@@ -6154,9 +6111,7 @@ async def on_message_edit(before, after):
         # Nomination
         if "nominate " in after.content.lower():
 
-            argument = after.content.lower()[
-                after.content.lower().index("nominate ") + 9 :
-            ]
+            argument = after.content.lower()[after.content.lower().index("nominate ") + 9:]
 
             if game is NULL_GAME:
                 await safe_send(channel, "There's no game right now.")
@@ -6194,19 +6149,7 @@ async def on_message_edit(before, after):
                 return
 
             if game.script.isAtheist:
-                if (
-                    argument == "storytellers"
-                    or argument == "the storytellers"
-                    or (
-                        len(await generate_possibilities(argument, server.members)) == 1
-                        and gamemasterRole
-                        in server.get_member(
-                            (await generate_possibilities(argument, server.members))[
-                                0
-                            ].id
-                        ).roles
-                    )
-                ):
+                if is_storyteller(argument):
                     if None in [x.nominee for x in game.days[-1].votes]:
                         await safe_send(
                             channel,
@@ -6277,9 +6220,9 @@ async def on_message_edit(before, after):
                 player
                 for player in game.seatingOrder
                 if player.canNominate == True
-                and player.hasSkipped == False
-                and player.alignment != STORYTELLER_ALIGNMENT
-                and player.isGhost == False
+                   and player.hasSkipped == False
+                   and player.alignment != STORYTELLER_ALIGNMENT
+                   and player.isGhost == False
             ]
             if len(canNominate) == 1:
                 for memb in gamemasterRole.members:
