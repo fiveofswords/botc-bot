@@ -2857,6 +2857,14 @@ class Snitch(Outsider):
         self.role_name = "Snitch"
 
 
+class PlagueDoctor(Outsider):
+    # The plague doctor
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Plague Doctor"
+
+
 class Marionette(Minion):
     # The marionette
 
@@ -3874,9 +3882,7 @@ async def on_message(message):
                             alignment.content.lower() != "good"
                             and alignment.content.lower() != "evil"
                         ):
-                            await message.author.send(
-                                "The alignment must be 'good' or 'evil' exactly."
-                            )
+                            await message.author.send("The alignment must be 'good' or 'evil' exactly.")
                             return
 
                         alignments.append(alignment.content.lower())
@@ -3895,9 +3901,7 @@ async def on_message(message):
                         Player(characters[x], alignments[x], users[x], x)
                     )
 
-                msg = await message.author.send(
-                    "What roles are on the script? (send the text of the json file from the script creator)"
-                )
+                msg = await message.author.send("What roles are on the script? (send the text of the json file from the script creator)")
                 try:
                     script = await client.wait_for(
                         "message",
