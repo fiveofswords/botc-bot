@@ -3073,7 +3073,6 @@ class Riot(Demon, NominationModifier):
         this_day.riot_active = True
 
         # handle the soldier jinx - If Riot nominates the Soldier, the Soldier does not die
-        # todo: if the nominator is ST, then get feedback on whether the nominee should die
         soldier_jinx = nominator and nominee and not nominee.character.isPoisoned and has_ability(nominator.character, Riot) and has_ability(nominee.character, Soldier)
         golem_jinx = nominator and nominee and not nominator.character.isPoisoned and not nominator.isGhost and has_ability(nominee.character, Riot) and has_ability(nominator.character, Golem)
         if not (nominator):
@@ -3089,6 +3088,10 @@ class Riot(Demon, NominationModifier):
 
         if nominator:
             nominator.riot_nominee = False
+        else:
+            # no players should be the most recent riot_nominee, so iterate all
+            for p in game.seatingOrder:
+                p.riot_nominee = False
         if nominee:
             nominee.riot_nominee = True
             nominee.canNominate = True
