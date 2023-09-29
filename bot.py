@@ -2800,6 +2800,14 @@ class Knight(Townsfolk):
         self.role_name = "Knight"
 
 
+class Shugenja(Townsfolk):
+    # The shugenja
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Shugenja"
+
+
 class Golem(Outsider, NominationModifier):
     # The golem
 
