@@ -3030,6 +3030,14 @@ def has_ability(player_character, clazz):
         return any([has_ability(c, clazz) for c in player_character.abilities])
 
 
+class Ojo(Demon):
+    # the ojo
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Ojo"
+
+
 class Riot(Demon, NominationModifier):
     # The riot
 
