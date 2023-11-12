@@ -3938,7 +3938,7 @@ async def on_message(message):
                     await message.author.send("Game cancelled!")
                     return
 
-                scriptList = script.content[8:-3].split('"},{"id":"')
+                scriptList = ''.join(script.content.split())[8:-3].split('"},{"id":"')
 
                 script = Script(scriptList)
 
