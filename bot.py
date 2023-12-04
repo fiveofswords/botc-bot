@@ -2873,6 +2873,14 @@ class PlagueDoctor(Outsider):
         self.role_name = "Plague Doctor"
 
 
+class Hatter(Outsider):
+    # The hatter
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Hatter"
+
+
 class Marionette(Minion):
     # The marionette
 
@@ -6115,7 +6123,7 @@ async def on_message(message):
 
 
 async def is_storyteller(arg):
-    if arg == "storytellers" or arg == "the storytellers":
+    if arg in ["storytellers","the storytellers","storyteller","the storyteller"]:
         return True
     options = await generate_possibilities(arg, server.members)
     return len(options) == 1 and gamemasterRole in server.get_member((options)[0].id).roles
