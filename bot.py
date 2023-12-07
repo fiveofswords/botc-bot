@@ -5371,7 +5371,7 @@ async def on_message(message):
                 return
 
             elif command == "adjustvotes" or command == "adjustvote":
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if game is NULL_GAME or gamemasterRole not in server.get_member(message.author.id).roles:
                     await message.author.send(
                         "Command {} not recognized. For a list of commands, type @help.".format(command)
                     )
