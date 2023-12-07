@@ -2596,12 +2596,35 @@ class Leviathan(Demon):
         self.role_name = "Leviathan"
 
 
-class Amnesiac(Townsfolk):
+class Amnesiac(Townsfolk, VoteBeginningModifier, DayEndModifier):
     # The amnesiac
 
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Amnesiac"
+        self.vote_mod = 1
+        self.player_with_votes = None
+
+    def extra_info(self):
+        if self.player_with_votes and self.vote_mod != 1:
+            return "{} votes times {}".format(self.player_with_votes.nick, self.vote_mod)
+        return super().extra_info()
+
+    def modify_vote_values(self, order, values, majority):
+        if self.player_with_votes and not self.isPoisoned and not self.parent.isGhost:
+            values[self.player_with_votes] = (values[self.player_with_votes][0], values[self.player_with_votes][1] * self.vote_mod)
+
+        return order, values, majority
+
+    def enhance_votes(self, player, multiplier):
+        self.player_with_votes = player
+        self.vote_mod = multiplier
+
+    def on_day_end(self):
+        self.vote_mod = 1
+        self.player_with_votes = None
+        super().on_day_end()
+
 
 
 class BountyHunter(Townsfolk):
@@ -5347,6 +5370,31 @@ async def on_message(message):
                     backup("current_game.pckl")
                 return
 
+            elif command == "adjustvotes" or command == "adjustvote":
+                if not gamemasterRole in server.get_member(message.author.id).roles:
+                    await message.author.send(
+                        "Command {} not recognized. For a list of commands, type @help.".format(command)
+                    )
+                    return
+                argument = argument.split(" ")
+                if len(argument) != 3:
+                    await message.author.send("adjustvotes takes three arguments: `@adjustvotes amnesiac target multiplier`. For example `@adjustvotes alfred charlie 2`")
+                    return
+                try:
+                    multiplier = int(argument[2])
+                except ValueError:
+                    await message.author.send("The third argument must be a whole number")
+                    return
+                amnesiac = await select_player(message.author, argument[0], game.seatingOrder)
+                target_player = await select_player(message.author, argument[1], game.seatingOrder)
+                if not amnesiac or not target_player:
+                    return
+                if not isinstance(amnesiac.character, Amnesiac):
+                    await message.author.send("{} isn't an amnesiac".format(amnesiac.nick))
+                    return
+                amnesiac.character.enhance_votes(target_player, multiplier)
+                await message.author.send("Amnesiac {} is currently multiplying the vote of {} by a factor of {}".format(amnesiac.nick, target_player.nick, multiplier))
+
             # Set a default vote
             elif command == "defaultvote":
 
@@ -5373,7 +5421,7 @@ async def on_message(message):
                     argument = argument.split(" ")
                     if len(argument) > 2:
                         await message.author.send(
-                            "setdefault takes at most two arguments: @setdefault <vote = no> <time = 3600>"
+                            "defaultvote takes at most two arguments: @defaultvote <vote = no> <time = 3600>"
                         )
                         return
                     elif len(argument) == 1:
