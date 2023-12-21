@@ -583,8 +583,8 @@ class Vote:
     async def end_vote(self):
         # When the vote is over
         tie = False
+        aboutToDie = game.days[-1].aboutToDie
         if self.votes >= self.majority:
-            aboutToDie = game.days[-1].aboutToDie
             if aboutToDie is None:
                 dies = True
             elif self.votes > aboutToDie[1].votes:
@@ -610,7 +610,7 @@ class Vote:
         else:
             text = (", ".join([x.nick for x in self.voted[:-1]]) + ", and " + self.voted[-1].nick)
         if dies:
-            if aboutToDie is not None:
+            if aboutToDie is not None and aboutToDie[0] is not None:
                 msg = await channel.fetch_message(
                     game.days[-1].voteEndMessages[
                         game.days[-1].votes.index(aboutToDie[1])
@@ -639,7 +639,7 @@ class Vote:
                 await msg.edit(
                     content=msg.content[:-31] + " No one is about to be executed."
                 )
-            game.days[-1].aboutToDie = None
+            game.days[-1].aboutToDie = (None, self)
             announcement = await safe_send(
                 channel,
                 "{} votes on {} (nominated by {}): {}. No one is about to be executed.".format(
