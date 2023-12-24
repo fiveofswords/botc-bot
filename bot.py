@@ -5563,7 +5563,7 @@ async def on_message(message):
 
                     if len(argument) == 1:
                         person = await select_player(
-                            message.author, argument[0], game.seatingOrder
+                            message.author, argument[0], game.seatingOrder + game.storytellers
                         )
                         if person is None:
                             return
@@ -5595,13 +5595,13 @@ async def on_message(message):
                         return
 
                     person1 = await select_player(
-                        message.author, argument[0], game.seatingOrder
+                        message.author, argument[0], game.seatingOrder + game.storytellers
                     )
                     if person1 is None:
                         return
 
                     person2 = await select_player(
-                        message.author, argument[1], game.seatingOrder
+                        message.author, argument[1], game.seatingOrder + game.storytellers
                     )
                     if person2 is None:
                         return
