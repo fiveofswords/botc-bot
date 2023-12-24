@@ -5576,10 +5576,10 @@ async def on_message(message):
                         day = 1
                         for msg in person.messageHistory:
                             if len(messageText) > 1500:
-                                await message.author.send(messageText)
+                                await safe_send(message.author, messageText)
                                 messageText = ""
                             while msg["day"] != day:
-                                await message.author.send(messageText)
+                                await safe_send(message.author, messageText)
                                 day += 1
                                 messageText = "**Day {}:**".format(str(day))
                             messageText += (
@@ -5591,7 +5591,7 @@ async def on_message(message):
                                 )
                             )
 
-                        await message.author.send(messageText)
+                        await safe_send(message.author, messageText)
                         return
 
                     person1 = await select_player(
@@ -5617,11 +5617,11 @@ async def on_message(message):
                         ):
                             continue
                         if len(messageText) > 1500:
-                            await message.author.send(messageText)
+                            await safe_send(message.author, messageText)
                             messageText = ""
                         while msg["day"] != day:
                             if messageText != "":
-                                await message.author.send(messageText)
+                                await safe_send(message.author, messageText)
                             day += 1
                             messageText = "**Day {}:**".format(str(day))
                         messageText += "\nFrom: {} | To: {} | Time: {}\n**{}**".format(
@@ -5631,7 +5631,7 @@ async def on_message(message):
                             msg["content"],
                         )
 
-                    await message.author.send(messageText)
+                    await safe_send(message.author, messageText)
                     return
 
                 if not await get_player(message.author):
@@ -5656,11 +5656,11 @@ async def on_message(message):
                     if not msg["from"] == person and not msg["to"] == person:
                         continue
                     if len(messageText) > 1500:
-                        await message.author.send(messageText)
+                        await safe_send(message.author, messageText)
                         messageText = ""
                     while msg["day"] != day:
                         if messageText != "":
-                            await message.author.send(messageText)
+                            await safe_send(message.author, messageText)
                         day += 1
                         messageText = "\n\n**Day {}:**".format(str(day))
                     messageText += "\nFrom: {} | To: {} | Time: {}\n**{}**".format(
@@ -5670,7 +5670,7 @@ async def on_message(message):
                         msg["content"],
                     )
 
-                await message.author.send(messageText)
+                await safe_send(message.author, messageText)
                 return
 
             # Message search
