@@ -238,7 +238,7 @@ class Day:
                     ),
                 )
             await announcement.pin()
-            if nominator:
+            if nominator and nominee and not isinstance(nominee.character, Traveler):
                 nominator.canNominate = False
             proceed = True
             # FIXME:there might be a case where a player earlier in the seating order makes the nomination not proceed
@@ -5069,6 +5069,12 @@ async def on_message(message):
                     return
 
                 nominator_player = await get_player(message.author)
+                story_teller_is_nominated = await is_storyteller(argument)
+                person = await select_player(
+                    message.author, argument, game.seatingOrder
+                ) if not story_teller_is_nominated else None
+
+                traveler_called = person is not None and isinstance(person.character, Traveler)
 
                 if not nominator_player:
                     if not gamemasterRole in server.get_member(message.author.id).roles:
@@ -5117,12 +5123,12 @@ async def on_message(message):
                         if not nominator_player.riot_nominee:
                             await safe_send(message.author, "Riot is active, you may not nominate.")
                             return
-                    if nominator_player.isGhost and not nominator_player.riot_nominee:
+                    if nominator_player.isGhost and not traveler_called and not nominator_player.riot_nominee:
                         await safe_send(
                             message.author, "You are dead, and so cannot nominate."
                         )
                         return
-                    if not nominator_player.canNominate:
+                    if not nominator_player.canNominate and not traveler_called:
                         await safe_send(message.author, "You have already nominated.")
                         return
 
@@ -5131,7 +5137,7 @@ async def on_message(message):
                         return
 
                 if game.script.isAtheist:
-                    if await is_storyteller(argument):
+                    if story_teller_is_nominated:
                         if None in [x.nominee for x in game.days[-1].votes]:
                             await message.author.send(
                                 "The storytellers have already been nominated today."
@@ -5144,9 +5150,6 @@ async def on_message(message):
                         await message.unpin()
                         return
 
-                person = await select_player(
-                    message.author, argument, game.seatingOrder
-                )
                 if person is None:
                     return
 
@@ -6223,7 +6226,10 @@ async def on_message_edit(before, after):
                 await after.unpin()
                 return
 
-            if (message_author_player).isGhost and not message_author_player.riot_nominee:
+            names = await generate_possibilities(argument, game.seatingOrder)
+            traveler_called = len(names) == 1 and isinstance(names[0].character, Traveler)
+
+            if (message_author_player).isGhost and not traveler_called and not message_author_player.riot_nominee:
                 await safe_send(channel, "You are dead, and so cannot nominate.")
                 await after.unpin()
                 return
@@ -6231,7 +6237,7 @@ async def on_message_edit(before, after):
                 await safe_send(channel, "Riot is active. It is not your turn to nominate.")
                 await after.unpin()
                 return
-            if not (message_author_player).canNominate:
+            if not (message_author_player).canNominate and not traveler_called:
                 await safe_send(channel, "You have already nominated.")
                 await after.unpin()
                 return
@@ -6250,8 +6256,6 @@ async def on_message_edit(before, after):
                         backup("current_game.pckl")
                     await after.unpin()
                     return
-
-            names = await generate_possibilities(argument, game.seatingOrder)
 
             if len(names) == 1:
 
