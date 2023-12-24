@@ -4042,6 +4042,15 @@ async def on_message(message):
                     )
                     return
 
+                for memb in game.storytellers:
+                    await safe_send(
+                        memb,
+                        "{} has ended the game! {} won! Please wait for the bot to finish.".format(
+                            message.author.display_name,
+                            "Good" if argument.lower() == "good" else "Evil"
+                        ),
+                    )
+
                 await game.end(argument.lower())
                 if game is not NULL_GAME:
                     backup("current_game.pckl")
