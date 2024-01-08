@@ -1,4 +1,4 @@
-import discord, os, time, pickle, sys, asyncio, pytz, datetime
+import discord, os, time, dill, sys, asyncio, pytz, datetime, weakref
 from config import *
 from dateutil.parser import parse
 
@@ -16,7 +16,7 @@ class Game():
                 if gamemasterRole in server.get_member(message.author.id).roles:
                     person = person
                     break
-            self.seatingOrder.insert(0, Player(Storyteller(), 'neutral', person))
+            self.seatingOrder.insert(0, Player(Storyteller, 'neutral', person))
             self.reseat()
 
     async def end(self, winner):
@@ -89,7 +89,13 @@ class Game():
         announcement = await channel.send('{} has left the town.'.format(person.nick))
         await announcement.pin()
 
-    async def start_day(self, kills=[]):
+    async def start_day(self, kills=[], origin=None):
+
+        for person in game.seatingOrder:
+            await person.morning()
+            if isinstance(person.character, DayStartModifier):
+                if not await person.character.on_day_start(origin, kills):
+                    return
         for person in kills:
             await person.kill()
         if kills == [] and len(self.days) > 0:
@@ -98,16 +104,13 @@ class Game():
         self.days.append(Day())
         self.isDay = True
         await update_presence(client)
-        for person in game.seatingOrder:
-            await person.morning()
-            if isinstance(person.character, DayStartModifier):
-                person.character.on_day_start()
 
 class Script():
     # Stores booleans for characters which modify the game rules from the script
 
     def __init__(self, scriptList):
         self.isAtheist = 'atheist' in scriptList
+        self.isWitch = 'witch' in scriptList
         self.list = scriptList
 
 class Day():
@@ -158,17 +161,26 @@ class Day():
     async def nomination(self,nominee,nominator):
         await self.close_pms()
         await self.close_noms()
-        nominee.canBeNominated = False
+        if isinstance(nominee.character, Traveler):
+            announcement = await channel.send('{} has called for {}\'s exile.'.format(nominator.nick if nominator else 'The storytellers', nominee.user.mention))
+            await announcement.pin()
+        else:
+            announcement = await channel.send('{} has been nominated by {}.'.format(nominee.user.mention, nominator.nick if nominator else 'the storytellers'))
+            await announcement.pin()
+            proceed = True
+            for person in game.seatingOrder:
+                if isinstance(person.character, NominationModifier):
+                    proceed = await person.character.on_nomination(nominee, nominator, proceed)
+            nominee.canBeNominated = False
+        if not proceed:
+            return
         if isinstance(nominee.character, Traveler):
             self.votes.append(TravelerVote(nominee, nominator))
-            announcement = await channel.send('{} has called for {}\'s exile.'.format(nominator.nick if nominator else 'The storytellers', nominee.user.mention))
         else:
             if nominator:
                 nominator.canNominate = False
             self.votes.append(Vote(nominee, nominator))
-            announcement = await channel.send('{} has been nominated by {}.'.format(nominee.user.mention, nominator.nick if nominator else 'the storytellers'))
         self.votes[-1].announcements.append(announcement.id)
-        await announcement.pin()
         await self.votes[-1].call_next()
 
     async def end(self):
@@ -465,7 +477,7 @@ class Player():
     # Stores information about a player
 
     def __init__(self, character, alignment, user, position=None):
-        self.character = character
+        self.character = character(self)
         self.alignment = alignment
         self.user = user
         self.name = user.name
@@ -661,42 +673,43 @@ class Player():
 
 class Character():
     # A generic character
-    def __init__(self):
+    def __init__(self, parent):
+        self.parent = parent
         self.role_name = 'Character'
 
 class Townsfolk(Character):
     # A generic townsfolk
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Townsfolk'
 
 class Outsider(Character):
     # A generic outsider
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Outsider'
 
 class Minion(Character):
     # A generic minion
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Minion'
 
 class Demon(Character):
     # A generic demon
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Demon'
 
 class SeatingOrderModifier(Character):
     # A character which modifies the seating order or seating order message
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
 
     def seating_order(self, seatingOrder):
         # returns a seating order after the character's modifications
@@ -709,18 +722,18 @@ class SeatingOrderModifier(Character):
 class DayStartModifier(Character):
     # A character which modifies the start of the day
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
 
-    def on_day_start(self):
+    async def on_day_start(self, origin, kills):
         # Called on the start of the day
         pass
 
 class NomsCalledModifier(Character):
     # A character which modifies the start of the day
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
 
     def on_noms_called(self):
         # Called when nominations are called for the first time each day
@@ -729,18 +742,18 @@ class NomsCalledModifier(Character):
 class NominationModifier(Character):
     # A character which triggers on a nomination
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
 
-    def on_nomination(self, nominator, nominee):
-        # Called when a nomination is made
-        pass
+    async def on_nomination(self, nominee, nominator, proceed):
+        # Returns bool -- whether the nomination proceeds
+        return proceed
 
 class DayEndModifier(Character):
     # A character which modifies the start of the day
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
 
     def on_day_end(self):
         # Called on the end of the day
@@ -749,8 +762,8 @@ class DayEndModifier(Character):
 class VoteBeginningModifier(Character):
     # A character which modifies the value of players' votes
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
 
     def modify_vote_values(self, order, values, majority):
         # returns a list of the vote's order, a dictionary of vote values, and majority
@@ -759,8 +772,8 @@ class VoteBeginningModifier(Character):
 class VoteModifier(Character):
     # A character which modifies the effect of votes
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
 
     def on_vote_call(self, toCall):
         # Called every time a player is called to vote
@@ -777,8 +790,8 @@ class VoteModifier(Character):
 class DeathModifier(Character):
     # A character which triggers on a player's death
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
 
     def on_death(self, person):
         # Called on death
@@ -787,8 +800,8 @@ class DeathModifier(Character):
 class Traveler(SeatingOrderModifier):
     # A generic traveler
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Traveler'
 
     def seating_order_message(self, seatingOrder):
@@ -828,197 +841,197 @@ class Traveler(SeatingOrderModifier):
 class Storyteller(Character):
     # The storyteller
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Storyteller'
 
 class Chef(Townsfolk):
     # The chef
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Chef'
 
 class Empath(Townsfolk):
     # The empath
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Empath'
 
 class Investigator(Townsfolk):
     # The investigator
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Investigator'
 
 class FortuneTeller(Townsfolk):
     # The fortune teller
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Fortune Teller'
 
 class Librarian(Townsfolk):
     # The librarian
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Librarian'
 
 class Mayor(Townsfolk):
     # The mayor
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Mayor'
 
 class Monk(Townsfolk):
     # The monk
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Monk'
 
 class Slayer(Townsfolk):
     # The slayer
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Slayer'
 
 class Soldier(Townsfolk):
     # The soldier
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Soldier'
 
 class Ravenkeeper(Townsfolk):
     # The ravenkeeper
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Ravenkeeper'
 
 class Undertaker(Townsfolk):
     # The undertaker
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Undertaker'
 
 class Washerwoman(Townsfolk):
     # The washerwoman
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Washerwoman'
 
 class Virgin(Townsfolk):
     # The virgin
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Virgin'
 
 class Chambermaid(Townsfolk):
     # The chambermaid
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Chambermaid'
 
 class Exorcist(Townsfolk):
     # The exorcist
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Exorcist'
 
 class Gambler(Townsfolk):
     # The gambler
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Gambler'
 
 class Gossip(Townsfolk):
     # The gossip
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Gossip'
 
 class Grandmother(Townsfolk):
     # The grandmother
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Grandmother'
 
 class Innkeeper(Townsfolk):
     # The innkeeper
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Innkeeper'
 
 class Minstrel(Townsfolk):
     # The minstrel
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Minstrel'
 
 class Pacifist(Townsfolk):
     # The pacifist
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Pacifist'
 
 class Professor(Townsfolk):
     # The professor
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Professor'
 
 class Sailor(Townsfolk):
     # The sailor
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Sailor'
 
 class TeaLady(Townsfolk):
     # The tea lady
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Tea Lady'
 
 class Artist(Townsfolk):
     # The artist
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Artist'
 
 class Clockmaker(Townsfolk):
     # The clockmaker
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Clockmaker'
 
 class Dreamer(Townsfolk):
     # The dreamer
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Dreamer'
 
 class Flowergirl(Townsfolk):
@@ -1045,36 +1058,36 @@ class Mathematician(Townsfolk):
 class Oracle(Townsfolk):
     # The oracle
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Oracle'
 
 class Philosopher(Townsfolk):
     # The philosopher
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Philosopher'
 
 class Sage(Townsfolk):
     # The sage
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Sage'
 
 class Savant(Townsfolk):
     # The savant
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Savant'
 
 class Seamstress(Townsfolk):
     # The seamstress
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Seamstress'
 
 class SnakeCharmer(Townsfolk):
@@ -1087,43 +1100,43 @@ class SnakeCharmer(Townsfolk):
 class TownCrier(Townsfolk):
     # The town crier
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Town Crier'
 
 class Farmer(Townsfolk):
     # The farmer
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Farmer'
 
 class Fisherman(Townsfolk):
     # The fisherman
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Fisherman'
 
 class General(Townsfolk):
     # The general
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'General'
 
 class Knight(Townsfolk):
     # The knight
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Knight'
 
 class PoppyGrower(Townsfolk):
     # The poppy grower
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Poppy Grower'
 
 # amnesiac, atheist
@@ -1131,225 +1144,251 @@ class PoppyGrower(Townsfolk):
 class Drunk(Outsider):
     # The drunk
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Drunk'
 
 class Butler(Outsider):
     # The butler
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Butler'
 
 class Saint(Outsider):
     # The saint
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Saint'
 
 class Recluse(Outsider):
     # The recluse
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Recluse'
 
 class Regent(Outsider):
     # The regent
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Regent'
 
 class Lunatic(Outsider):
     # The lunatic
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Lunatic'
 
 class Tinker(Outsider):
     # The tinker
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Tinker'
 
 class Barber(Outsider):
     # The barber
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Barber'
 
 class Klutz(Outsider):
     # The klutz
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Klutz'
 
 class Mutant(Outsider):
     # The mutant
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Mutant'
 
 class Sweetheart(Outsider):
     # The sweetheart
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Sweetheart'
 
 class Godfather(Minion):
     # The godfather
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Godfather'
 
 class Mastermind(Minion):
     # The mastermind
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Mastermind'
 
 class Spy(Minion):
     # The spy
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Spy'
 
-class Witch(Minion):
+class Witch(Minion, NominationModifier, DayStartModifier):
     # The witch
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Witch'
+        self.witched = None
+
+    async def on_day_start(self, origin, kills):
+
+        if self.parent.isGhost == True or self.parent in kills:
+            self.witched = None
+            return True
+
+        msg = await origin.send('Who is witched?')
+        try:
+            reply = await client.wait_for('message', check=(lambda x: x.author==origin and x.channel==msg.channel), timeout=200)
+        except asyncio.TimeoutError:
+            await origin.send('Timed out.')
+            return
+
+        person = await select_player(origin, reply.content, game.seatingOrder)
+        if person == None:
+            return
+
+        self.witched = person
+        return True
+
+    async def on_nomination(self, nominee, nominator, proceed):
+        if self.witched and self.witched == nominator and not self.witched.isGhost:
+            await self.witched.kill()
+            return proceed
 
 class FangGu(Demon):
     # The fang gu
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Fang Gu'
 
 class Imp(Demon):
     # The imp
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Imp'
 
 class NoDashii(Demon):
     # The no dashii
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'No Dashii'
 
 class Po(Demon):
     # The po
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Po'
 
 class Beggar(Traveler):
     # the beggar
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Beggar'
 
 class Gunslinger(Traveler):
     # the gunslinger
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Gunslinger'
 
 class Scapegoat(Traveler):
     # the scapegoat
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Scapegoat'
 
 class Apprentice(Traveler):
     # the apprentice
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Apprentice'
 
 class Matron(Traveler):
     # the matron
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Matron'
 
 class Judge(Traveler):
     # the judge
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Judge'
 
 class Bishop(Traveler):
     # the bishop
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'bishop'
 
 class Butcher(Traveler):
     # the butcher
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Butcher'
 
 class BoneCollector(Traveler):
     # the bone collector
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Bone Collector'
 
 class Harlot(Traveler):
     # the harlot
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Harlot'
 
 class Barista(Traveler):
     # the barista
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Barista'
 
 class Deviant(Traveler):
     # the deviant
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Deviant'
 
 class Gangster(Traveler):
     # the gangster
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self.role_name = 'Gangster'
 
 
@@ -1512,20 +1551,20 @@ def backup(fileName):
 
     objects = [x for x in dir(game) if not x.startswith('__') and not callable(getattr(game,x))]
     with open(fileName, 'wb') as file:
-        pickle.dump(objects, file)
+        dill.dump(objects, file)
 
     for obj in objects:
         with open(obj+'_'+fileName, 'wb') as file:
             if obj == 'seatingOrderMessage':
-                pickle.dump(getattr(game, obj).id, file)
+                dill.dump(getattr(game, obj).id, file)
             else:
-                pickle.dump(getattr(game, obj), file)
+                dill.dump(getattr(game, obj), file)
 
 async def load(fileName):
 # Loads the game state
 
     with open(fileName, 'rb') as file:
-        objects = pickle.load(file)
+        objects = dill.load(file)
 
     game = Game([], None, Script([]))
     for obj in objects:
@@ -1534,11 +1573,11 @@ async def load(fileName):
             return
         with open(obj+'_'+fileName, 'rb') as file:
             if obj == 'seatingOrderMessage':
-                id = pickle.load(file)
+                id = dill.load(file)
                 msg = await channel.fetch_message(id)
                 setattr(game, obj, msg)
             else:
-                setattr(game, obj, pickle.load(file))
+                setattr(game, obj, dill.load(file))
 
     return game
 
@@ -1867,7 +1906,7 @@ async def on_message(message):
 
                 seatingOrder = []
                 for x in indicies:
-                    seatingOrder.append(Player(characters[x](), alignments[x], users[x], x))
+                    seatingOrder.append(Player(characters[x], alignments[x], users[x], x))
 
                 msg = await message.author.send('What roles are on the script? (send the text of the json file from the script creator)')
                 try:
@@ -1949,7 +1988,7 @@ async def on_message(message):
                     return
 
                 if argument == '':
-                    await game.start_day()
+                    await game.start_day(origin=message.author)
                     if game != None:
                         backup('current_game.pckl')
                     return
@@ -1958,7 +1997,7 @@ async def on_message(message):
                 if None in people:
                     return
 
-                await game.start_day(people)
+                await game.start_day(kills=people,origin=message.author)
                 if game != None:
                     backup('current_game.pckl')
                 return
@@ -2277,7 +2316,7 @@ async def on_message(message):
                     await message.author.send('The alignment must be \'good\' or \'evil\' exactly.')
                     return
 
-                await game.add_traveler(Player(role(), alignment.content.lower(), person, pos))
+                await game.add_traveler(Player(role, alignment.content.lower(), person, pos))
                 if game != None:
                     backup('current_game.pckl')
                 return
@@ -2730,7 +2769,7 @@ async def on_message(message):
                     return
 
                 if person not in game.seatingOrder:
-                    person = Player(Storyteller(), 'neutral', person)
+                    person = Player(Storyteller, 'neutral', person)
 
                 messageText = 'Messaging {}. What would you like to send?'.format(person.nick)
                 reply = await message.author.send(messageText)
