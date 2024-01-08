@@ -2270,6 +2270,14 @@ class Imp(Demon):
         self.role_name = "Imp"
 
 
+class Kazali(Demon):
+    # The kazali
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Kazali"
+
+
 class NoDashii(Demon):
     # The no dashii
 
