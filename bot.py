@@ -2839,6 +2839,14 @@ class Shugenja(Townsfolk):
         self.role_name = "Shugenja"
 
 
+class VillageIdiot(Townsfolk):
+    # The village idiot
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Village Idiot"
+
+
 class Golem(Outsider, NominationModifier):
     # The golem
 
