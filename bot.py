@@ -16,6 +16,7 @@ from config import *
 from dateutil.parser import parse
 
 from characters.basecharacter import BaseCharacter
+from characters.types.minion import Minion
 from characters.types.outsider import Outsider
 from characters.types.townsfolk import Townsfolk
 
@@ -1177,14 +1178,6 @@ class Player:
             # Cannot remove role from user that does not exist on the server
             logger.info("could not remove roles for %s: %s", self.nick, e.text)
             pass
-
-class Minion(BaseCharacter):
-    # A generic minion
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Minion"
-
 
 class Demon(BaseCharacter):
     # A generic demon
