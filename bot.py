@@ -1495,14 +1495,6 @@ class Storyteller(SeatingOrderModifier):
     def seating_order_message(self, seatingOrder):
         return " - {}".format(self.role_name)
 
-class Chef(Townsfolk):
-    # The chef
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Chef"
-
-
 class Empath(Townsfolk):
     # The empath
 
