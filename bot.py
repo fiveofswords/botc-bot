@@ -15,6 +15,8 @@ import inspect
 from config import *
 from dateutil.parser import parse
 
+from characters.basecharacter import BaseCharacter
+
 STORYTELLER_ALIGNMENT = "neutral"
 
 logger = logging.getLogger("discord")
@@ -1174,23 +1176,7 @@ class Player:
             logger.info("could not remove roles for %s: %s", self.nick, e.text)
             pass
 
-
-class Character:
-    # A generic character
-    def __init__(self, parent):
-        self.parent = parent
-        self.role_name = "Character"
-        self.isPoisoned = False
-        self.refresh()
-
-    def refresh(self):
-        pass
-
-    def extra_info(self):
-        return ""
-
-
-class Townsfolk(Character):
+class Townsfolk(BaseCharacter):
     # A generic townsfolk
 
     def __init__(self, parent):
@@ -1198,7 +1184,7 @@ class Townsfolk(Character):
         self.role_name = "Townsfolk"
 
 
-class Outsider(Character):
+class Outsider(BaseCharacter):
     # A generic outsider
 
     def __init__(self, parent):
@@ -1206,7 +1192,7 @@ class Outsider(Character):
         self.role_name = "Outsider"
 
 
-class Minion(Character):
+class Minion(BaseCharacter):
     # A generic minion
 
     def __init__(self, parent):
@@ -1214,7 +1200,7 @@ class Minion(Character):
         self.role_name = "Minion"
 
 
-class Demon(Character):
+class Demon(BaseCharacter):
     # A generic demon
 
     def __init__(self, parent):
@@ -1222,7 +1208,7 @@ class Demon(Character):
         self.role_name = "Demon"
 
 
-class SeatingOrderModifier(Character):
+class SeatingOrderModifier(BaseCharacter):
     # A character which modifies the seating order or seating order message
 
     def __init__(self, parent):
@@ -1237,7 +1223,7 @@ class SeatingOrderModifier(Character):
         return ""
 
 
-class DayStartModifier(Character):
+class DayStartModifier(BaseCharacter):
     # A character which modifies the start of the day
 
     def __init__(self, parent):
@@ -1248,7 +1234,7 @@ class DayStartModifier(Character):
         return True
 
 
-class NomsCalledModifier(Character):
+class NomsCalledModifier(BaseCharacter):
     # A character which modifies the start of the day
 
     def __init__(self, parent):
@@ -1259,7 +1245,7 @@ class NomsCalledModifier(Character):
         pass
 
 
-class NominationModifier(Character):
+class NominationModifier(BaseCharacter):
     # A character which triggers on a nomination
 
     def __init__(self, parent):
@@ -1270,7 +1256,7 @@ class NominationModifier(Character):
         return proceed
 
 
-class DayEndModifier(Character):
+class DayEndModifier(BaseCharacter):
     # A character which modifies the start of the day
 
     def __init__(self, parent):
@@ -1281,7 +1267,7 @@ class DayEndModifier(Character):
         pass
 
 
-class VoteBeginningModifier(Character):
+class VoteBeginningModifier(BaseCharacter):
     # A character which modifies the value of players' votes
 
     def __init__(self, parent):
@@ -1292,7 +1278,7 @@ class VoteBeginningModifier(Character):
         return order, values, majority
 
 
-class VoteModifier(Character):
+class VoteModifier(BaseCharacter):
     # A character which modifies the effect of votes
 
     def __init__(self, parent):
@@ -1311,7 +1297,7 @@ class VoteModifier(Character):
         return dies, tie
 
 
-class DeathModifier(Character):
+class DeathModifier(BaseCharacter):
     # A character which triggers on a player's death
     PROTECTS_OTHERS = 1
     PROTECTS_SELF = 2
@@ -1447,8 +1433,7 @@ class AbilityModifier(
             for role in self.abilities:
                 if isinstance(role, DeathModifier):
                     priority = min(priority, role.on_death_priority())
-        return priority
-
+                return priority
 
 class Traveler(SeatingOrderModifier):
     # A generic traveler
@@ -1532,7 +1517,6 @@ class Storyteller(SeatingOrderModifier):
 
     def seating_order_message(self, seatingOrder):
         return " - {}".format(self.role_name)
-
 
 class Chef(Townsfolk):
     # The chef
