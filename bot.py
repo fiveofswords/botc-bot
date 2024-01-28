@@ -16,6 +16,7 @@ from config import *
 from dateutil.parser import parse
 
 from characters.basecharacter import BaseCharacter
+from characters.types.townsfolk import Townsfolk
 
 STORYTELLER_ALIGNMENT = "neutral"
 
@@ -1175,14 +1176,6 @@ class Player:
             # Cannot remove role from user that does not exist on the server
             logger.info("could not remove roles for %s: %s", self.nick, e.text)
             pass
-
-class Townsfolk(BaseCharacter):
-    # A generic townsfolk
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Townsfolk"
-
 
 class Outsider(BaseCharacter):
     # A generic outsider
