@@ -1497,14 +1497,6 @@ class Storyteller(SeatingOrderModifier):
         return " - {}".format(self.role_name)
 
 
-class Exorcist(Townsfolk):
-    # The exorcist
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Exorcist"
-
-
 class Fool(Townsfolk, DeathModifier):
     def __init__(self, parent):
         super().__init__(parent)
