@@ -1407,6 +1407,7 @@ class AbilityModifier(
                     priority = min(priority, role.on_death_priority())
                 return priority
 
+## TODO - move this to characters folder and implement traveler logic
 class Traveler(SeatingOrderModifier):
     # A generic traveler
 
@@ -3479,6 +3480,7 @@ async def safe_send(target: discord.abc.Messageable, msg: str):
 async def on_ready():
     # On startup
 
+    ## TODO - refactor this to a class so we can refactor the Traveler class below
     global server, channel, playerRole, travelerRole, ghostRole, deadVoteRole, gamemasterRole, inactiveRole, game
     game = NULL_GAME
 
