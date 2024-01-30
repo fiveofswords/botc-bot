@@ -16,6 +16,7 @@ from config import *
 from dateutil.parser import parse
 
 from characters.basecharacter import BaseCharacter
+from characters.townsfolk.soldier import Soldier
 from characters.types.demon import Demon
 from characters.types.minion import Minion
 from characters.types.outsider import Outsider
@@ -1494,14 +1495,6 @@ class Storyteller(SeatingOrderModifier):
 
     def seating_order_message(self, seatingOrder):
         return " - {}".format(self.role_name)
-
-
-class Soldier(Townsfolk):
-    # The soldier
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Soldier"
 
 
 class Ravenkeeper(Townsfolk):
@@ -3034,7 +3027,8 @@ class Riot(Demon, NominationModifier):
         this_day.riot_active = True
 
         # handle the soldier jinx - If Riot nominates the Soldier, the Soldier does not die
-        soldier_jinx = nominator and nominee and not nominee.character.isPoisoned and has_ability(nominator.character, Riot) and has_ability(nominee.character, Soldier)
+        soldier_jinx = nominator and nominee and not nominee.character.isPoisoned and has_ability(nominator.character, Riot) and has_ability(nominee.character,
+                                                                                                                                             Soldier)
         golem_jinx = nominator and nominee and not nominator.character.isPoisoned and not nominator.isGhost and has_ability(nominee.character, Riot) and has_ability(nominator.character, Golem)
         if not (nominator):
             if this_day.st_riot_kill_override:
