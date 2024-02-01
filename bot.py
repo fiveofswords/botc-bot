@@ -1804,14 +1804,6 @@ class Thief(Traveler, DayStartModifier, VoteBeginningModifier):
         return order, values, majority
 
 
-class Goblin(Minion):
-    # The goblin
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Goblin"
-
-
 class Leviathan(Demon):
     # The leviathan
 
