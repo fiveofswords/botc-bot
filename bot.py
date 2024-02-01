@@ -1504,14 +1504,6 @@ class Storyteller(SeatingOrderModifier):
 # Outsiders
 
 
-class Moonchild(Outsider):
-    # The moonchild
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Moonchild"
-
-
 class Lunatic(Outsider):
     # The lunatic
 
