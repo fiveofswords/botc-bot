@@ -2048,14 +2048,6 @@ class LilMonsta(Demon):
         self.role_name = "Lil' Monsta"
 
 
-class Puzzlemaster(Outsider):
-    # The puzzlemaster
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Puzzlemaster"
-
-
 class Snitch(Outsider):
     # The snitch
 
