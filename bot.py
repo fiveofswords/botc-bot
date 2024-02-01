@@ -1804,14 +1804,6 @@ class Thief(Traveler, DayStartModifier, VoteBeginningModifier):
         return order, values, majority
 
 
-class Widow(Minion):
-    # The widow
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Widow"
-
-
 class Goblin(Minion):
     # The goblin
 
