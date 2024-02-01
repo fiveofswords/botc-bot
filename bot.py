@@ -1506,14 +1506,6 @@ class Storyteller(SeatingOrderModifier):
 # Outsiders
 
 
-class DevilSAdvocate(Minion):
-    # The devil's advocate
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Devil's Advocate"
-
-
 class Witch(Minion, NominationModifier, DayStartModifier):
     # The witch
 
