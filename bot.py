@@ -2047,14 +2047,6 @@ class LilMonsta(Demon):
         self.role_name = "Lil' Monsta"
 
 
-class Politician(Outsider):
-    # The politician
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Politician"
-
-
 class Golem(Outsider, NominationModifier):
     # The golem
 
