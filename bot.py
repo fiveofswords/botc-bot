@@ -16,6 +16,7 @@ from config import *
 from dateutil.parser import parse
 
 from characters.basecharacter import BaseCharacter
+from characters.outsider.golem import Golem
 from characters.townsfolk.amnesiac import Amnesiac
 from characters.townsfolk.soldier import Soldier
 from characters.types.demon import Demon
@@ -2047,31 +2048,6 @@ class LilMonsta(Demon):
         self.role_name = "Lil' Monsta"
 
 
-class Golem(Outsider, NominationModifier):
-    # The golem
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Golem"
-
-    def refresh(self):
-        super().refresh()
-        self.hasNominated = False
-
-    async def on_nomination(self, nominee, nominator, proceed):
-        # fixme: golem instantly kills a recluse when it should be ST decision
-        if nominator == self.parent:
-            if (
-                not isinstance(nominee.character, Demon)
-                and not self.isPoisoned
-                and not self.parent.isGhost
-                and not self.hasNominated
-            ):
-                await nominee.kill()
-            self.hasNominated = True
-        return proceed
-
-
 class Damsel(Outsider):
     # The damsel
 
@@ -2338,7 +2314,8 @@ class Riot(Demon, NominationModifier):
         # handle the soldier jinx - If Riot nominates the Soldier, the Soldier does not die
         soldier_jinx = nominator and nominee and not nominee.character.isPoisoned and has_ability(nominator.character, Riot) and has_ability(nominee.character,
                                                                                                                                              Soldier)
-        golem_jinx = nominator and nominee and not nominator.character.isPoisoned and not nominator.isGhost and has_ability(nominee.character, Riot) and has_ability(nominator.character, Golem)
+        golem_jinx = nominator and nominee and not nominator.character.isPoisoned and not nominator.isGhost and has_ability(nominee.character, Riot) and has_ability(nominator.character,
+                                                                                                                                                                     Golem)
         if not (nominator):
             if this_day.st_riot_kill_override:
                 this_day.st_riot_kill_override = False
