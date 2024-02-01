@@ -1820,14 +1820,6 @@ class LilMonsta(Demon):
         self.role_name = "Lil' Monsta"
 
 
-class Marionette(Minion):
-    # The marionette
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Marionette"
-
-
 class OrganGrinder(Minion, NominationModifier):
     # The organ grinder
 
