@@ -2039,14 +2039,6 @@ class Leviathan(Demon):
         self.role_name = "Leviathan"
 
 
-class Acrobat(Outsider):
-    # The acrobat
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Acrobat"
-
-
 class LilMonsta(Demon):
     # The lil' monsta
 
