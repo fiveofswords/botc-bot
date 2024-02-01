@@ -1497,14 +1497,6 @@ class Storyteller(SeatingOrderModifier):
         return " - {}".format(self.role_name)
 
 
-class Savant(Townsfolk):
-    # The savant
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Savant"
-
-
 class Seamstress(Townsfolk):
     # The seamstress
 
