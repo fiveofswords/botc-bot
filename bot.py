@@ -2159,14 +2159,6 @@ class Politician(Outsider):
         self.role_name = "Politician"
 
 
-class Huntsman(Townsfolk):
-    # The huntsman
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Huntsman"
-
-
 class Alchemist(Townsfolk, AbilityModifier):
     # The alchemist
 
