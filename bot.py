@@ -25,6 +25,7 @@ from characters.types.townsfolk import Townsfolk
 
 # I think this will work for the magic stuff used elsehwere? YOLO
 from characters.townsfolk import *
+from characters.outsider import *
 
 
 STORYTELLER_ALIGNMENT = "neutral"
