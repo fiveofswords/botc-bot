@@ -2135,14 +2135,6 @@ class Leviathan(Demon):
         self.role_name = "Leviathan"
 
 
-class Lycanthrope(Townsfolk):
-    # The lycanthrope
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Lycanthrope"
-
-
 class CultLeader(Townsfolk):
     # The cult leader
 
