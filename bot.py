@@ -2159,14 +2159,6 @@ class Politician(Outsider):
         self.role_name = "Politician"
 
 
-class Farmer(Townsfolk):
-    # The farmer
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Farmer"
-
-
 class PoppyGrower(Townsfolk):
     # The poppy grower
 
