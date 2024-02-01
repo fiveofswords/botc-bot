@@ -2110,14 +2110,6 @@ class Thief(Traveler, DayStartModifier, VoteBeginningModifier):
         return order, values, majority
 
 
-class Balloonist(Townsfolk):
-    # The balloonist
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Balloonist"
-
-
 class Fisherman(Townsfolk):
     # The fisherman
 
