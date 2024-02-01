@@ -21,6 +21,10 @@ from characters.types.minion import Minion
 from characters.types.outsider import Outsider
 from characters.types.townsfolk import Townsfolk
 
+# I think this will work for the magic stuff used elsehwere? YOLO
+from characters.townsfolk import *
+
+
 STORYTELLER_ALIGNMENT = "neutral"
 
 logger = logging.getLogger("discord")
