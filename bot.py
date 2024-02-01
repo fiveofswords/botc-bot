@@ -1506,14 +1506,6 @@ class Storyteller(SeatingOrderModifier):
 # Outsiders
 
 
-class ScarletWoman(Minion):
-    # The scarlet woman
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Scarlet Woman"
-
-
 class Baron(Minion):
     # The baron
 
