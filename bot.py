@@ -1506,14 +1506,6 @@ class Storyteller(SeatingOrderModifier):
 # Outsiders
 
 
-class EvilTwin(Minion):
-    # The evil twin
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Evil Twin"
-
-
 class Cerenovus(Minion):
     # The cerenovus
 
