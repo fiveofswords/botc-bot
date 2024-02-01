@@ -1504,14 +1504,6 @@ class Storyteller(SeatingOrderModifier):
 # Outsiders
 
 
-class Sweetheart(Outsider):
-    # The sweetheart
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Sweetheart"
-
-
 class Godfather(Minion):
     # The godfather
 
