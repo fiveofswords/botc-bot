@@ -1506,14 +1506,6 @@ class Storyteller(SeatingOrderModifier):
 # Outsiders
 
 
-class Mastermind(Minion):
-    # The mastermind
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Mastermind"
-
-
 class Spy(Minion):
     # The spy
 
