@@ -27,7 +27,6 @@ from characters.types.townsfolk import Townsfolk
 from characters.townsfolk import *
 from characters.outsider import *
 
-
 STORYTELLER_ALIGNMENT = "neutral"
 
 logger = logging.getLogger("discord")
@@ -1503,14 +1502,6 @@ class Storyteller(SeatingOrderModifier):
 
 
 # Outsiders
-
-
-class Drunk(Outsider):
-    # The drunk
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Drunk"
 
 
 class Goon(Outsider):
