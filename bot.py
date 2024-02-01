@@ -2048,14 +2048,6 @@ class LilMonsta(Demon):
         self.role_name = "Lil' Monsta"
 
 
-class PlagueDoctor(Outsider):
-    # The plague doctor
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Plague Doctor"
-
-
 class Hatter(Outsider):
     # The hatter
 
