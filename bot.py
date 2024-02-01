@@ -1986,14 +1986,6 @@ class Riot(Demon, NominationModifier):
         return False
 
 
-class Psychopath(Minion):
-    # The psychopath
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Psychopath"
-
-
 ### API Stuff
 try:
     member_cache = discord.MemberCacheFlags(
