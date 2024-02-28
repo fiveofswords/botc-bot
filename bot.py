@@ -1,5 +1,4 @@
 import asyncio
-import datetime
 import itertools
 import logging
 import os
@@ -9,10 +8,10 @@ import time
 import dill
 import discord
 import math
-import pytz
 import inspect
 
 from config import *
+from datetime import datetime, timedelta
 from dateutil.parser import parse
 
 STORYTELLER_ALIGNMENT = "neutral"
@@ -3474,14 +3473,6 @@ def remove_backup(fileName):
         os.remove(obj + "_" + fileName)
 
 
-def is_dst():
-    x = datetime.datetime(
-        datetime.datetime.now().year, 1, 1, 0, 0, 0, tzinfo=pytz.timezone("US/Eastern")
-    )  # Jan 1 of this year
-    y = datetime.datetime.now(pytz.timezone("US/Eastern"))
-    return y.utcoffset() != x.utcoffset()
-
-
 def find_all(p, s):
     i = s.find(p)
     while i != -1:
@@ -4772,11 +4763,13 @@ async def on_message(message):
 
                 try:
                     time = parse(argument)
+                    if time < datetime.now():
+                        time += timedelta(days=1)
                 except ValueError:
-                    await message.author.send(
-                        "Time format not recognized. If in doubt, use 'HH:MM'. All times must be in UTC."
-                    )
-                    return
+                    try:
+                        time = datetime.fromtimestamp(int(argument))
+                    except ValueError:
+                        raise ValueError("Time format not recognized. If in doubt, use 'HH:MM' for date strings or Unix timestamp for epoch time. All times must be in UTC.")
 
                 if len(game.days[-1].deadlineMessages) > 0:
                     previous_deadline = game.days[-1].deadlineMessages[-1]
@@ -4786,33 +4779,14 @@ async def on_message(message):
                         ).unpin()
                     except discord.errors.NotFound:
                         print("Missing message: ", str(previous_deadline))
-                try:
-                    pacificTime = time.astimezone(pytz.timezone("US/Pacific")).strftime("%-I:%M %p")
-                    easternTime = time.astimezone(pytz.timezone("US/Eastern")).strftime("%-I:%M %p")
-                except ValueError:
-                    pacificTime = time.astimezone(pytz.timezone("US/Pacific")).strftime("%I:%M %p")
-                    easternTime = time.astimezone(pytz.timezone("US/Eastern")).strftime("%I:%M %p")
-                utcTime = time.astimezone(pytz.utc).strftime("%H:%M")
-                if is_dst():
-                    announcement = await safe_send(
-                        channel,
-                        "{}, nominations are open. The deadline is {} PST / {} EST / {} UTC unless someone nominates or everyone skips.".format(
-                            playerRole.mention,
-                            pacificTime,
-                            easternTime,
-                            utcTime,
-                        ),
-                    )
-                else:
-                    announcement = await safe_send(
-                        channel,
-                        "{}, nominations are open. The deadline is {} PDT / {} EDT / {} UTC unless someone nominates or everyone skips.".format(
-                            playerRole.mention,
-                            pacificTime,
-                            easternTime,
-                            utcTime,
-                        ),
-                    )
+                announcement = await safe_send(
+                    channel,
+                    "{}, nominations are open. The deadline is <t:{}:R> at <t:{}:t> unless someone nominates or everyone skips.".format(
+                        playerRole.mention,
+                        str(int(time.timestamp())),
+                        str(int(time.timestamp()))
+                    ),
+                )
                 await announcement.pin()
                 game.days[-1].deadlineMessages.append(announcement.id)
                 await game.days[-1].open_noms()
