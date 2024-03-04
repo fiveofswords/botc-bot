@@ -3167,6 +3167,14 @@ class Riot(Demon, NominationModifier):
         return False
 
 
+class Yaggababble(Demon):
+    # The yaggababble
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Yaggababble"
+
+
 class Boomdandy(Minion):
     # The boomdandy
 
