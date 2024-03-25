@@ -5505,6 +5505,7 @@ async def on_message(message):
                     return
 
                 person = await select_player(
+                    # todo: Restrict options based on whisper mode
                     message.author, argument, game.seatingOrder + game.storytellers
                 )
                 if person is None:
