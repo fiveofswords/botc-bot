@@ -3199,6 +3199,14 @@ class Psychopath(Minion):
         self.role_name = "Psychopath"
 
 
+class Summoner(Minion):
+    # The summoner
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Summoner"
+
+
 ### API Stuff
 try:
     member_cache = discord.MemberCacheFlags(
