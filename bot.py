@@ -25,7 +25,6 @@ handler.setFormatter(
 logger.addHandler(handler)
 
 
-#  enumerate whisper modes of all, neighbors, and storytellers
 class WhisperMode:
     ALL = 'all'
     NEIGHBORS = 'neighbors'
@@ -3788,6 +3787,7 @@ async def on_message(message):
                     for memb in gamemasterRole.members:
                         await memb.send("Whisper mode set to {}.".format(new_mode))
                 return
+
             # Closes pms and nominations
             elif command == "close":
                 if game is NULL_GAME:
