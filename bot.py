@@ -25,6 +25,11 @@ handler.setFormatter(
 logger.addHandler(handler)
 
 
+class WhisperMode:
+    ALL = 'all'
+    NEIGHBORS = 'neighbors'
+    STORYTELLERS = 'storytellers'
+
 ### Classes
 class Game:
     def __init__(self, seatingOrder, seatingOrderMessage, script, skip_storytellers=False):
@@ -32,6 +37,7 @@ class Game:
         self.isDay = False
         self.script = script
         self.seatingOrder = seatingOrder
+        self.whisper_mode = WhisperMode.ALL
         self.seatingOrderMessage = seatingOrderMessage
         self.storytellers = [
             Player(Storyteller, STORYTELLER_ALIGNMENT, person, None)
@@ -3765,6 +3771,31 @@ async def on_message(message):
                 if game is not NULL_GAME:
                     backup("current_game.pckl")
 
+            # set whisper mode
+            elif command == "whispermode":
+                if game is NULL_GAME:
+                    await message.author.send("There's no game right now.")
+                    return
+
+                if not gamemasterRole in server.get_member(message.author.id).roles:
+                    await message.author.send(
+                        "You don't have permission to close nominations."
+                    )
+                    return
+
+                if game.isDay == False:
+                    await message.author.send("It's not day right now.")
+                    return
+
+                new_mode = to_whisper_mode(argument)
+
+                if(new_mode):
+                    game.whisper_mode = new_mode
+                    #  for each gamemaster let them know
+                    for memb in gamemasterRole.members:
+                        await memb.send("Whisper mode set to {}.".format(new_mode))
+                return
+
             # Closes pms and nominations
             elif command == "close":
                 if game is NULL_GAME:
@@ -5512,8 +5543,10 @@ async def on_message(message):
                     )
                     return
 
+                candidates_for_whispers = await chose_whisper_candidates(game, message.author)
                 person = await select_player(
-                    message.author, argument, game.seatingOrder + game.storytellers
+                    # todo: Restrict options based on whisper mode
+                    message.author, argument, candidates_for_whispers
                 )
                 if person is None:
                     return
@@ -5958,6 +5991,9 @@ async def on_message(message):
                             name="closenoms", value="closes nominations", inline=False
                         )
                         embed.add_field(
+                            name="whispermode", value="modifies whisper mode to 'all', 'neighbors', or 'storytellers'", inline=False
+                        )
+                        embed.add_field(
                             name="close",
                             value="closes pms and nominations",
                             inline=False,
@@ -6187,6 +6223,32 @@ async def on_message(message):
                     )
                 )
 
+
+def to_whisper_mode(argument):
+    new_mode = WhisperMode.ALL
+    if WhisperMode.ALL.casefold() == argument.casefold():
+        new_mode = WhisperMode.ALL
+    elif WhisperMode.NEIGHBORS.casefold() == argument.casefold():
+        new_mode = WhisperMode.NEIGHBORS
+    elif WhisperMode.STORYTELLERS.casefold() == argument.casefold():
+        new_mode = WhisperMode.STORYTELLERS
+    else:
+        new_mode = None
+    return new_mode
+
+
+async def chose_whisper_candidates(game, author):
+    if game.whisper_mode == WhisperMode.ALL:
+        return game.seatingOrder + game.storytellers
+    if game.whisper_mode == WhisperMode.STORYTELLERS:
+        return game.storytellers
+    if game.whisper_mode == WhisperMode.NEIGHBORS:
+        # determine neighbors
+        player_self = await get_player(author)
+        author_index = game.seatingOrder.index(player_self)
+        neighbor_left = game.seatingOrder[(author_index - 1) % len(game.seatingOrder)]
+        neighbor_right = game.seatingOrder[(author_index + 1) % len(game.seatingOrder)]
+        return [neighbor_left, player_self, neighbor_right] + game.storytellers
 
 async def is_storyteller(arg):
     if arg in ["storytellers","the storytellers","storyteller","the storyteller"]:
