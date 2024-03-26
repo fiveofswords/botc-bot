@@ -3793,7 +3793,7 @@ async def on_message(message):
                     game.whisper_mode = new_mode
                     #  for each gamemaster let them know
                     for memb in gamemasterRole.members:
-                        await memb.send("Whisper mode set to {}.".format(new_mode))
+                        await memb.send("{} has set whisper mode to {}.".format(message.author.display_name, game.whisper_mode))
                 return
 
             # Closes pms and nominations
