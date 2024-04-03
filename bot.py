@@ -4938,10 +4938,28 @@ async def on_message(message):
                         break
                 await safe_send(channel, messageText)
             elif command == "enabletally":
+                if game is NULL_GAME:
+                    await message.author.send("There's no game right now.")
+                    return
+
+                if not gamemasterRole in server.get_member(message.author.id).roles:
+                    await message.author.send(
+                        "You don't have permission to enable tally."
+                    )
+                    return
                 game.show_tally = True
                 for memb in game.storytellers:
                     await safe_send(memb.user, "The message tally has been enabled by {}.".format(message.author.display_name))
             elif command == "disabletally":
+                if game is NULL_GAME:
+                    await message.author.send("There's no game right now.")
+                    return
+
+                if not gamemasterRole in server.get_member(message.author.id).roles:
+                    await message.author.send(
+                        "You don't have permission to disable tally."
+                    )
+                    return
                 game.show_tally = False
                 for memb in game.storytellers:
                     await safe_send(memb.user, "The message tally has been disabled by {}.".format(message.author.display_name))
