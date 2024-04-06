@@ -9,6 +9,7 @@ import dill
 import discord
 import math
 import inspect
+from collections import OrderedDict
 
 from config import *
 from datetime import datetime, timedelta
@@ -4937,6 +4938,54 @@ async def on_message(message):
                         messageText += "\n> All other pairs: 0"
                         break
                 await safe_send(channel, messageText)
+            elif command == "whispers":
+                person = None
+                if gamemasterRole in server.get_member(message.author.id).roles:
+                    argument = argument.split(" ")
+                    if len(argument) != 1:
+                        await message.author.send("Usage: @whispers <player>")
+                        return
+                    if len(argument) == 1:
+                        person = await select_player(
+                            message.author, argument[0], game.seatingOrder + game.storytellers
+                        )
+                else:
+                    person = await get_player(message.author)
+                if not person:
+                    await message.author.send(
+                        "You are not in the game. You have no message history."
+                    )
+                    return
+
+                # initialize counts with zero for all players
+                day = 1
+                counts = OrderedDict([(player, 0) for player in game.seatingOrder])
+
+                for msg in person.messageHistory:
+                    if msg["day"] != day:
+                        # share summary and reset counts
+                        messageText = "Day {}\n".format(day)
+                        for player, count in counts.items():
+                            messageText += "{}: {}\n".format(player if player == "Storytellers" else player.nick, count)
+                        await safe_send(message.author, messageText)
+                        counts = OrderedDict([(player, 0) for player in game.seatingOrder])
+                        day = msg["day"]
+                    if msg["from"] == person:
+                        if(msg["to"] in counts):
+                            counts[msg["to"]] += 1
+                        else:
+                            if "Storytellers" in counts:
+                                counts["Storytellers"] += 1
+                            else:
+                                counts["Storytellers"] = 1
+                    else:
+                        counts[msg["from"]] += 1
+
+                messageText = "Day {}\n".format(day)
+                for player, count in counts.items():
+                    messageText += "{}: {}\n".format(player if player == "Storytellers" else player.nick, count)
+                await safe_send(message.author, messageText)
+                return
             elif command == "enabletally":
                 if game is NULL_GAME:
                     await message.author.send("There's no game right now.")
