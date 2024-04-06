@@ -3782,12 +3782,8 @@ async def on_message(message):
 
                 if not gamemasterRole in server.get_member(message.author.id).roles:
                     await message.author.send(
-                        "You don't have permission to close nominations."
+                        "You don't have permission to change the whispermode."
                     )
-                    return
-
-                if game.isDay == False:
-                    await message.author.send("It's not day right now.")
                     return
 
                 new_mode = to_whisper_mode(argument)
