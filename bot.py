@@ -3793,8 +3793,8 @@ async def on_message(message):
                     #  for each gamemaster let them know
                     for memb in gamemasterRole.members:
                         await memb.send("{} has set whisper mode to {}.".format(message.author.display_name, game.whisper_mode))
-                return
-
+                else:
+                    await message.author.send("Invalid whisper mode: {}\nUsage is `@whispermode [all/neighbors/storytellers]`".format(argument))
             # Closes pms and nominations
             elif command == "close":
                 if game is NULL_GAME:
@@ -5569,9 +5569,14 @@ async def on_message(message):
 
                 candidates_for_whispers = await chose_whisper_candidates(game, message.author)
                 person = await select_player(
-                    # todo: Restrict options based on whisper mode
-                    message.author, argument, candidates_for_whispers
+                    # fixme: get players from everyone and then provide feedback if it is not appropriate
+                    message.author, argument, game.seatingOrder + game.storytellers
                 )
+                if person not in candidates_for_whispers:
+                    await message.author.send(
+                        "Private messages are restricted to {} at this time.".format(game.whisper_mode)
+                    )
+                    return
                 if person is None:
                     return
 
