@@ -5906,7 +5906,7 @@ async def on_message(message):
                         )
                         embed.add_field(
                             name="Bot Questions?",
-                            value="Ask nihilistkitten#6937",
+                            value="Discuss or provide feedback at https://github.com/fiveofswords/botc-bot",
                             inline=False,
                         )
                         await message.author.send(embed=embed)
@@ -6234,7 +6234,7 @@ async def on_message(message):
                     inline=False,
                 )
                 embed.add_field(
-                    name="Bot Questions?", value="Ask nihilistkitten#6937", inline=False
+                    name="Bot Questions?", value="Discuss or provide feedback at https://github.com/fiveofswords/botc-bot", inline=False
                 )
                 await message.author.send(embed=embed)
                 return
