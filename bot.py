@@ -6169,6 +6169,11 @@ async def on_message(message):
                             inline=False,
                         )
                         embed.add_field(
+                            name="whispers <<player>>",
+                            value="view a count of messages for the player per day",
+                            inline=False,
+                        )
+                        embed.add_field(
                             name="info <<player>>",
                             value="views game information about player",
                             inline=False,
@@ -6241,6 +6246,11 @@ async def on_message(message):
                 embed.add_field(
                     name="search <<content>>",
                     value="views all of your messages containing content",
+                    inline=False,
+                )
+                embed.add_field(
+                    name="whispers",
+                    value="view a count of your messages with other players per day",
                     inline=False,
                 )
                 embed.add_field(
