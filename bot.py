@@ -5621,12 +5621,13 @@ async def on_message(message):
                     # fixme: get players from everyone and then provide feedback if it is not appropriate
                     message.author, argument, game.seatingOrder + game.storytellers
                 )
+                if person is None:
+                    return
+
                 if person not in candidates_for_whispers:
                     await message.author.send(
                         "Private messages are restricted to {} at this time.".format(game.whisper_mode)
                     )
-                    return
-                if person is None:
                     return
 
                 messageText = "Messaging {}. What would you like to send?".format(
