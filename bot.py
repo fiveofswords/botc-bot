@@ -5037,7 +5037,23 @@ async def on_message(message):
                                str(person.deadVotes), str(person.character.isPoisoned)))
                 await message.author.send("\n".join([base_info, person.character.extra_info()]))
                 return
+            elif command == "setatheist":
+                if game is NULL_GAME:
+                    await message.author.send("There's no game right now.")
+                    return
 
+                if not gamemasterRole in server.get_member(message.author.id).roles:
+                    await message.author.send(
+                        "You don't have permission to configure the game."
+                    )
+                    return
+
+                # argument is true or false
+                game.script.isAtheist = argument.lower() == "true" or argument.lower() == "t"
+                #  message storytellers that atheist game is set to false
+                for memb in gamemasterRole.members:
+                    await safe_send(memb, "Atheist game is set to {} by {}".format(game.script.isAtheist, message.author.display_name))
+                pass
             # Views the grimoire
             elif command == "grimoire":
                 if game is NULL_GAME:
