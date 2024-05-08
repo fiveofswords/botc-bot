@@ -1,6 +1,6 @@
 from bot import NominationModifier
-from characters.types.demon import Demon
-from characters.types.outsider import Outsider
+from types.demon import Demon
+from types.outsider import Outsider
 
 
 class Golem(Outsider, NominationModifier):

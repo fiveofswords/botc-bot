@@ -1,7 +1,7 @@
 import asyncio
 
 from bot import NominationModifier, DayStartModifier, safe_send, client, select_player
-from characters.types.minion import Minion
+from types.minion import Minion
 
 
 class Witch(Minion, NominationModifier, DayStartModifier):

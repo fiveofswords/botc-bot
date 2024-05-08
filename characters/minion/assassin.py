@@ -1,7 +1,7 @@
 import asyncio
 
 from bot import DayStartModifier, DeathModifier, safe_send, client, select_player
-from characters.types.minion import Minion
+from types.minion import Minion
 
 
 class Assassin(Minion, DayStartModifier, DeathModifier):

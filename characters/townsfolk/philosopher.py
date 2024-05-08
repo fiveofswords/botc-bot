@@ -1,5 +1,5 @@
 from bot import AbilityModifier
-from characters.types.townsfolk import Townsfolk
+from types.townsfolk import Townsfolk
 
 
 class Philosopher(Townsfolk, AbilityModifier):

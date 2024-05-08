@@ -39,41 +39,6 @@ def _import_all_modules():
             #     print(test)
 
 
-
-    # for path in package_dir.iterdir():
-    #     if path.is_file():
-    #         modulename = path.name.split('.')[0]
-    #         package_module = '.'.join([__name__, modulename])
-    #         try:
-    #             module = __import__(package_module, globals_, locals_, [modulename])
-    #         except:
-    #             traceback.print_exc()
-    #             raise
-    #         for name in module.__dict__:
-    #             if not name.startswith('_') and not name.lower() == package_dir.name.lower():
-    #                 # globals_[name] = module.__dict__[name]
-    #                 __all__.append(name)
-
-
-# def load_class(full_class_string):
-#     """
-#     dynamically load a class from a string
-#     """
-#
-#     class_data = full_class_string.split(".")
-#     module_path = ".".join(class_data[:-1])
-#     class_str = class_data[-1]
-#
-#     module = importlib.import_module(module_path)
-#     # Finally, we retrieve the Class
-#     return getattr(module, class_str)
-
-
-# test = load_class('acrobat.Acrobat')
-# _import_all_modules()
-
-
-
 class BaseCharacter:
     # A generic character
     def __init__(self, parent):

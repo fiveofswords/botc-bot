@@ -30,6 +30,7 @@ class BaseCharacter:
 
     def extra_info(self):
         return ""
+    
 
 class Outsider(BaseCharacter):
 

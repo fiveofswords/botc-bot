@@ -3,7 +3,6 @@ import datetime
 import itertools
 import logging
 import os
-import sys
 import time
 
 import dill
@@ -19,15 +18,13 @@ from characters.basecharacter import BaseCharacter
 # from characters.outsider.golem import Golem
 # from characters.townsfolk.amnesiac import Amnesiac
 # from characters.townsfolk.soldier import Soldier
-from characters.types.demon import Demon
-from characters.types.minion import Minion
-from characters.types.outsider import Outsider
-from characters.types.townsfolk import Townsfolk
+from types.demon import Demon
+from types.minion import Minion
+from types.outsider import Outsider
+from types.townsfolk import Townsfolk
 
 # I think this will work for the magic stuff used elsehwere? YOLO
-from characters.townsfolk import *
-from characters.outsider import *
-from characters.minion import *
+from characters.outsider import
 
 STORYTELLER_ALIGNMENT = "neutral"
 
@@ -38,6 +35,10 @@ handler.setFormatter(
     logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s")
 )
 logger.addHandler(handler)
+
+characterDict = {
+    'Drunk': outsiders.Drunk
+}
 
 
 ### Classes
@@ -2025,7 +2026,7 @@ def str_cleanup(str, chars):
 
 
 def str_to_class(str):
-    return getattr(sys.modules[__name__], str)
+    return characterDict[str]
 
 
 async def generate_possibilities(text, people):

@@ -1,4 +1,4 @@
-from characters.types.outsider import Outsider
+from types.outsider import Outsider
 
 
 class Damsel(Outsider):

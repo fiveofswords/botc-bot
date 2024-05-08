@@ -1,4 +1,4 @@
-# from ..outsider import Outsider
+from ..outsider import Outsider
 
 
 class BaseCharacter:

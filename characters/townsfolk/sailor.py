@@ -1,5 +1,5 @@
 from bot import DeathModifier
-from characters.types.townsfolk import Townsfolk
+from types.townsfolk import Townsfolk
 
 
 class Sailor(Townsfolk, DeathModifier):

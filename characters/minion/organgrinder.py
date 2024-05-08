@@ -1,7 +1,7 @@
 import itertools
 
 from bot import NominationModifier, safe_send
-from characters.types.minion import Minion
+from types.minion import Minion
 
 
 class OrganGrinder(Minion, NominationModifier):

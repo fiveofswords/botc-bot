@@ -1,5 +1,5 @@
 from bot import VoteBeginningModifier, DayEndModifier
-from characters.types.townsfolk import Townsfolk
+from types.townsfolk import Townsfolk
 
 
 class Amnesiac(Townsfolk, VoteBeginningModifier, DayEndModifier):

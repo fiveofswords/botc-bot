@@ -1,4 +1,4 @@
-from ..types.townsfolk import Townsfolk
+from types import Townsfolk
 
 
 class Empath(Townsfolk):

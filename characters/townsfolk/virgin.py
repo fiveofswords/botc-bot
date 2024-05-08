@@ -1,5 +1,5 @@
 from bot import NominationModifier
-from characters.types.townsfolk import Townsfolk
+from types.townsfolk import Townsfolk
 
 
 class Virgin(Townsfolk, NominationModifier):

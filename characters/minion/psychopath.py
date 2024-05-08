@@ -1,4 +1,4 @@
-from characters.types.minion import Minion
+from types.minion import Minion
 
 
 class Psychopath(Minion):
