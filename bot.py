@@ -6416,7 +6416,8 @@ async def on_message_edit(before, after):
                 return
 
             if game.script.isAtheist:
-                if is_storyteller(argument):
+                storyteller_nomination = await is_storyteller(argument)
+                if storyteller_nomination:
                     if None in [x.nominee for x in game.days[-1].votes]:
                         await safe_send(
                             channel,
