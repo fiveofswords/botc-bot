@@ -2613,14 +2613,24 @@ class Leviathan(Demon):
         self.role_name = "Leviathan"
 
 
-class Amnesiac(Townsfolk, VoteBeginningModifier, DayEndModifier):
+class Amnesiac(Townsfolk, AbilityModifier):
     # The amnesiac
 
     def __init__(self, parent):
         super().__init__(parent)
+        #      initialize the AbilityModifier aspect as well
         self.role_name = "Amnesiac"
         self.vote_mod = 1
         self.player_with_votes = None
+
+    def add_ability(self, role):
+        is_set = False
+        for ability in self.abilities:
+            if isinstance(ability, AbilityModifier):
+                ability.add_ability(role)
+                is_set = True
+        if not is_set:
+            self.abilities = [role(self.parent)]
 
     def extra_info(self):
         if self.player_with_votes and self.vote_mod != 1:
@@ -2676,12 +2686,24 @@ class General(Townsfolk):
         self.role_name = "General"
 
 
-class Pixie(Townsfolk):
+class Pixie(Townsfolk, AbilityModifier):
     # The pixie
 
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Pixie"
+
+    def add_ability(self, role):
+        is_set = False
+        for ability in self.abilities:
+            if isinstance(ability, AbilityModifier):
+                ability.add_ability(role)
+                is_set = True
+        if not is_set:
+            self.abilities = [role(self.parent)]
+
+    def extra_info(self):
+        return "" if self.abilities == [] else "Has Ability {}".format(self.abilities[0].role_name)
 
 
 class Acrobat(Outsider):
@@ -2854,6 +2876,75 @@ class VillageIdiot(Townsfolk):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Village Idiot"
+
+
+# FIXME: this is probably gonna be obnoxious...
+# noinspection SpellCheckingInspection
+BANSHEE_SCREAM = """
+ ```
+ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+ AAaaaaaaaAAAAAAAAAAAAAAAAAAAAA
+ AAa THE aAAAAAAAAAAAAAAAAAAAAA
+ AAaaaaaaaAAAAAAAAAAAAAAAAAAAAA
+ AAAAAAAAaaaaaaaaaaaaAAAAAAAAAA
+ AAAAAAAAAa BANSHEE aAAAAAAAAAA
+ AAAAAAAAAaaaaaaaaaaaAAAAAAAAAA
+ AAAAAAAAAAAAAAAAAAAaaaaaaaaaAA
+ AAAAAAAAAAAAAAAAAAAa WAKES aAA
+ AAAAAAAAAAAAAAAAAAAaaaaaaaaaAA
+ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+ ```"""
+
+
+class Banshee(Townsfolk, DayStartModifier):
+    # The banshee
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Banshee"
+        self.is_screaming = False
+
+    async def on_day_start(self, origin, kills):
+        #  check if kills includes me
+        if self.parent not in kills:
+            return True
+
+        msg = await safe_send(origin, "Was Banshee {} killed by the demon?".format(self.parent.nick))
+        try:
+            choice = await client.wait_for(
+                "message",
+                check=(lambda x: x.author == origin and x.channel == msg.channel),
+                timeout=200)
+
+            # Cancel
+            if choice.content.lower() == "cancel":
+                await safe_send(origin, "Action cancelled!")
+                return False
+
+            # Yes
+            if choice.content.lower() == "yes" or choice.content.lower() == "y":
+                self.is_screaming = True
+                scream = await safe_send(channel, BANSHEE_SCREAM)
+                await scream.pin()
+                return True
+            # No
+            elif choice.content.lower() == "no" or choice.content.lower() == "n":
+                return True
+            else:
+                await safe_send(
+                    origin, "Your answer must be 'yes,' 'y,' 'no,' or 'n' exactly. Day start cancelled!"
+                )
+                return False
+        except asyncio.TimeoutError:
+            await safe_send(origin, "Message timed out!")
+            return False
+
+    def refresh(self):
+        super().refresh()
+        self.is_screaming = False
+
+    def extra_info(self):
+        return "Banshee: Screaming Mad" if self.is_screaming else super().extra_info()
 
 
 class Golem(Outsider, NominationModifier):
