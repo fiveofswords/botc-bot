@@ -2929,6 +2929,14 @@ class Hatter(Outsider):
         self.role_name = "Hatter"
 
 
+class Ogre(Outsider):
+    # The ogre
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Ogre"
+
+
 class Marionette(Minion):
     # The marionette
 
