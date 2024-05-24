@@ -541,8 +541,10 @@ class Vote:
         # Voter
         voter = self.order[self.position]
 
+        potential_banshee = the_ability(voter.character, Banshee)
+        player_is_active_banshee = potential_banshee and voter.character.is_screaming
         # Check dead votes
-        if vt == 1 and voter.isGhost and voter.deadVotes < 1:
+        if vt == 1 and voter.isGhost and voter.deadVotes < 1 and not player_is_active_banshee:
             if not operator:
                 await voter.user.send(
                     "You do not have any dead votes. Entering a no vote."
@@ -556,7 +558,7 @@ class Vote:
                     ),
                 )
             return
-        if vt == 1 and voter.isGhost:
+        if vt == 1 and voter.isGhost and not player_is_active_banshee:
             await voter.remove_dead_vote()
 
         # On vote character powers
@@ -565,11 +567,13 @@ class Vote:
                 person.character.on_vote()
 
         # Vote tracking
-        self.history.append(vt)
-        self.votes += self.values[voter][vt]
-        if vt == 1:
-            self.voted.append(voter)
-
+        if(player_is_active_banshee):
+            self.history.append(vt)
+            self.votes += self.values[voter][vt]
+            if vt == 1:
+                self.voted.append(voter)
+        else:
+            pass
         # Announcement
         text = "yes" if vt == 1 else "no"
         self.announcements.append(
@@ -3171,10 +3175,16 @@ class Lleech(Demon, DeathModifier, DayStartModifier):
 
 
 def has_ability(player_character, clazz):
+    return the_ability(player_character, clazz) is not None
+
+def the_ability(player_character, clazz):
     if isinstance(player_character, clazz):
-        return True
+        return player_character
     if isinstance(player_character, AbilityModifier):
-        return any([has_ability(c, clazz) for c in player_character.abilities])
+        matching = [the_ability(c, clazz) for c in player_character.abilities]
+        # get the first one
+        first = next((x for x in matching if x is not None), None)
+        return first
 
 
 class Ojo(Demon):
@@ -3719,7 +3729,7 @@ async def on_message(message):
                         channel,
                         "{} is not a valid vote. Use 'yes', 'y', 'no', or 'n'.".format(
                             argument
-                        ),
+                        )
                     )
                     return
 
