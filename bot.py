@@ -5840,11 +5840,8 @@ async def on_message(message):
                     for msg in history:
                         if not (argument.lower() in msg["content"].lower()):
                             continue
-                        if len(messageText) > 1500:
-                            await message.author.send(messageText)
-                            messageText = ""
                         while msg["day"] != day:
-                            await message.author.send(messageText)
+                            await safe_send(message.author, messageText)
                             day += 1
                             messageText = "**Day {}:**".format(str(day))
                         messageText += "\nFrom: {} | To: {} | Time: {}\n**{}**".format(
@@ -5872,11 +5869,8 @@ async def on_message(message):
                 for msg in (await get_player(message.author)).messageHistory:
                     if not (argument.lower() in msg["content"].lower()):
                         continue
-                    if len(messageText) > 1500:
-                        await message.author.send(messageText)
-                        messageText = ""
                     while msg["day"] != day:
-                        await message.author.send(messageText)
+                        await safe_send(message.author, messageText)
                         day += 1
                         messageText = "**Day {}:**".format(str(day))
                     messageText += "\nFrom: {} | To: {} | Time: {}\n**{}**".format(
@@ -5885,8 +5879,7 @@ async def on_message(message):
                         msg["time"].strftime("%m/%d, %H:%M:%S"),
                         msg["content"],
                     )
-
-                await message.author.send(messageText)
+                await safe_send(message.author, messageText)
                 return
 
             # Create custom alias
