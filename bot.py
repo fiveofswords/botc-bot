@@ -142,7 +142,8 @@ class Game:
 
         deaths = [await person.kill() for person in kills]
         if deaths == [] and len(self.days) > 0:
-            await safe_send(channel, "No one has died.")
+            no_kills = await safe_send(channel, "No one has died.")
+            await no_kills.pin()
         await safe_send(
             channel,
             "{}, wake up! Message the storytellers to set default votes for today.".format(
