@@ -458,12 +458,22 @@ class Vote:
         self.nominee = nominee
         self.nominator = nominator
         if self.nominee is not None:
-            self.order = (
+            ordered_voters = (
                 game.seatingOrder[game.seatingOrder.index(self.nominee) + 1:]
                 + game.seatingOrder[: game.seatingOrder.index(self.nominee) + 1]
             )
         else:
-            self.order = game.seatingOrder
+            ordered_voters = game.seatingOrder
+        # augment order with Banshees
+        order_with_banshees = []
+        for person in ordered_voters:
+            order_with_banshees.append(person)
+            banshee_ability = the_ability(person.character, Banshee)
+            if banshee_ability and banshee_ability.is_screaming:
+                order_with_banshees.append(person)
+
+        self.order = order_with_banshees
+
         self.votes = 0
         self.voted = []
         self.history = []
@@ -568,13 +578,11 @@ class Vote:
                 person.character.on_vote()
 
         # Vote tracking
-        if(player_is_active_banshee):
-            self.history.append(vt)
-            self.votes += self.values[voter][vt]
-            if vt == 1:
-                self.voted.append(voter)
-        else:
-            pass
+        self.history.append(vt)
+        self.votes += self.values[voter][vt]
+        if vt == 1:
+            self.voted.append(voter)
+
         # Announcement
         text = "yes" if vt == 1 else "no"
         self.announcements.append(
@@ -615,14 +623,17 @@ class Vote:
                 dies, tie = person.character.on_vote_conclusion(dies, tie)
         for person in game.seatingOrder:
             person.riot_nominee = False
-        if len(self.voted) == 0:
+        the_voters = self.voted
+        # deduplicate voters
+        the_voters = list(OrderedDict.fromkeys(the_voters))
+        if len(the_voters) == 0:
             text = "no one"
-        elif len(self.voted) == 1:
-            text = self.voted[0].nick
-        elif len(self.voted) == 2:
-            text = self.voted[0].nick + " and " + self.voted[1].nick
+        elif len(the_voters) == 1:
+            text = the_voters[0].nick
+        elif len(the_voters) == 2:
+            text = the_voters[0].nick + " and " + the_voters[1].nick
         else:
-            text = (", ".join([x.nick for x in self.voted[:-1]]) + ", and " + self.voted[-1].nick)
+            text = (", ".join([x.nick for x in the_voters[:-1]]) + ", and " + the_voters[-1].nick)
         if dies:
             if aboutToDie is not None and aboutToDie[0] is not None:
                 msg = await channel.fetch_message(
@@ -2908,8 +2919,17 @@ class Banshee(Townsfolk, DayStartModifier):
         super().__init__(parent)
         self.role_name = "Banshee"
         self.is_screaming = False
+        self.remaining_nominations = 2
+
+    def refresh(self):
+        super().refresh()
+        self.is_screaming = False
 
     async def on_day_start(self, origin, kills):
+        if self.is_screaming:
+            self.remaining_nominations = 2
+            return True
+
         #  check if kills includes me
         if self.parent not in kills:
             return True
@@ -2929,6 +2949,7 @@ class Banshee(Townsfolk, DayStartModifier):
             # Yes
             if choice.content.lower() == "yes" or choice.content.lower() == "y":
                 self.is_screaming = True
+                self.remaining_nominations = 2
                 scream = await safe_send(channel, BANSHEE_SCREAM)
                 await scream.pin()
                 return True
@@ -5304,6 +5325,9 @@ async def on_message(message):
 
                 traveler_called = person is not None and isinstance(person.character, Traveler)
 
+                banshee_ability_of_player = the_ability(nominator_player.character, Banshee) if nominator_player else None
+                banshee_override = banshee_ability_of_player is not None and banshee_ability_of_player.is_screaming
+
                 if not nominator_player:
                     if not gamemasterRole in server.get_member(message.author.id).roles:
                         await message.author.send(
@@ -5351,17 +5375,16 @@ async def on_message(message):
                         if not nominator_player.riot_nominee:
                             await safe_send(message.author, "Riot is active, you may not nominate.")
                             return
-                    if nominator_player.isGhost and not traveler_called and not nominator_player.riot_nominee:
+                    if nominator_player.isGhost and not traveler_called and not nominator_player.riot_nominee and not banshee_override:
                         await safe_send(
                             message.author, "You are dead, and so cannot nominate."
                         )
                         return
-                    if not nominator_player.canNominate and not traveler_called:
-                        await safe_send(message.author, "You have already nominated.")
+                    if banshee_override and banshee_ability_of_player.remaining_nominations < 1:
+                        await safe_send(message.author, "You have already nominated twice.")
                         return
-
-                    if (await get_player(message.author)).isGhost:
-                        await safe_send(message.author,'You are dead, and so cannot nominate.')
+                    if not nominator_player.canNominate and not traveler_called and not banshee_override:
+                        await safe_send(message.author, "You have already nominated.")
                         return
 
                 if game.script.isAtheist:
@@ -5391,6 +5414,8 @@ async def on_message(message):
                 if not person.canBeNominated:
                     await safe_send(message.author, "{} has already been nominated".format(person.nick))
                     return
+
+                remove_banshee_nomination(banshee_ability_of_player)
 
                 await game.days[-1].nomination(person, nominator_player)
                 if game is not NULL_GAME:
@@ -6504,15 +6529,22 @@ async def on_message_edit(before, after):
             names = await generate_possibilities(argument, game.seatingOrder)
             traveler_called = len(names) == 1 and isinstance(names[0].character, Traveler)
 
-            if (message_author_player).isGhost and not traveler_called and not message_author_player.riot_nominee:
+            banshee_ability_of_player = the_ability(message_author_player.character, Banshee) if message_author_player else None
+            banshee_override = banshee_ability_of_player is not None and banshee_ability_of_player.is_screaming
+
+            if message_author_player.isGhost and not traveler_called and not message_author_player.riot_nominee and not banshee_override:
                 await safe_send(channel, "You are dead, and so cannot nominate.")
+                await after.unpin()
+                return
+            if (banshee_override and banshee_ability_of_player.remaining_nominations < 1) and not traveler_called:
+                await safe_send(channel, "You have already nominated twice.")
                 await after.unpin()
                 return
             if game.days[-1].riot_active and not message_author_player.riot_nominee:
                 await safe_send(channel, "Riot is active. It is not your turn to nominate.")
                 await after.unpin()
                 return
-            if not (message_author_player).canNominate and not traveler_called:
+            if not (message_author_player).canNominate and not traveler_called and not banshee_override:
                 await safe_send(channel, "You have already nominated.")
                 await after.unpin()
                 return
@@ -6527,6 +6559,7 @@ async def on_message_edit(before, after):
                         )
                         await after.unpin()
                         return
+                    remove_banshee_nomination(banshee_ability_of_player)
                     await game.days[-1].nomination(None, message_author_player)
                     if game is not NULL_GAME:
                         backup("current_game.pckl")
@@ -6541,6 +6574,8 @@ async def on_message_edit(before, after):
                     )
                     await after.unpin()
                     return
+
+                remove_banshee_nomination(banshee_ability_of_player)
 
                 await game.days[-1].nomination(names[0], message_author_player)
                 if game is not NULL_GAME:
@@ -6616,6 +6651,11 @@ async def on_message_edit(before, after):
             (message_author_player).hasSkipped = False
             if game is not NULL_GAME:
                 backup("current_game.pckl")
+
+
+def remove_banshee_nomination(banshee_ability_of_player):
+    if banshee_ability_of_player and banshee_ability_of_player.is_screaming:
+        banshee_ability_of_player.remaining_nominations -= 1
 
 
 @client.event
