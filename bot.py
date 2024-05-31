@@ -416,7 +416,10 @@ class Day:
             if (game.show_tally):
                 message_tally = {X: 0 for X in itertools.combinations(game.seatingOrder, 2)}
                 has_had_multiple_votes = len(self.votes) > 0
-                last_vote_message = None if not has_had_multiple_votes else await channel.fetch_message(self.votes[-1].announcements[0])
+
+                last_vote_message = None if not has_had_multiple_votes else (
+                    await channel.fetch_message(self.votes[-1].announcements[0]) if self.votes and self.votes[-1].announcements else None
+                )
                 for person in game.seatingOrder:
                     for msg in person.messageHistory:
                         if msg["from"] == person:
