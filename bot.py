@@ -920,8 +920,8 @@ class Player:
         self.isGhost = False
         self.deadVotes = 0
         self.isActive = False
-        self.canNominate = False
-        self.canBeNominated = False
+        self.canNominate = True
+        self.canBeNominated = True
         self.hasSkipped = False
         self.messageHistory = []
         self.riot_nominee = False
