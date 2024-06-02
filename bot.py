@@ -503,14 +503,18 @@ class Vote:
         # Calls for person to vote
 
         toCall = self.order[self.position]
+        player_banshee_ability = the_ability(toCall, Banshee)
+        player_is_active_banshee = player_banshee_ability and player_banshee_ability.is_screaming
         for person in game.seatingOrder:
             if isinstance(person.character, VoteModifier):
                 person.character.on_vote_call(toCall)
-        if toCall.isGhost and toCall.deadVotes < 1:
+        if toCall.isGhost and toCall.deadVotes < 1 and not player_is_active_banshee:
             await self.vote(0)
             return
         if toCall.user.id in self.presetVotes:
-            await self.vote(self.presetVotes[toCall.user.id])
+            preset_player_vote = self.presetVotes[toCall.user.id]
+            self.presetVotes[toCall.user.id] -= 1
+            await self.vote(int(preset_player_vote > 0))
             return
         await safe_send(
             channel,
@@ -551,14 +555,13 @@ class Vote:
 
     async def vote(self, vt, operator=None):
         # Executes a vote. vt is binary -- 0 if no, 1 if yes
-
         # Voter
         voter = self.order[self.position]
 
         potential_banshee = the_ability(voter.character, Banshee)
         player_is_active_banshee = potential_banshee and voter.character.is_screaming
         # Check dead votes
-        if vt == 1 and voter.isGhost and voter.deadVotes < 1 and not player_is_active_banshee:
+        if vt == 1 and voter.isGhost and voter.deadVotes < 1 and not (player_is_active_banshee and not potential_banshee.is_poisoned):
             if not operator:
                 await voter.user.send(
                     "You do not have any dead votes. Entering a no vote."
@@ -572,7 +575,7 @@ class Vote:
                     ),
                 )
             return
-        if vt == 1 and voter.isGhost and not player_is_active_banshee:
+        if vt == 1 and voter.isGhost and not (player_is_active_banshee and not potential_banshee.is_poisoned):
             await voter.remove_dead_vote()
 
         # On vote character powers
@@ -627,7 +630,7 @@ class Vote:
         for person in game.seatingOrder:
             person.riot_nominee = False
         the_voters = self.voted
-        # deduplicate voters
+        # remove duplicate voters
         the_voters = list(OrderedDict.fromkeys(the_voters))
         if len(the_voters) == 0:
             text = "no one"
@@ -2333,16 +2336,6 @@ class NoDashii(Demon):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "No Dashii"
-        """
-        neighbor1 = game.seatingOrder[self.parent.position-1]
-        while not isinstance(neighbor1.character, Townsfolk) or neighbor1.isGhost:
-            neighbor1 = game.seatingOrder[neighbor1.position-1]
-        neighbor2 = game.seatingOrder[self.parent.position+1]
-        while not isinstance(neighbor2.character, Townsfolk) or neighbor2.isGhost:
-            neighbor2 = game.seatingOrder[neighbor1.position+1]
-        neighbor1.character.isPoisoned = True
-        neighbor2.character.isPoisoned = True
-        """
 
 
 class Po(Demon):
