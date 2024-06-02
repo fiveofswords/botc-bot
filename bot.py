@@ -5467,9 +5467,7 @@ async def on_message(message):
 
                     if argument in ["0", "1", "2"]:
                         if not banshee_override:
-                            await message.author.send(
-                                "{} is not a valid vote for this player.".format(argument)
-                            )
+                            await safe_send(message.author, "{} is not a valid vote for this player.".format(argument))
                             return
                         vt = int(argument)
                     else:
@@ -5478,9 +5476,7 @@ async def on_message(message):
 
                     await vote.preset_vote(person, vt, operator=message.author)
                     if(banshee_override):
-                        # special
-                        await message.author.send("Setting banshee prevote to {}.".format(vt))
-                        pass
+                        await safe_send(message.author, "Successfully preset to {}!".format(vt))
                     else:
                         await safe_send(message.author, "Successfully preset to {}!".format(argument))
                     if game is not NULL_GAME:
@@ -5493,9 +5489,7 @@ async def on_message(message):
 
                 if argument in ["0", "1", "2"]:
                     if not banshee_override:
-                        await message.author.send(
-                            "is not a valid vote. Use 'yes', 'y', 'no', or 'n'.".format(argument)
-                        )
+                        await safe_send(message.author, "is not a valid vote. Use 'yes', 'y', 'no', or 'n'.".format(argument))
                         return
                     vt = int(argument)
                 else:
