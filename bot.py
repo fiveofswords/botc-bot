@@ -3686,7 +3686,7 @@ async def safe_send(target: discord.abc.Messageable, msg: str):
 async def on_ready():
     # On startup
 
-    global server, channel, playerRole, travelerRole, ghostRole, deadVoteRole, gamemasterRole, inactiveRole, game
+    global server, channel, playerRole, travelerRole, ghostRole, deadVoteRole, gamemasterRole, inactiveRole, observerRole, game
     game = NULL_GAME
 
     server = client.get_guild(serverid)
@@ -3705,6 +3705,8 @@ async def on_ready():
             gamemasterRole = role
         elif role.name == inactiveName:
             inactiveRole = role
+        elif role.name == observerName:
+            observerRole = role
 
     if os.path.isfile("current_game.pckl"):
         game = await load("current_game.pckl")
@@ -5716,7 +5718,8 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if gamemasterRole in server.get_member(message.author.id).roles:
+                author_roles = server.get_member(message.author.id).roles
+                if gamemasterRole in author_roles or observerRole in author_roles:
 
                     argument = argument.split(" ")
                     if len(argument) > 2:
@@ -5839,7 +5842,8 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if gamemasterRole in server.get_member(message.author.id).roles:
+                author_roles = server.get_member(message.author.id).roles
+                if gamemasterRole in author_roles or observerRole in author_roles:
 
                     history = []
                     people = []
