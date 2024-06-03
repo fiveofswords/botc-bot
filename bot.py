@@ -1449,7 +1449,7 @@ class AbilityModifier(
         # returns a list of the vote's order, a dictionary of vote values, and majority
         if not self.is_poisoned:
             for role in self.abilities:
-                if isinstance(role, VoteModifier):
+                if isinstance(role, VoteBeginningModifier):
                     order, values, majority = role.modify_vote_values(
                         order, values, majority
                     )
