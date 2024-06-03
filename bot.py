@@ -503,7 +503,7 @@ class Vote:
         # Calls for person to vote
 
         toCall = self.order[self.position]
-        player_banshee_ability = the_ability(toCall, Banshee)
+        player_banshee_ability = the_ability(toCall.character, Banshee)
         player_is_active_banshee = player_banshee_ability and player_banshee_ability.is_screaming
         for person in game.seatingOrder:
             if isinstance(person.character, VoteModifier):
@@ -720,7 +720,8 @@ class Vote:
         self.presetVotes[person.user.id] = vt
 
     async def cancel_preset(self, person):
-        del self.presetVotes[person.user.id]
+        if(person.user.id in self.presetVotes):
+            del self.presetVotes[person.user.id]
 
     async def delete(self):
         # Undoes an unintentional nomination
@@ -1525,7 +1526,6 @@ class Traveler(SeatingOrderModifier):
         # Yes
         if choice.content.lower() == "yes" or choice.content.lower() == "y":
             die = True
-
         # No
         elif choice.content.lower() == "no" or choice.content.lower() == "n":
             die = False
@@ -5484,7 +5484,7 @@ async def on_message(message):
                     return
 
                 the_player = await get_player(message.author)
-                player_banshee_ability = the_ability(the_player, Banshee)
+                player_banshee_ability = the_ability(the_player.character, Banshee)
                 banshee_override = player_banshee_ability and player_banshee_ability.is_screaming
 
                 if argument in ["0", "1", "2"]:
