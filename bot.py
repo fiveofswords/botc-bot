@@ -6418,13 +6418,13 @@ async def on_message_edit(before, after):
             traveler_called = len(names) == 1 and isinstance(names[0].character, Traveler)
 
             banshee_ability_of_player = the_ability(message_author_player.character, Banshee) if message_author_player else None
-            banshee_override = banshee_ability_of_player is not None and banshee_ability_of_player.is_screaming
+            banshee_override = banshee_ability_of_player and banshee_ability_of_player.is_screaming and not banshee_ability_of_player.is_poisoned
 
             if message_author_player.isGhost and not traveler_called and not message_author_player.riot_nominee and not banshee_override:
                 await safe_send(channel, "You are dead, and so cannot nominate.")
                 await after.unpin()
                 return
-            if (banshee_override and banshee_ability_of_player.remaining_nominations < 1) and not traveler_called and not banshee_ability_of_player.is_poisoned():
+            if (banshee_override and banshee_ability_of_player.remaining_nominations < 1) and not traveler_called:
                 await safe_send(channel, "You have already nominated twice.")
                 await after.unpin()
                 return
