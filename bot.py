@@ -2984,7 +2984,7 @@ class Banshee(Townsfolk, DayStartModifier):
         self.is_screaming = False
 
     def extra_info(self):
-        return "Banshee: Screaming Mad" if self.is_screaming else super().extra_info()
+        return "Banshee: Has Ability" if self.is_screaming else super().extra_info()
 
 
 class Golem(Outsider, NominationModifier):
