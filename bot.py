@@ -1529,6 +1529,11 @@ class Traveler(SeatingOrderModifier):
         # No
         elif choice.content.lower() == "no" or choice.content.lower() == "n":
             die = False
+        else:
+            await safe_send(
+                user, "Your answer must be 'yes,' 'y,' 'no,' or 'n' exactly."
+            )
+            return
 
         if die:
             die = await person.kill(suppress=True)
