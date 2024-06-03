@@ -142,7 +142,8 @@ class Game:
 
         deaths = [await person.kill() for person in kills]
         if deaths == [] and len(self.days) > 0:
-            await safe_send(channel, "No one has died.")
+            no_kills = await safe_send(channel, "No one has died.")
+            await no_kills.pin()
         await safe_send(
             channel,
             "{}, wake up! Message the storytellers to set default votes for today.".format(
@@ -415,7 +416,10 @@ class Day:
             if (game.show_tally):
                 message_tally = {X: 0 for X in itertools.combinations(game.seatingOrder, 2)}
                 has_had_multiple_votes = len(self.votes) > 0
-                last_vote_message = None if not has_had_multiple_votes else await channel.fetch_message(self.votes[-1].announcements[0])
+
+                last_vote_message = None if not has_had_multiple_votes else (
+                    await channel.fetch_message(self.votes[-1].announcements[0]) if self.votes and self.votes[-1].announcements else None
+                )
                 for person in game.seatingOrder:
                     for msg in person.messageHistory:
                         if msg["from"] == person:
@@ -457,12 +461,22 @@ class Vote:
         self.nominee = nominee
         self.nominator = nominator
         if self.nominee is not None:
-            self.order = (
+            ordered_voters = (
                 game.seatingOrder[game.seatingOrder.index(self.nominee) + 1:]
                 + game.seatingOrder[: game.seatingOrder.index(self.nominee) + 1]
             )
         else:
-            self.order = game.seatingOrder
+            ordered_voters = game.seatingOrder
+        # augment order with Banshees
+        order_with_banshees = []
+        for person in ordered_voters:
+            order_with_banshees.append(person)
+            banshee_ability = the_ability(person.character, Banshee)
+            if banshee_ability and banshee_ability.is_screaming:
+                order_with_banshees.append(person)
+
+        self.order = order_with_banshees
+
         self.votes = 0
         self.voted = []
         self.history = []
@@ -489,14 +503,18 @@ class Vote:
         # Calls for person to vote
 
         toCall = self.order[self.position]
+        player_banshee_ability = the_ability(toCall.character, Banshee)
+        player_is_active_banshee = player_banshee_ability and player_banshee_ability.is_screaming
         for person in game.seatingOrder:
             if isinstance(person.character, VoteModifier):
                 person.character.on_vote_call(toCall)
-        if toCall.isGhost and toCall.deadVotes < 1:
+        if toCall.isGhost and toCall.deadVotes < 1 and not player_is_active_banshee:
             await self.vote(0)
             return
         if toCall.user.id in self.presetVotes:
-            await self.vote(self.presetVotes[toCall.user.id])
+            preset_player_vote = self.presetVotes[toCall.user.id]
+            self.presetVotes[toCall.user.id] -= 1
+            await self.vote(int(preset_player_vote > 0))
             return
         await safe_send(
             channel,
@@ -535,12 +553,13 @@ class Vote:
 
     async def vote(self, vt, operator=None):
         # Executes a vote. vt is binary -- 0 if no, 1 if yes
-
         # Voter
         voter = self.order[self.position]
 
+        potential_banshee = the_ability(voter.character, Banshee)
+        player_is_active_banshee = potential_banshee and voter.character.is_screaming
         # Check dead votes
-        if vt == 1 and voter.isGhost and voter.deadVotes < 1:
+        if vt == 1 and voter.isGhost and voter.deadVotes < 1 and not (player_is_active_banshee and not potential_banshee.is_poisoned):
             if not operator:
                 await safe_send(voter.user, "You do not have any dead votes. Entering a no vote.")
                 await self.vote(0)
@@ -552,7 +571,7 @@ class Vote:
                     ),
                 )
             return
-        if vt == 1 and voter.isGhost:
+        if vt == 1 and voter.isGhost and not (player_is_active_banshee and not potential_banshee.is_poisoned):
             await voter.remove_dead_vote()
 
         # On vote character powers
@@ -606,14 +625,17 @@ class Vote:
                 dies, tie = person.character.on_vote_conclusion(dies, tie)
         for person in game.seatingOrder:
             person.riot_nominee = False
-        if len(self.voted) == 0:
+        the_voters = self.voted
+        # remove duplicate voters
+        the_voters = list(OrderedDict.fromkeys(the_voters))
+        if len(the_voters) == 0:
             text = "no one"
-        elif len(self.voted) == 1:
-            text = self.voted[0].nick
-        elif len(self.voted) == 2:
-            text = self.voted[0].nick + " and " + self.voted[1].nick
+        elif len(the_voters) == 1:
+            text = the_voters[0].nick
+        elif len(the_voters) == 2:
+            text = the_voters[0].nick + " and " + the_voters[1].nick
         else:
-            text = (", ".join([x.nick for x in self.voted[:-1]]) + ", and " + self.voted[-1].nick)
+            text = (", ".join([x.nick for x in the_voters[:-1]]) + ", and " + the_voters[-1].nick)
         if dies:
             if aboutToDie is not None and aboutToDie[0] is not None:
                 msg = await channel.fetch_message(
@@ -681,7 +703,9 @@ class Vote:
 
     async def preset_vote(self, person, vt, operator=None):
         # Check dead votes
-        if vt == 1 and person.isGhost and person.deadVotes < 1:
+        banshee_ability = the_ability(person.character, Banshee)
+        banshee_override = banshee_ability and banshee_ability.is_screaming
+        if vt > 0 and person.isGhost and person.deadVotes < 1 and not banshee_override:
             if not operator:
                 await safe_send(person.user, "You do not have any dead votes. Please vote no.")
             else:
@@ -696,7 +720,8 @@ class Vote:
         self.presetVotes[person.user.id] = vt
 
     async def cancel_preset(self, person):
-        del self.presetVotes[person.user.id]
+        if(person.user.id in self.presetVotes):
+            del self.presetVotes[person.user.id]
 
     async def delete(self):
         # Undoes an unintentional nomination
@@ -893,8 +918,8 @@ class Player:
         self.isGhost = False
         self.deadVotes = 0
         self.isActive = False
-        self.canNominate = False
-        self.canBeNominated = False
+        self.canNominate = True
+        self.canBeNominated = True
         self.hasSkipped = False
         self.messageHistory = []
         self.riot_nominee = False
@@ -1180,7 +1205,7 @@ class Character:
     def __init__(self, parent):
         self.parent = parent
         self.role_name = "Character"
-        self.isPoisoned = False
+        self._is_poisoned = False
         self.refresh()
 
     def refresh(self):
@@ -1189,6 +1214,15 @@ class Character:
     def extra_info(self):
         return ""
 
+    @property
+    def is_poisoned(self):
+        return self._is_poisoned
+
+    def poison(self):
+        self._is_poisoned = True
+
+    def unpoison(self):
+        self._is_poisoned = False
 
 class Townsfolk(Character):
     # A generic townsfolk
@@ -1372,23 +1406,33 @@ class AbilityModifier(
 
     async def on_day_start(self, origin, kills):
         # Called on the start of the day
-        if not self.isPoisoned:
+        if not self.is_poisoned:
             for role in self.abilities:
                 if isinstance(role, DayStartModifier):
                     await role.on_day_start(origin, kills)
 
         return True
 
+    def poison(self):
+        super().poison()
+        for role in self.abilities:
+            role.poison()
+
+    def unpoison(self):
+        super().unpoison()
+        for role in self.abilities:
+            role.unpoison()
+
     def on_noms_called(self):
         # Called when nominations are called for the first time each day
-        if not self.isPoisoned:
+        if not self.is_poisoned:
             for role in self.abilities:
                 if isinstance(role, NomsCalledModifier):
                     role.on_noms_called()
 
     async def on_nomination(self, nominee, nominator, proceed):
         # Returns bool -- whether the nomination proceeds
-        if not self.isPoisoned:
+        if not self.is_poisoned:
             for role in self.abilities:
                 if isinstance(role, NominationModifier):
                     proceed = await role.on_nomination(nominee, nominator, proceed)
@@ -1396,16 +1440,16 @@ class AbilityModifier(
 
     def on_day_end(self):
         # Called on the end of the day
-        if not self.isPoisoned:
+        if not self.is_poisoned:
             for role in self.abilities:
                 if isinstance(role, DayEndModifier):
                     role.on_day_end()
 
     def modify_vote_values(self, order, values, majority):
         # returns a list of the vote's order, a dictionary of vote values, and majority
-        if not self.isPoisoned:
+        if not self.is_poisoned:
             for role in self.abilities:
-                if isinstance(role, VoteModifier):
+                if isinstance(role, VoteBeginningModifier):
                     order, values, majority = role.modify_vote_values(
                         order, values, majority
                     )
@@ -1413,21 +1457,21 @@ class AbilityModifier(
 
     def on_vote_call(self, toCall):
         # Called every time a player is called to vote
-        if not self.isPoisoned:
+        if not self.is_poisoned:
             for role in self.abilities:
                 if isinstance(role, VoteModifier):
                     role.on_vote_call(toCall)
 
     def on_vote(self):
         # Called every time a player votes
-        if not self.isPoisoned:
+        if not self.is_poisoned:
             for role in self.abilities:
                 if isinstance(role, VoteModifier):
                     role.on_vote()
 
     def on_vote_conclusion(self, dies, tie):
         # returns boolean -- whether the nominee is about to die, whether the vote is tied
-        if not self.isPoisoned:
+        if not self.is_poisoned:
             for role in self.abilities:
                 if isinstance(role, VoteModifier):
                     dies, tie = role.on_vote_conclusion(dies, tie)
@@ -1435,7 +1479,7 @@ class AbilityModifier(
 
     def on_death(self, person, dies):
         # Returns bool -- does person die
-        if not self.isPoisoned:
+        if not self.is_poisoned:
             for role in self.abilities:
                 if isinstance(role, DeathModifier):
                     dies = role.on_death(person, dies)
@@ -1443,7 +1487,7 @@ class AbilityModifier(
 
     def on_death_priority(self):
         priority = DeathModifier.UNSET
-        if not self.isPoisoned and not self.parent.isGhost:
+        if not self.is_poisoned and not self.parent.isGhost:
             for role in self.abilities:
                 if isinstance(role, DeathModifier):
                     priority = min(priority, role.on_death_priority())
@@ -1482,10 +1526,14 @@ class Traveler(SeatingOrderModifier):
         # Yes
         if choice.content.lower() == "yes" or choice.content.lower() == "y":
             die = True
-
         # No
         elif choice.content.lower() == "no" or choice.content.lower() == "n":
             die = False
+        else:
+            await safe_send(
+                user, "Your answer must be 'yes,' 'y,' 'no,' or 'n' exactly."
+            )
+            return
 
         if die:
             die = await person.kill(suppress=True)
@@ -1647,7 +1695,7 @@ class Virgin(Townsfolk, NominationModifier):
         if nominee == self:
             if not self.beenNominated:
                 self.beenNominated = True
-                if isinstance(nominator.character, Townsfolk) and not self.isPoisoned:
+                if isinstance(nominator.character, Townsfolk) and not self.is_poisoned:
                     if not nominator.isGhost:
                         # fixme: nominator should be executed rather than killed
                         await nominator.kill()
@@ -1680,7 +1728,7 @@ class Fool(Townsfolk, DeathModifier):
         self.can_escape_death = True
 
     def on_death(self, person, dies):
-        if self.parent == person and not self.isPoisoned and self.can_escape_death and dies:
+        if self.parent == person and not self.is_poisoned and self.can_escape_death and dies:
             self.can_escape_death = False
             return False
         return dies
@@ -1758,7 +1806,7 @@ class Sailor(Townsfolk, DeathModifier):
         self.role_name = "Sailor"
 
     def on_death(self, person, dies):
-        if self.parent == person and not self.isPoisoned:
+        if self.parent == person and not self.is_poisoned:
             return False
         return dies
 
@@ -1796,7 +1844,7 @@ class TeaLady(Townsfolk, DeathModifier):
             neighbor1.alignment == "good"
             and neighbor2.alignment == "good"
             and (person == neighbor1 or person == neighbor2)
-            and not self.isPoisoned
+            and not self.is_poisoned
         ):
             return False
         return dies
@@ -2145,7 +2193,7 @@ class Assassin(Minion, DayStartModifier, DeathModifier):
                 return False
 
     def on_death(self, person, dies):
-        if self.isPoisoned or self.parent.isGhost:
+        if self.is_poisoned or self.parent.isGhost:
             return dies
         if person == self.target:
             return True
@@ -2204,7 +2252,7 @@ class Witch(Minion, NominationModifier, DayStartModifier):
             and self.witched == nominator
             and not self.witched.isGhost
             and not self.parent.isGhost
-            and not self.isPoisoned
+            and not self.is_poisoned
         ):
             await self.witched.kill()
         return proceed
@@ -2284,16 +2332,6 @@ class NoDashii(Demon):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "No Dashii"
-        """
-        neighbor1 = game.seatingOrder[self.parent.position-1]
-        while not isinstance(neighbor1.character, Townsfolk) or neighbor1.isGhost:
-            neighbor1 = game.seatingOrder[neighbor1.position-1]
-        neighbor2 = game.seatingOrder[self.parent.position+1]
-        while not isinstance(neighbor2.character, Townsfolk) or neighbor2.isGhost:
-            neighbor2 = game.seatingOrder[neighbor1.position+1]
-        neighbor1.character.isPoisoned = True
-        neighbor2.character.isPoisoned = True
-        """
 
 
 class Po(Demon):
@@ -2476,7 +2514,7 @@ class Bureaucrat(Traveler, DayStartModifier, VoteBeginningModifier):
 
     async def on_day_start(self, origin, kills):
 
-        if self.isPoisoned or self.parent.isGhost == True or self.parent in kills:
+        if self.is_poisoned or self.parent.isGhost == True or self.parent in kills:
             self.target = None
             return True
 
@@ -2499,7 +2537,7 @@ class Bureaucrat(Traveler, DayStartModifier, VoteBeginningModifier):
         return True
 
     def modify_vote_values(self, order, values, majority):
-        if self.target and not self.isPoisoned and not self.parent.isGhost:
+        if self.target and not self.is_poisoned and not self.parent.isGhost:
             values[self.target] = (values[self.target][0], values[self.target][1] * 3)
 
         return order, values, majority
@@ -2538,7 +2576,7 @@ class Thief(Traveler, DayStartModifier, VoteBeginningModifier):
         return True
 
     def modify_vote_values(self, order, values, majority):
-        if self.target and not self.isPoisoned and not self.parent.isGhost:
+        if self.target and not self.is_poisoned and not self.parent.isGhost:
             values[self.target] = (values[self.target][0], values[self.target][1] * -1)
 
         return order, values, majority
@@ -2604,14 +2642,24 @@ class Leviathan(Demon):
         self.role_name = "Leviathan"
 
 
-class Amnesiac(Townsfolk, VoteBeginningModifier, DayEndModifier):
+class Amnesiac(Townsfolk, AbilityModifier):
     # The amnesiac
 
     def __init__(self, parent):
         super().__init__(parent)
+        #      initialize the AbilityModifier aspect as well
         self.role_name = "Amnesiac"
         self.vote_mod = 1
         self.player_with_votes = None
+
+    def add_ability(self, role):
+        is_set = False
+        for ability in self.abilities:
+            if isinstance(ability, AbilityModifier):
+                ability.add_ability(role)
+                is_set = True
+        if not is_set:
+            self.abilities = [role(self.parent)]
 
     def extra_info(self):
         if self.player_with_votes and self.vote_mod != 1:
@@ -2619,7 +2667,7 @@ class Amnesiac(Townsfolk, VoteBeginningModifier, DayEndModifier):
         return super().extra_info()
 
     def modify_vote_values(self, order, values, majority):
-        if self.player_with_votes and not self.isPoisoned and not self.parent.isGhost:
+        if self.player_with_votes and not self.is_poisoned and not self.parent.isGhost:
             values[self.player_with_votes] = (values[self.player_with_votes][0], values[self.player_with_votes][1] * self.vote_mod)
 
         return order, values, majority
@@ -2667,12 +2715,24 @@ class General(Townsfolk):
         self.role_name = "General"
 
 
-class Pixie(Townsfolk):
+class Pixie(Townsfolk, AbilityModifier):
     # The pixie
 
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Pixie"
+
+    def add_ability(self, role):
+        is_set = False
+        for ability in self.abilities:
+            if isinstance(ability, AbilityModifier):
+                ability.add_ability(role)
+                is_set = True
+        if not is_set:
+            self.abilities = [role(self.parent)]
+
+    def extra_info(self):
+        return "" if self.abilities == [] else "Has Ability {}".format(self.abilities[0].role_name)
 
 
 class Acrobat(Outsider):
@@ -2847,6 +2907,86 @@ class VillageIdiot(Townsfolk):
         self.role_name = "Village Idiot"
 
 
+# FIXME: this is probably gonna be obnoxious...
+# noinspection SpellCheckingInspection
+BANSHEE_SCREAM = """
+ ```
+ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+ AAaaaaaaaAAAAAAAAAAAAAAAAAAAAA
+ AAa THE aAAAAAAAAAAAAAAAAAAAAA
+ AAaaaaaaaAAAAAAAAAAAAAAAAAAAAA
+ AAAAAAAAaaaaaaaaaaaaAAAAAAAAAA
+ AAAAAAAAAa BANSHEE aAAAAAAAAAA
+ AAAAAAAAAaaaaaaaaaaaAAAAAAAAAA
+ AAAAAAAAAAAAAAAAAAAaaaaaaaaaAA
+ AAAAAAAAAAAAAAAAAAAa WAKES aAA
+ AAAAAAAAAAAAAAAAAAAaaaaaaaaaAA
+ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+ ```"""
+
+class Banshee(Townsfolk, DayStartModifier):
+    # The banshee
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Banshee"
+        self.is_screaming = False
+        self.remaining_nominations = 2
+
+    def refresh(self):
+        super().refresh()
+        self.is_screaming = False
+
+    async def on_day_start(self, origin, kills):
+        if self.is_screaming:
+            self.remaining_nominations = 2
+            return True
+
+        #  check if kills includes me
+        if self.parent not in kills:
+            return True
+        if self.is_poisoned:
+            return True
+
+        msg = await safe_send(origin, "Was Banshee {} killed by the demon?".format(self.parent.nick))
+        try:
+            choice = await client.wait_for(
+                "message",
+                check=(lambda x: x.author == origin and x.channel == msg.channel),
+                timeout=200)
+
+            # Cancel
+            if choice.content.lower() == "cancel":
+                await safe_send(origin, "Action cancelled!")
+                return False
+
+            # Yes
+            if choice.content.lower() == "yes" or choice.content.lower() == "y":
+                self.is_screaming = True
+                self.remaining_nominations = 2
+                scream = await safe_send(channel, BANSHEE_SCREAM)
+                await scream.pin()
+                return True
+            # No
+            elif choice.content.lower() == "no" or choice.content.lower() == "n":
+                return True
+            else:
+                await safe_send(
+                    origin, "Your answer must be 'yes,' 'y,' 'no,' or 'n' exactly. Day start cancelled!"
+                )
+                return False
+        except asyncio.TimeoutError:
+            await safe_send(origin, "Message timed out!")
+            return False
+
+    def refresh(self):
+        super().refresh()
+        self.is_screaming = False
+
+    def extra_info(self):
+        return "Banshee: Screaming Mad" if self.is_screaming else super().extra_info()
+
+
 class Golem(Outsider, NominationModifier):
     # The golem
 
@@ -2863,7 +3003,7 @@ class Golem(Outsider, NominationModifier):
         if nominator == self.parent:
             if (
                 not isinstance(nominee.character, Demon)
-                and not self.isPoisoned
+                and not self.is_poisoned
                 and not self.parent.isGhost
                 and not self.hasNominated
             ):
@@ -2944,7 +3084,7 @@ class OrganGrinder(Minion, NominationModifier):
         self.role_name = "Organ Grinder"
 
     async def on_nomination(self, nominee, nominator, proceed):
-        if not self.isPoisoned and not self.parent.isGhost:
+        if not self.is_poisoned and not self.parent.isGhost:
             nominee_nick = nominator.nick if nominator else "the storytellers"
             nominator_mention = nominee.user.mention if nominee else "the storytellers"
             announcement = await safe_send(
@@ -3063,7 +3203,7 @@ class Lleech(Demon, DeathModifier, DayStartModifier):
 
     def on_death(self, person, dies):
         # todo: if the host has died, the lleech should also die
-        if self.parent == person and not self.isPoisoned:
+        if self.parent == person and not self.is_poisoned:
             if not (self.hosted and self.hosted.isGhost):
                 return False
         return dies
@@ -3079,10 +3219,16 @@ class Lleech(Demon, DeathModifier, DayStartModifier):
 
 
 def has_ability(player_character, clazz):
+    return the_ability(player_character, clazz) is not None
+
+def the_ability(player_character, clazz):
     if isinstance(player_character, clazz):
-        return True
+        return player_character
     if isinstance(player_character, AbilityModifier):
-        return any([has_ability(c, clazz) for c in player_character.abilities])
+        matching = [the_ability(c, clazz) for c in player_character.abilities]
+        # get the first one
+        first = next((x for x in matching if x is not None), None)
+        return first
 
 
 class Ojo(Demon):
@@ -3101,7 +3247,7 @@ class Riot(Demon, NominationModifier):
         self.role_name = "Riot"
 
     async def on_nomination(self, nominee, nominator, proceed):
-        if self.isPoisoned or self.parent.isGhost or not nominee:
+        if self.is_poisoned or self.parent.isGhost or not nominee:
             return proceed
 
         nominee_nick = nominator.nick if nominator else "the storytellers"
@@ -3144,8 +3290,8 @@ class Riot(Demon, NominationModifier):
         this_day.riot_active = True
 
         # handle the soldier jinx - If Riot nominates the Soldier, the Soldier does not die
-        soldier_jinx = nominator and nominee and not nominee.character.isPoisoned and has_ability(nominator.character, Riot) and has_ability(nominee.character, Soldier)
-        golem_jinx = nominator and nominee and not nominator.character.isPoisoned and not nominator.isGhost and has_ability(nominee.character, Riot) and has_ability(nominator.character, Golem)
+        soldier_jinx = nominator and nominee and not nominee.character.is_poisoned and has_ability(nominator.character, Riot) and has_ability(nominee.character, Soldier)
+        golem_jinx = nominator and nominee and not nominator.character.is_poisoned and not nominator.isGhost and has_ability(nominee.character, Riot) and has_ability(nominator.character, Golem)
         if not (nominator):
             if this_day.st_riot_kill_override:
                 this_day.st_riot_kill_override = False
@@ -3628,7 +3774,7 @@ async def on_message(message):
                         channel,
                         "{} is not a valid vote. Use 'yes', 'y', 'no', or 'n'.".format(
                             argument
-                        ),
+                        )
                     )
                     return
 
@@ -4660,7 +4806,8 @@ async def on_message(message):
                 if person is None:
                     return
 
-                person.character.isPoisoned = True
+                person.character.poison()
+
                 await safe_send(message.author, "Successfully poisoned {}!".format(person.nick))
                 return
 
@@ -4680,7 +4827,7 @@ async def on_message(message):
                 if person is None:
                     return
 
-                person.character.isPoisoned = False
+                person.character.unpoison()
                 await safe_send(message.author, "Successfully unpoisoned {}!".format(person.nick))
                 return
 
@@ -4938,7 +5085,7 @@ async def on_message(message):
                     Dead Votes: {}
                     Poisoned: {}
                     """.format(person.nick, person.character.role_name, person.alignment, str(not person.isGhost),
-                               str(person.deadVotes), str(person.character.isPoisoned)))
+                               str(person.deadVotes), str(person.character.is_poisoned)))
                 await safe_send(message.author, "\n".join([base_info, person.character.extra_info()]))
                 return
             elif command == "setatheist":
@@ -4971,11 +5118,11 @@ async def on_message(message):
                     messageText += "\n{}: {}".format(
                         player.nick, player.character.role_name
                     )
-                    if player.character.isPoisoned and player.isGhost:
+                    if player.character.is_poisoned and player.isGhost:
                         messageText += " (Poisoned, Dead)"
-                    elif player.character.isPoisoned and not player.isGhost:
+                    elif player.character.is_poisoned and not player.isGhost:
                         messageText += " (Poisoned)"
-                    elif not player.character.isPoisoned and player.isGhost:
+                    elif not player.character.is_poisoned and player.isGhost:
                         messageText += " (Dead)"
 
                 await safe_send(message.author, messageText)
@@ -5098,6 +5245,9 @@ async def on_message(message):
 
                 traveler_called = person is not None and isinstance(person.character, Traveler)
 
+                banshee_ability_of_player = the_ability(nominator_player.character, Banshee) if nominator_player else None
+                banshee_override = banshee_ability_of_player is not None and banshee_ability_of_player.is_screaming
+
                 if not nominator_player:
                     if not gamemasterRole in server.get_member(message.author.id).roles:
                         await safe_send(message.author, "You aren't in the game, and so cannot nominate.")
@@ -5106,7 +5256,7 @@ async def on_message(message):
                         if len([
                             player for player in game.seatingOrder
                             if player.character.role_name == "Riot"
-                            if not player.character.isPoisoned
+                            if not player.character.is_poisoned
                             if not player.isGhost
                         ]) > 0:
                             # todo: ask if the nominee dies
@@ -5143,17 +5293,16 @@ async def on_message(message):
                         if not nominator_player.riot_nominee:
                             await safe_send(message.author, "Riot is active, you may not nominate.")
                             return
-                    if nominator_player.isGhost and not traveler_called and not nominator_player.riot_nominee:
+                    if nominator_player.isGhost and not traveler_called and not nominator_player.riot_nominee and not banshee_override:
                         await safe_send(
                             message.author, "You are dead, and so cannot nominate."
                         )
                         return
-                    if not nominator_player.canNominate and not traveler_called:
-                        await safe_send(message.author, "You have already nominated.")
+                    if banshee_override and banshee_ability_of_player.remaining_nominations < 1:
+                        await safe_send(message.author, "You have already nominated twice.")
                         return
-
-                    if (await get_player(message.author)).isGhost:
-                        await safe_send(message.author,'You are dead, and so cannot nominate.')
+                    if not nominator_player.canNominate and not traveler_called and not banshee_override:
+                        await safe_send(message.author, "You have already nominated.")
                         return
 
                 if game.script.isAtheist:
@@ -5181,6 +5330,8 @@ async def on_message(message):
                 if not person.canBeNominated:
                     await safe_send(message.author, "{} has already been nominated".format(person.nick))
                     return
+
+                remove_banshee_nomination(banshee_ability_of_player)
 
                 await game.days[-1].nomination(person, nominator_player)
                 if game is not NULL_GAME:
@@ -5278,11 +5429,13 @@ async def on_message(message):
                     await safe_send(message.author, "There's no vote right now.")
                     return
 
+                # if player has active banshee ability then they can prevote 0, 1, or 2 as well
                 if (
                     argument != "yes"
                     and argument != "y"
                     and argument != "no"
                     and argument != "n"
+                    and argument not in ["0", "1", "2"]
                 ):
                     await safe_send(message.author, "{} is not a valid vote. Use 'yes', 'y', 'no', or 'n'.".format(argument))
                     return
@@ -5314,17 +5467,40 @@ async def on_message(message):
                     if person is None:
                         return
 
-                    vt = int(argument == "yes" or argument == "y")
+                    player_banshee_ability = the_ability(person.character, Banshee)
+                    banshee_override = player_banshee_ability and player_banshee_ability.is_screaming
+
+                    if argument in ["0", "1", "2"]:
+                        if not banshee_override:
+                            await safe_send(message.author, "{} is not a valid vote for this player.".format(argument))
+                            return
+                        vt = int(argument)
+                    else:
+                        yes_entered = argument == "yes" or argument == "y"
+                        vt = int(yes_entered) * (2 if banshee_override else 1)
 
                     await vote.preset_vote(person, vt, operator=message.author)
-                    await safe_send(message.author, "Successfully preset!")
+                    if(banshee_override):
+                        await safe_send(message.author, "Successfully preset to {}!".format(vt))
+                    else:
+                        await safe_send(message.author, "Successfully preset to {}!".format(argument))
                     if game is not NULL_GAME:
                         backup("current_game.pckl")
                     return
 
-                vt = int(argument == "yes" or argument == "y")
+                the_player = await get_player(message.author)
+                player_banshee_ability = the_ability(the_player.character, Banshee)
+                banshee_override = player_banshee_ability and player_banshee_ability.is_screaming
 
-                await vote.preset_vote(await get_player(message.author), vt)
+                if argument in ["0", "1", "2"]:
+                    if not banshee_override:
+                        await safe_send(message.author, "is not a valid vote. Use 'yes', 'y', 'no', or 'n'.".format(argument))
+                        return
+                    vt = int(argument)
+                else:
+                    vt = int(argument == "yes" or argument == "y")
+
+                await vote.preset_vote(the_player, vt)
                 await safe_send(message.author, "Successfully preset! For more nuanced presets, contact the storytellers.")
                 if game is not NULL_GAME:
                     backup("current_game.pckl")
@@ -6241,15 +6417,22 @@ async def on_message_edit(before, after):
             names = await generate_possibilities(argument, game.seatingOrder)
             traveler_called = len(names) == 1 and isinstance(names[0].character, Traveler)
 
-            if (message_author_player).isGhost and not traveler_called and not message_author_player.riot_nominee:
+            banshee_ability_of_player = the_ability(message_author_player.character, Banshee) if message_author_player else None
+            banshee_override = banshee_ability_of_player and banshee_ability_of_player.is_screaming and not banshee_ability_of_player.is_poisoned
+
+            if message_author_player.isGhost and not traveler_called and not message_author_player.riot_nominee and not banshee_override:
                 await safe_send(channel, "You are dead, and so cannot nominate.")
+                await after.unpin()
+                return
+            if (banshee_override and banshee_ability_of_player.remaining_nominations < 1) and not traveler_called:
+                await safe_send(channel, "You have already nominated twice.")
                 await after.unpin()
                 return
             if game.days[-1].riot_active and not message_author_player.riot_nominee:
                 await safe_send(channel, "Riot is active. It is not your turn to nominate.")
                 await after.unpin()
                 return
-            if not (message_author_player).canNominate and not traveler_called:
+            if not (message_author_player).canNominate and not traveler_called and not banshee_override:
                 await safe_send(channel, "You have already nominated.")
                 await after.unpin()
                 return
@@ -6264,6 +6447,7 @@ async def on_message_edit(before, after):
                         )
                         await after.unpin()
                         return
+                    remove_banshee_nomination(banshee_ability_of_player)
                     await game.days[-1].nomination(None, message_author_player)
                     if game is not NULL_GAME:
                         backup("current_game.pckl")
@@ -6278,6 +6462,8 @@ async def on_message_edit(before, after):
                     )
                     await after.unpin()
                     return
+
+                remove_banshee_nomination(banshee_ability_of_player)
 
                 await game.days[-1].nomination(names[0], message_author_player)
                 if game is not NULL_GAME:
@@ -6353,6 +6539,11 @@ async def on_message_edit(before, after):
             (message_author_player).hasSkipped = False
             if game is not NULL_GAME:
                 backup("current_game.pckl")
+
+
+def remove_banshee_nomination(banshee_ability_of_player):
+    if banshee_ability_of_player and banshee_ability_of_player.is_screaming:
+        banshee_ability_of_player.remaining_nominations -= 1
 
 
 @client.event
