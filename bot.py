@@ -15,6 +15,9 @@ from config import *
 from datetime import datetime, timedelta
 from dateutil.parser import parse
 
+print("Starting bot...")
+print("discord version is " + discord.__version__)
+
 STORYTELLER_ALIGNMENT = "neutral"
 
 logger = logging.getLogger("discord")
@@ -3583,12 +3586,13 @@ async def update_presence(client):
         )
     else:
         clopen = ["Closed", "Open"]
+
+        whisper_state = "to " + game.whisper_mode if game.days[-1].isPms and game.whisper_mode != WhisperMode.ALL else clopen[game.days[-1].isPms]
+        status = "PMs {}, Nominations {}!".format(whisper_state, clopen[game.days[-1].isNoms])
         await client.change_presence(
             status=discord.Status.online,
             activity=discord.Game(
-                name="PMs {}, Nominations {}!".format(
-                    clopen[game.days[-1].isPms], clopen[game.days[-1].isNoms]
-                )
+                name=status
             ),
         )
 
@@ -3688,6 +3692,7 @@ async def on_ready():
 
     global server, channel, playerRole, travelerRole, ghostRole, deadVoteRole, gamemasterRole, inactiveRole, observerRole, game
     game = NULL_GAME
+    observerRole = None
 
     server = client.get_guild(serverid)
     channel = client.get_channel(channelid)
@@ -3931,6 +3936,7 @@ async def on_message(message):
 
                 if(new_mode):
                     game.whisper_mode = new_mode
+                    await update_presence(client)
                     #  for each gamemaster let them know
                     for memb in gamemasterRole.members:
                         await safe_send(memb, "{} has set whisper mode to {}.".format(message.author.display_name, game.whisper_mode))
@@ -6553,7 +6559,7 @@ def remove_banshee_nomination(banshee_ability_of_player):
 @client.event
 async def on_member_update(before, after):
     # Handles member-level modifications
-
+    global game
     if after == client.user:
         return
 
