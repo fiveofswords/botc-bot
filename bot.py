@@ -1123,12 +1123,18 @@ class Player:
         self.messageHistory.append(message_to)
         frm.messageHistory.append(message_from)
 
-        for user in gamemasterRole.members:
-            if user != self.user:
-                await safe_send(
-                    user,
-                    "**[**{} **>** {}**]** {}".format(frm.nick, self.nick, content),
-                )
+        if whisper_channel:
+            await safe_send(
+                whisper_channel,
+                "Message from {} to {}: **{}**".format(frm.nick, self.nick, content),
+            )
+        else:
+            for user in gamemasterRole.members:
+                if user != self.user:
+                    await safe_send(
+                        user,
+                        "**[**{} **>** {}**]** {}".format(frm.nick, self.nick, content),
+                    )
 
         # await safe_send(channel,'**{}** > **{}**'.format(frm.nick, self.nick))
 
@@ -3690,12 +3696,13 @@ async def safe_send(target: discord.abc.Messageable, msg: str):
 async def on_ready():
     # On startup
 
-    global server, channel, playerRole, travelerRole, ghostRole, deadVoteRole, gamemasterRole, inactiveRole, observerRole, game
+    global server, channel, whisper_channel, playerRole, travelerRole, ghostRole, deadVoteRole, gamemasterRole, inactiveRole, observerRole, game
     game = NULL_GAME
     observerRole = None
 
     server = client.get_guild(serverid)
     channel = client.get_channel(channelid)
+    whisper_channel = client.get_channel(whisperchannelid) if whisperchannelid else None
 
     for role in server.roles:
         if role.name == playerName:
