@@ -3703,6 +3703,7 @@ async def on_ready():
     server = client.get_guild(serverid)
     channel = client.get_channel(channelid)
     whisper_channel = client.get_channel(whisperchannelid) if whisperchannelid else None
+    logger.info("channel: " + channel.name + ", whisper_channel: " + whisper_channel.name)
 
     for role in server.roles:
         if role.name == playerName:
