@@ -48,7 +48,7 @@ class Game:
             Player(Storyteller, STORYTELLER_ALIGNMENT, person, None)
             for person in gamemasterRole.members
         ] if not skip_storytellers else []
-        self.show_tally = True
+        self.show_tally = False
 
     async def end(self, winner):
         # Ends the game
