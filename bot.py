@@ -927,6 +927,7 @@ class Player:
         self.hasSkipped = False
         self.messageHistory = []
         self.riot_nominee = False
+        self.last_active = datetime.now().timestamp()
 
         if inactiveRole in self.user.roles:
             self.isInactive = True
@@ -1188,6 +1189,9 @@ class Player:
         self.isInactive = False
         await self.user.remove_roles(inactiveRole)
         self.hasSkipped = False
+
+    def update_last_active(self):
+        self.last_active = datetime.now().timestamp()
 
     async def add_dead_vote(self):
         if self.deadVotes == 0:
@@ -3549,7 +3553,9 @@ async def make_active(user):
 
     person = await get_player(user)
 
-    if person.isActive == True:
+    person.update_last_active()
+
+    if person.isActive or not game.isDay:
         return
 
     person.isActive = True
@@ -3760,11 +3766,9 @@ async def on_message(message):
 
     # Update activity
     if message.channel == channel:
-        if game is not NULL_GAME:
-            if game.isDay:
-                await make_active(message.author)
-                if game is not NULL_GAME:
-                    backup("current_game.pckl")
+        if game is not None and game is not NULL_GAME:
+            await make_active(message.author)
+            backup("current_game.pckl")
 
         # Votes
         if message.content.startswith(prefixes):
@@ -5249,6 +5253,28 @@ async def on_message(message):
                 await safe_send(message.author, messageText)
                 return
 
+            # Checks when a given player was last active
+            elif command == "lastactive":
+                if game is NULL_GAME:
+                    await safe_send(message.author, "There's no game right now.")
+                    return
+
+                author_roles = server.get_member(message.author.id).roles
+                if gamemasterRole not in author_roles and observerRole not in author_roles:
+                    await safe_send(message.author, "You don't have permission to view player information.")
+                    return
+
+                last_active = {player: player.last_active for player in
+                               game.seatingOrder}
+                message_text = "Last active time for these players:"
+                for player in last_active:
+                    last_active_str = str(int(player.last_active))
+                    message_text += "\n{}:<t:{}:R> at <t:{}:t>".format(
+                        player.nick, last_active_str, last_active_str)
+
+                await safe_send(message.author, message_text)
+                return
+
             # Nominates
             elif command == "nominate":
 
@@ -5731,8 +5757,8 @@ async def on_message(message):
                     intendedMessage.content,
                     message.jump_url,
                 )
-                if not (await get_player(message.author)).isActive:
-                    await make_active(message.author)
+
+                await make_active(message.author)
                 if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
