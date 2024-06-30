@@ -34,6 +34,7 @@ class WhisperMode:
     NEIGHBORS = 'neighbors'
     STORYTELLERS = 'storytellers'
 
+
 ### Classes
 class Game:
     def __init__(self, seatingOrder, seatingOrderMessage, script, skip_storytellers=False):
@@ -341,7 +342,7 @@ class Day:
                 # do not proceed with collecting user input for this vote
                 return
 
-        if(game.show_tally):
+        if (game.show_tally):
             message_tally = {X: 0 for X in itertools.combinations(game.seatingOrder, 2)}
 
             has_had_multiple_votes = len(self.votes) > 1
@@ -723,7 +724,7 @@ class Vote:
         self.presetVotes[person.user.id] = vt
 
     async def cancel_preset(self, person):
-        if(person.user.id in self.presetVotes):
+        if (person.user.id in self.presetVotes):
             del self.presetVotes[person.user.id]
 
     async def delete(self):
@@ -1232,6 +1233,7 @@ class Character:
 
     def unpoison(self):
         self._is_poisoned = False
+
 
 class Townsfolk(Character):
     # A generic townsfolk
@@ -2691,7 +2693,6 @@ class Amnesiac(Townsfolk, AbilityModifier):
         super().on_day_end()
 
 
-
 class BountyHunter(Townsfolk):
     # The bounty hunter
 
@@ -2932,6 +2933,7 @@ BANSHEE_SCREAM = """
  AAAAAAAAAAAAAAAAAAAaaaaaaaaaAA
  AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
  ```"""
+
 
 class Banshee(Townsfolk, DayStartModifier):
     # The banshee
@@ -3229,6 +3231,7 @@ class Lleech(Demon, DeathModifier, DayStartModifier):
 
 def has_ability(player_character, clazz):
     return the_ability(player_character, clazz) is not None
+
 
 def the_ability(player_character, clazz):
     if isinstance(player_character, clazz):
@@ -3942,7 +3945,7 @@ async def on_message(message):
 
                 new_mode = to_whisper_mode(argument)
 
-                if(new_mode):
+                if (new_mode):
                     game.whisper_mode = new_mode
                     await update_presence(client)
                     #  for each gamemaster let them know
@@ -5040,7 +5043,7 @@ async def on_message(message):
                         counts = OrderedDict([(player, 0) for player in game.seatingOrder])
                         day = msg["day"]
                     if msg["from"] == person:
-                        if(msg["to"] in counts):
+                        if (msg["to"] in counts):
                             counts[msg["to"]] += 1
                         else:
                             if "Storytellers" in counts:
@@ -5496,7 +5499,7 @@ async def on_message(message):
                         vt = int(yes_entered) * (2 if banshee_override else 1)
 
                     await vote.preset_vote(person, vt, operator=message.author)
-                    if(banshee_override):
+                    if (banshee_override):
                         await safe_send(message.author, "Successfully preset to {}!".format(vt))
                     else:
                         await safe_send(message.author, "Successfully preset to {}!".format(argument))
@@ -6388,8 +6391,9 @@ async def chose_whisper_candidates(game, author):
         neighbor_right = game.seatingOrder[(author_index + 1) % len(game.seatingOrder)]
         return [neighbor_left, player_self, neighbor_right] + game.storytellers
 
+
 async def is_storyteller(arg):
-    if arg in ["storytellers","the storytellers","storyteller","the storyteller"]:
+    if arg in ["storytellers", "the storytellers", "storyteller", "the storyteller"]:
         return True
     options = await generate_possibilities(arg, server.members)
     return len(options) == 1 and gamemasterRole in server.get_member((options)[0].id).roles
