@@ -2998,6 +2998,14 @@ class Banshee(Townsfolk, DayStartModifier):
         return "Banshee: Has Ability" if self.is_screaming else super().extra_info()
 
 
+class Alsaahir(Townsfolk):
+    # The alsaahir
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Alsaahir"
+
+
 class Golem(Outsider, NominationModifier):
     # The golem
 
