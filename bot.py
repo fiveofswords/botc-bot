@@ -3766,7 +3766,7 @@ async def on_message(message):
 
     # Update activity
     if message.channel == channel:
-        if game is not None and game is not NULL_GAME:
+        if game is not NULL_GAME:
             await make_active(message.author)
             backup("current_game.pckl")
 
