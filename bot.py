@@ -5726,7 +5726,10 @@ async def on_message(message):
                     return
 
                 if person not in candidates_for_whispers:
-                    await safe_send(message.author, "You cannot whisper to this player at this time.")
+                    response = "You cannot whisper to this player at this time."
+                    if person in game.storytellers:
+                        response = "Please message Storytellers in ST chat."
+                    await safe_send(message.author, response)
                     return
 
                 messageText = "Messaging {}. What would you like to send?".format(
@@ -6413,17 +6416,19 @@ def to_whisper_mode(argument):
 
 
 async def chose_whisper_candidates(game, author):
+    # Disable ST whispers if whisper tallies are disabled.
+    candidates = [game.storytellers] if game.show_tally else []
     if game.whisper_mode == WhisperMode.ALL:
-        return game.seatingOrder + game.storytellers
+        return candidates + game.seatingOrder
     if game.whisper_mode == WhisperMode.STORYTELLERS:
-        return game.storytellers
+        return candidates
     if game.whisper_mode == WhisperMode.NEIGHBORS:
         # determine neighbors
         player_self = await get_player(author)
         author_index = game.seatingOrder.index(player_self)
         neighbor_left = game.seatingOrder[(author_index - 1) % len(game.seatingOrder)]
         neighbor_right = game.seatingOrder[(author_index + 1) % len(game.seatingOrder)]
-        return [neighbor_left, player_self, neighbor_right] + game.storytellers
+        return candidates + [neighbor_left, player_self, neighbor_right]
 
 
 async def is_storyteller(arg):
