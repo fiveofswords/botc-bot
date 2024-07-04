@@ -6417,7 +6417,7 @@ def to_whisper_mode(argument):
 
 async def chose_whisper_candidates(game, author):
     # Disable ST whispers if whisper tallies are disabled.
-    candidates = [game.storytellers] if game.show_tally else []
+    candidates = game.storytellers if game.show_tally else []
     if game.whisper_mode == WhisperMode.ALL:
         return candidates + game.seatingOrder
     if game.whisper_mode == WhisperMode.STORYTELLERS:
