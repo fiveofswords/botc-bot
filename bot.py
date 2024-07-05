@@ -3452,16 +3452,16 @@ class Summoner(Minion):
 # API Stuff
 try:
     member_cache = discord.MemberCacheFlags(
-        online=True,
         # Whether to cache members with a status. Members that go offline are
         # no longer cached.
-        voice=True,
+        online=True,
         # Whether to cache members that are in voice. Members that leave voice
         # are no longer cached.
-        joined=True,
+        voice=True,
         # Whether to cache members that joined the guild or are chunked as part
         # of the initial log in flow. Members that leave the guild are no
         # longer cached.
+        joined=True,
     )
 except TypeError:
     # online is not a valid flag name
@@ -3511,7 +3511,7 @@ async def generate_possibilities(text, people):
 
 
 async def choices(user, possibilities, text):
-    # Clarifies which user is indended when there are multiple matches
+    # Clarifies which user is intended when there are multiple matches
 
     # Generate clarification message
     if text == "":
