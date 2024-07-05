@@ -22,7 +22,10 @@ STORYTELLER_ALIGNMENT = "neutral"
 
 logger = logging.getLogger("discord")
 logger.setLevel(logging.WARNING)
-handler = logging.FileHandler(filename="discord.log", encoding="utf-8", mode="w")
+handler = logging.FileHandler(
+    filename="discord.log",
+    encoding="utf-8",
+    mode="w")
 handler.setFormatter(
     logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s")
 )
@@ -35,9 +38,14 @@ class WhisperMode:
     STORYTELLERS = 'storytellers'
 
 
-### Classes
+# Classes
 class Game:
-    def __init__(self, seatingOrder, seatingOrderMessage, script, skip_storytellers=False):
+    def __init__(
+            self,
+            seatingOrder,
+            seatingOrderMessage,
+            script,
+            skip_storytellers=False):
         self.days = []
         self.isDay = False
         self.script = script
@@ -108,7 +116,8 @@ class Game:
                 messageText += "\n{}".format(person.nick)
 
             if isinstance(person.character, SeatingOrderModifier):
-                messageText += person.character.seating_order_message(self.seatingOrder)
+                messageText += person.character.seating_order_message(
+                    self.seatingOrder)
 
             person.position = index
 
@@ -160,7 +169,8 @@ class Game:
 
 
 class Script:
-    # Stores booleans for characters which modify the game rules from the script
+    # Stores booleans for characters which modify the game rules from the
+    # script
 
     def __init__(self, scriptList):
         self.isAtheist = "atheist" in scriptList
@@ -218,7 +228,8 @@ class Day:
     async def nomination(self, nominee, nominator):
         await self.close_pms()
         await self.close_noms()
-        # todo: if organ grinder ability is active, then this first message should not be output.
+        # todo: if organ grinder ability is active, then this first message
+        # should not be output.
         if not nominee:
             self.votes.append(Vote(nominee, nominator))
             if self.aboutToDie is not None:
@@ -250,14 +261,18 @@ class Day:
                     ),
                 )
             await announcement.pin()
-            if nominator and nominee and not isinstance(nominee.character, Traveler):
+            if nominator and nominee and not isinstance(
+                    nominee.character, Traveler):
                 nominator.canNominate = False
             proceed = True
             # FIXME:there might be a case where a player earlier in the seating order makes the nomination not proceed
             #  but one later in the seating order may be relevant. Short circuit here stops two Riot messages, e.g.
-            #  There may need to be some rework based on NominationModifier priority
+            # There may need to be some rework based on NominationModifier
+            # priority
             for person in game.seatingOrder:
-                if isinstance(person.character, NominationModifier) and proceed:
+                if isinstance(
+                        person.character,
+                        NominationModifier) and proceed:
                     proceed = await person.character.on_nomination(
                         nominee, nominator, proceed
                     )
@@ -282,10 +297,13 @@ class Day:
             self.votes.append(Vote(nominee, nominator))
             # FIXME:there might be a case where a player earlier in the seating order makes the nomination not proceed
             #  but one later in the seating order may be relevant. Short circuit here stops two Riot messages, e.g.
-            #  There may need to be some rework based on NominationModifier priority
+            # There may need to be some rework based on NominationModifier
+            # priority
             proceed = True
             for person in game.seatingOrder:
-                if isinstance(person.character, NominationModifier) and proceed:
+                if isinstance(
+                        person.character,
+                        NominationModifier) and proceed:
                     proceed = await person.character.on_nomination(
                         nominee, nominator, proceed
                     )
@@ -298,7 +316,7 @@ class Day:
                     "{}, {} has been nominated by {}. {} to tie, {} to execute.".format(
                         playerRole.mention,
                         nominee.user.mention
-                        if not nominee.user in gamemasterRole.members
+                        if nominee.user not in gamemasterRole.members
                         else "the storytellers",
                         nominator.nick if nominator else "the storytellers",
                         str(
@@ -320,7 +338,7 @@ class Day:
                     "{}, {} has been nominated by {}. {} to execute.".format(
                         playerRole.mention,
                         nominee.user.mention
-                        if not nominee.user in gamemasterRole.members
+                        if nominee.user not in gamemasterRole.members
                         else "the storytellers",
                         nominator.nick if nominator else "the storytellers",
                         str(int(math.ceil(self.votes[-1].majority))),
@@ -332,9 +350,12 @@ class Day:
             proceed = True
             # FIXME:there might be a case where a player earlier in the seating order makes the nomination not proceed
             #  but one later in the seating order may be relevant. Short circuit here stops two Riot messages, e.g.
-            #  There may need to be some rework based on NominationModifier priority
+            # There may need to be some rework based on NominationModifier
+            # priority
             for person in game.seatingOrder:
-                if isinstance(person.character, NominationModifier) and proceed:
+                if isinstance(
+                        person.character,
+                        NominationModifier) and proceed:
                     proceed = await person.character.on_nomination(
                         nominee, nominator, proceed
                     )
@@ -342,11 +363,14 @@ class Day:
                 # do not proceed with collecting user input for this vote
                 return
 
-        if (game.show_tally):
-            message_tally = {X: 0 for X in itertools.combinations(game.seatingOrder, 2)}
+        if game.show_tally:
+            message_tally = {
+                X: 0 for X in itertools.combinations(
+                    game.seatingOrder, 2)}
 
             has_had_multiple_votes = len(self.votes) > 1
-            last_vote_message = None if not has_had_multiple_votes else await channel.fetch_message(self.votes[-2].announcements[0])
+            last_vote_message = None if not has_had_multiple_votes else await channel.fetch_message(
+                self.votes[-2].announcements[0])
 
             for person in game.seatingOrder:
                 for msg in person.messageHistory:
@@ -372,8 +396,7 @@ class Day:
             for pair in sorted_tally:
                 if pair[1] > 0:
                     messageText += "\n> {person1} - {person2}: {n}".format(
-                        person1=pair[0][0].nick, person2=pair[0][1].nick, n=pair[1]
-                    )
+                        person1=pair[0][0].nick, person2=pair[0][1].nick, n=pair[1])
                 else:
                     messageText += "\n> All other pairs: 0"
                     break
@@ -417,12 +440,15 @@ class Day:
         await safe_send(channel, "{}, go to sleep!".format(playerRole.mention))
 
         if not game.days[-1].riot_active:
-            if (game.show_tally):
-                message_tally = {X: 0 for X in itertools.combinations(game.seatingOrder, 2)}
+            if game.show_tally:
+                message_tally = {
+                    X: 0 for X in itertools.combinations(
+                        game.seatingOrder, 2)}
                 has_had_multiple_votes = len(self.votes) > 0
 
                 last_vote_message = None if not has_had_multiple_votes else (
-                    await channel.fetch_message(self.votes[-1].announcements[0]) if self.votes and self.votes[-1].announcements else None
+                    await channel.fetch_message(self.votes[-1].announcements[0]) if self.votes and self.votes[
+                        -1].announcements else None
                 )
                 for person in game.seatingOrder:
                     for msg in person.messageHistory:
@@ -443,7 +469,8 @@ class Day:
                                         message_tally[(msg["to"], person)] += 1
                                     else:
                                         message_tally[(person, msg["to"])] = 1
-                sorted_tally = sorted(message_tally.items(), key=lambda x: -x[1])
+                sorted_tally = sorted(
+                    message_tally.items(), key=lambda x: -x[1])
                 messageText = "**Message Tally:**"
                 for pair in sorted_tally:
                     if pair[1] > 0:
@@ -466,8 +493,8 @@ class Vote:
         self.nominator = nominator
         if self.nominee is not None:
             ordered_voters = (
-                game.seatingOrder[game.seatingOrder.index(self.nominee) + 1:]
-                + game.seatingOrder[: game.seatingOrder.index(self.nominee) + 1]
+                    game.seatingOrder[game.seatingOrder.index(self.nominee) + 1:]
+                    + game.seatingOrder[: game.seatingOrder.index(self.nominee) + 1]
             )
         else:
             ordered_voters = game.seatingOrder
@@ -529,7 +556,10 @@ class Vote:
         )
         try:
             preferences = {}
-            if os.path.isfile(os.path.dirname(os.getcwd()) + "/preferences.pckl"):
+            if os.path.isfile(
+                    os.path.dirname(
+                        os.getcwd()) +
+                    "/preferences.pckl"):
                 with open(os.path.dirname(os.getcwd()) + "/preferences.pckl", "rb") as file:
                     preferences = dill.load(file)
             default = preferences[toCall.user.id]["defaultvote"]
@@ -563,7 +593,8 @@ class Vote:
         potential_banshee = the_ability(voter.character, Banshee)
         player_is_active_banshee = potential_banshee and voter.character.is_screaming
         # Check dead votes
-        if vt == 1 and voter.isGhost and voter.deadVotes < 1 and not (player_is_active_banshee and not potential_banshee.is_poisoned):
+        if vt == 1 and voter.isGhost and voter.deadVotes < 1 and not (
+                player_is_active_banshee and not potential_banshee.is_poisoned):
             if not operator:
                 await safe_send(voter.user, "You do not have any dead votes. Entering a no vote.")
                 await self.vote(0)
@@ -575,7 +606,8 @@ class Vote:
                     ),
                 )
             return
-        if vt == 1 and voter.isGhost and not (player_is_active_banshee and not potential_banshee.is_poisoned):
+        if vt == 1 and voter.isGhost and not (
+                player_is_active_banshee and not potential_banshee.is_poisoned):
             await voter.remove_dead_vote()
 
         # On vote character powers
@@ -639,7 +671,8 @@ class Vote:
         elif len(the_voters) == 2:
             text = the_voters[0].nick + " and " + the_voters[1].nick
         else:
-            text = (", ".join([x.nick for x in the_voters[:-1]]) + ", and " + the_voters[-1].nick)
+            text = (", ".join([x.nick for x in the_voters[:-1]]
+                              ) + ", and " + the_voters[-1].nick)
         if dies:
             if aboutToDie is not None and aboutToDie[0] is not None:
                 msg = await channel.fetch_message(
@@ -724,7 +757,7 @@ class Vote:
         self.presetVotes[person.user.id] = vt
 
     async def cancel_preset(self, person):
-        if (person.user.id in self.presetVotes):
+        if person.user.id in self.presetVotes:
             del self.presetVotes[person.user.id]
 
     async def delete(self):
@@ -753,8 +786,8 @@ class TravelerVote:
         self.nominee = nominee
         self.nominator = nominator
         self.order = (
-            game.seatingOrder[game.seatingOrder.index(self.nominee) + 1:]
-            + game.seatingOrder[: game.seatingOrder.index(self.nominee) + 1]
+                game.seatingOrder[game.seatingOrder.index(self.nominee) + 1:]
+                + game.seatingOrder[: game.seatingOrder.index(self.nominee) + 1]
         )
         self.votes = 0
         self.voted = []
@@ -782,7 +815,10 @@ class TravelerVote:
         )
         try:
             preferences = {}
-            if os.path.isfile(os.path.dirname(os.getcwd()) + "/preferences.pckl"):
+            if os.path.isfile(
+                    os.path.dirname(
+                        os.getcwd()) +
+                    "/preferences.pckl"):
                 with open(os.path.dirname(os.getcwd()) + "/preferences.pckl", "rb") as file:
                     preferences = dill.load(file)
             default = preferences[toCall.user.id]["defaultvote"]
@@ -848,7 +884,8 @@ class TravelerVote:
         elif len(self.voted) == 2:
             text = self.voted[0].nick + " and " + self.voted[1].nick
         else:
-            text = (", ".join([x.nick for x in self.voted[:-1]]) + ", and " + self.voted[-1].nick)
+            text = (", ".join([x.nick for x in self.voted[:-1]]
+                              ) + ", and " + self.voted[-1].nick)
         if self.votes >= self.majority:
             announcement = await safe_send(
                 channel,
@@ -956,7 +993,8 @@ class Player:
 
     async def kill(self, suppress=False, force=False):
         dies = True
-        on_death_characters = sorted([person.character for person in game.seatingOrder if isinstance(person.character, DeathModifier)], key=lambda c: c.on_death_priority())
+        on_death_characters = sorted([person.character for person in game.seatingOrder if isinstance(
+            person.character, DeathModifier)], key=lambda c: c.on_death_priority())
         for player_character in on_death_characters:
             dies = player_character.on_death(self, dies)
 
@@ -1102,8 +1140,11 @@ class Player:
         try:
             message = await safe_send(self.user, "Message from {}: **{}**".format(frm.nick, content))
         except discord.errors.HTTPException as e:
-            await safe_send(frm.user, "Something went wrong with your message to {}! Please try again".format(self.nick))
-            logger.info("could not send message to {}; it is {} characters long; error {}".format(self.nick, len(content), e.text))
+            await safe_send(frm.user,
+                            "Something went wrong with your message to {}! Please try again".format(self.nick))
+            logger.info(
+                "could not send message to {}; it is {} characters long; error {}".format(
+                    self.nick, len(content), e.text))
             return
 
         message_to = {
@@ -1138,7 +1179,8 @@ class Player:
                         "**[**{} **>** {}**]** {}".format(frm.nick, self.nick, content),
                     )
 
-        # await safe_send(channel,'**{}** > **{}**'.format(frm.nick, self.nick))
+        # await safe_send(channel,'**{}** > **{}**'.format(frm.nick,
+        # self.nick))
 
         await safe_send(frm.user, "Message sent!")
         return
@@ -1154,7 +1196,7 @@ class Player:
             notActive = [
                 player
                 for player in game.seatingOrder
-                if player.isActive == False and player.alignment != STORYTELLER_ALIGNMENT
+                if not player.isActive and player.alignment != STORYTELLER_ALIGNMENT
             ]
             if len(notActive) == 1:
                 for memb in gamemasterRole.members:
@@ -1168,10 +1210,10 @@ class Player:
             canNominate = [
                 player
                 for player in game.seatingOrder
-                if player.canNominate == True
-                   and player.hasSkipped == False
+                if player.canNominate
+                   and not player.hasSkipped
                    and player.alignment != STORYTELLER_ALIGNMENT
-                   and player.isGhost == False
+                   and not player.isGhost
             ]
             if len(canNominate) == 1:
                 for memb in gamemasterRole.members:
@@ -1282,7 +1324,8 @@ class SeatingOrderModifier(Character):
         return seatingOrder
 
     def seating_order_message(self, seatingOrder):
-        # returns a string to be added to the seating order message specifically (not just to the seating order)
+        # returns a string to be added to the seating order message
+        # specifically (not just to the seating order)
         return ""
 
 
@@ -1337,7 +1380,8 @@ class VoteBeginningModifier(Character):
         super().__init__(parent)
 
     def modify_vote_values(self, order, values, majority):
-        # returns a list of the vote's order, a dictionary of vote values, and majority
+        # returns a list of the vote's order, a dictionary of vote values, and
+        # majority
         return order, values, majority
 
 
@@ -1356,7 +1400,8 @@ class VoteModifier(Character):
         pass
 
     def on_vote_conclusion(self, dies, tie):
-        # returns boolean -- whether the nominee is about to die, whether the vote is tied
+        # returns boolean -- whether the nominee is about to die, whether the
+        # vote is tied
         return dies, tie
 
 
@@ -1461,7 +1506,8 @@ class AbilityModifier(
                     role.on_day_end()
 
     def modify_vote_values(self, order, values, majority):
-        # returns a list of the vote's order, a dictionary of vote values, and majority
+        # returns a list of the vote's order, a dictionary of vote values, and
+        # majority
         if not self.is_poisoned:
             for role in self.abilities:
                 if isinstance(role, VoteBeginningModifier):
@@ -1485,7 +1531,8 @@ class AbilityModifier(
                     role.on_vote()
 
     def on_vote_conclusion(self, dies, tie):
-        # returns boolean -- whether the nominee is about to die, whether the vote is tied
+        # returns boolean -- whether the nominee is about to die, whether the
+        # vote is tied
         if not self.is_poisoned:
             for role in self.abilities:
                 if isinstance(role, VoteModifier):
@@ -1706,13 +1753,17 @@ class Virgin(Townsfolk, NominationModifier):
 
     async def on_nomination(self, nominee, nominator, proceed):
         # Returns bool -- whether the nomination proceeds
-        # fixme: in debugging, nominee is equal to self.parent rather than self, fix this after kill is corrected to execute
+        # fixme: in debugging, nominee is equal to self.parent rather than
+        # self, fix this after kill is corrected to execute
         if nominee == self:
             if not self.beenNominated:
                 self.beenNominated = True
-                if isinstance(nominator.character, Townsfolk) and not self.is_poisoned:
+                if isinstance(
+                        nominator.character,
+                        Townsfolk) and not self.is_poisoned:
                     if not nominator.isGhost:
-                        # fixme: nominator should be executed rather than killed
+                        # fixme: nominator should be executed rather than
+                        # killed
                         await nominator.kill()
         return proceed
 
@@ -1752,7 +1803,7 @@ class Fool(Townsfolk, DeathModifier):
         return DeathModifier.PROTECTS_SELF
 
     def extra_info(self):
-        if (self.can_escape_death):
+        if self.can_escape_death:
             return "Fool: Not Used"
         return "Fool: Used"
 
@@ -1855,11 +1906,12 @@ class TeaLady(Townsfolk, DeathModifier):
             neighbor2 = game.seatingOrder[cw]
 
         if (
-            # fixme: This does not consider neighbors who may falsely register as good or evil (recluse/spy)
-            neighbor1.alignment == "good"
-            and neighbor2.alignment == "good"
-            and (person == neighbor1 or person == neighbor2)
-            and not self.is_poisoned
+                # fixme: This does not consider neighbors who may falsely
+                # register as good or evil (recluse/spy)
+                neighbor1.alignment == "good"
+                and neighbor2.alignment == "good"
+                and (person == neighbor1 or person == neighbor2)
+                and not self.is_poisoned
         ):
             return False
         return dies
@@ -1945,7 +1997,8 @@ class Philosopher(Townsfolk, AbilityModifier):
             self.abilities = [role(self.parent)]
 
     def extra_info(self):
-        return "\n".join([("Philosophering: {}\n{}".format(x.role_name, x.extra_info())) for x in self.abilities])
+        return "\n".join([("Philosophering: {}\n{}".format(
+            x.role_name, x.extra_info())) for x in self.abilities])
 
 
 class Sage(Townsfolk):
@@ -2239,7 +2292,7 @@ class Witch(Minion, NominationModifier, DayStartModifier):
 
     async def on_day_start(self, origin, kills):
         # todo: consider minions killed by vigormortis as active
-        if self.parent.isGhost == True or self.parent in kills:
+        if self.parent.isGhost or self.parent in kills:
             self.witched = None
             return True
 
@@ -2263,11 +2316,11 @@ class Witch(Minion, NominationModifier, DayStartModifier):
 
     async def on_nomination(self, nominee, nominator, proceed):
         if (
-            self.witched
-            and self.witched == nominator
-            and not self.witched.isGhost
-            and not self.parent.isGhost
-            and not self.is_poisoned
+                self.witched
+                and self.witched == nominator
+                and not self.witched.isGhost
+                and not self.parent.isGhost
+                and not self.is_poisoned
         ):
             await self.witched.kill()
         return proceed
@@ -2434,7 +2487,8 @@ class Apprentice(Traveler, AbilityModifier):
             self.abilities = [role(self.parent)]
 
     def extra_info(self):
-        return "\n".join([("Apprenticing: {}\n{}".format(x.role_name, x.extra_info())) for x in self.abilities])
+        return "\n".join([("Apprenticing: {}\n{}".format(
+            x.role_name, x.extra_info())) for x in self.abilities])
 
 
 class Matron(Traveler):
@@ -2529,7 +2583,7 @@ class Bureaucrat(Traveler, DayStartModifier, VoteBeginningModifier):
 
     async def on_day_start(self, origin, kills):
 
-        if self.is_poisoned or self.parent.isGhost == True or self.parent in kills:
+        if self.is_poisoned or self.parent.isGhost or self.parent in kills:
             self.target = None
             return True
 
@@ -2553,7 +2607,8 @@ class Bureaucrat(Traveler, DayStartModifier, VoteBeginningModifier):
 
     def modify_vote_values(self, order, values, majority):
         if self.target and not self.is_poisoned and not self.parent.isGhost:
-            values[self.target] = (values[self.target][0], values[self.target][1] * 3)
+            values[self.target] = (
+                values[self.target][0], values[self.target][1] * 3)
 
         return order, values, majority
 
@@ -2568,7 +2623,7 @@ class Thief(Traveler, DayStartModifier, VoteBeginningModifier):
 
     async def on_day_start(self, origin, kills):
 
-        if self.parent.isGhost == True or self.parent in kills:
+        if self.parent.isGhost or self.parent in kills:
             self.target = None
             return True
 
@@ -2592,7 +2647,8 @@ class Thief(Traveler, DayStartModifier, VoteBeginningModifier):
 
     def modify_vote_values(self, order, values, majority):
         if self.target and not self.is_poisoned and not self.parent.isGhost:
-            values[self.target] = (values[self.target][0], values[self.target][1] * -1)
+            values[self.target] = (
+                values[self.target][0], values[self.target][1] * -1)
 
         return order, values, majority
 
@@ -2614,7 +2670,8 @@ class Cannibal(Townsfolk, AbilityModifier):
             self.abilities = [role(self.parent)]
 
     def extra_info(self):
-        return "\n".join([("Eaten: {}\n{}".format(x.role_name, x.extra_info())) for x in self.abilities])
+        return "\n".join(
+            [("Eaten: {}\n{}".format(x.role_name, x.extra_info())) for x in self.abilities])
 
 
 class Balloonist(Townsfolk):
@@ -2678,12 +2735,14 @@ class Amnesiac(Townsfolk, AbilityModifier):
 
     def extra_info(self):
         if self.player_with_votes and self.vote_mod != 1:
-            return "{} votes times {}".format(self.player_with_votes.nick, self.vote_mod)
+            return "{} votes times {}".format(
+                self.player_with_votes.nick, self.vote_mod)
         return super().extra_info()
 
     def modify_vote_values(self, order, values, majority):
         if self.player_with_votes and not self.is_poisoned and not self.parent.isGhost:
-            values[self.player_with_votes] = (values[self.player_with_votes][0], values[self.player_with_votes][1] * self.vote_mod)
+            values[self.player_with_votes] = (
+                values[self.player_with_votes][0], values[self.player_with_votes][1] * self.vote_mod)
 
         return order, values, majority
 
@@ -2746,7 +2805,8 @@ class Pixie(Townsfolk, AbilityModifier):
             self.abilities = [role(self.parent)]
 
     def extra_info(self):
-        return "" if self.abilities == [] else "Has Ability {}".format(self.abilities[0].role_name)
+        return "" if self.abilities == [] else "Has Ability {}".format(
+            self.abilities[0].role_name)
 
 
 class Acrobat(Outsider):
@@ -2837,7 +2897,8 @@ class Alchemist(Townsfolk, AbilityModifier):
         self.role_name = "Alchemist"
 
     def extra_info(self):
-        return "\n".join([("Alchemy: {}\n{}".format(x.role_name, x.extra_info())) for x in self.abilities])
+        return "\n".join([("Alchemy: {}\n{}".format(
+            x.role_name, x.extra_info())) for x in self.abilities])
 
     def add_ability(self, role):
         is_set = False
@@ -3025,10 +3086,10 @@ class Golem(Outsider, NominationModifier):
         # fixme: golem instantly kills a recluse when it should be ST decision
         if nominator == self.parent:
             if (
-                not isinstance(nominee.character, Demon)
-                and not self.is_poisoned
-                and not self.parent.isGhost
-                and not self.hasNominated
+                    not isinstance(nominee.character, Demon)
+                    and not self.is_poisoned
+                    and not self.parent.isGhost
+                    and not self.hasNominated
             ):
                 await nominee.kill()
             self.hasNominated = True
@@ -3149,8 +3210,7 @@ class OrganGrinder(Minion, NominationModifier):
             for pair in sorted_tally:
                 if pair[1] > 0:
                     messageText += "\n> {person1} - {person2}: {n}".format(
-                        person1=pair[0][0].nick, person2=pair[0][1].nick, n=pair[1]
-                    )
+                        person1=pair[0][0].nick, person2=pair[0][1].nick, n=pair[1])
                 else:
                     messageText += "\n> All other pairs: 0"
                     break
@@ -3304,8 +3364,7 @@ class Riot(Demon, NominationModifier):
             for pair in sorted_tally:
                 if pair[1] > 0:
                     messageText += "\n> {person1} - {person2}: {n}".format(
-                        person1=pair[0][0].nick, person2=pair[0][1].nick, n=pair[1]
-                    )
+                        person1=pair[0][0].nick, person2=pair[0][1].nick, n=pair[1])
                 else:
                     messageText += "\n> All other pairs: 0"
                     break
@@ -3313,17 +3372,21 @@ class Riot(Demon, NominationModifier):
 
         this_day.riot_active = True
 
-        # handle the soldier jinx - If Riot nominates the Soldier, the Soldier does not die
-        soldier_jinx = nominator and nominee and not nominee.character.is_poisoned and has_ability(nominator.character, Riot) and has_ability(nominee.character, Soldier)
-        golem_jinx = nominator and nominee and not nominator.character.is_poisoned and not nominator.isGhost and has_ability(nominee.character, Riot) and has_ability(nominator.character, Golem)
-        if not (nominator):
+        # handle the soldier jinx - If Riot nominates the Soldier, the Soldier
+        # does not die
+        soldier_jinx = nominator and nominee and not nominee.character.is_poisoned and has_ability(
+            nominator.character, Riot) and has_ability(nominee.character, Soldier)
+        golem_jinx = nominator and nominee and not nominator.character.is_poisoned and not nominator.isGhost and has_ability(
+            nominee.character, Riot) and has_ability(nominator.character, Golem)
+        if not nominator:
             if this_day.st_riot_kill_override:
                 this_day.st_riot_kill_override = False
                 await nominee.kill()
         elif not (soldier_jinx or golem_jinx):
             await nominee.kill()
 
-        riot_announcement = "Riot is in play. {} to nominate".format(nominee.user.mention)
+        riot_announcement = "Riot is in play. {} to nominate".format(
+            nominee.user.mention)
         if len(game.days) < 3:
             riot_announcement = riot_announcement + " or skip"
 
@@ -3386,12 +3449,19 @@ class Summoner(Minion):
         self.role_name = "Summoner"
 
 
-### API Stuff
+# API Stuff
 try:
     member_cache = discord.MemberCacheFlags(
-        online=True,  # Whether to cache members with a status. Members that go offline are no longer cached.
-        voice=True,  # Whether to cache members that are in voice. Members that leave voice are no longer cached.
-        joined=True,  # Whether to cache members that joined the guild or are chunked as part of the initial log in flow. Members that leave the guild are no longer cached.
+        online=True,
+        # Whether to cache members with a status. Members that go offline are
+        # no longer cached.
+        voice=True,
+        # Whether to cache members that are in voice. Members that leave voice
+        # are no longer cached.
+        joined=True,
+        # Whether to cache members that joined the guild or are chunked as part
+        # of the initial log in flow. Members that leave the guild are no
+        # longer cached.
     )
 except TypeError:
     # online is not a valid flag name
@@ -3412,7 +3482,7 @@ with open(os.path.dirname(os.path.realpath(__file__)) + "/token.txt") as tokenfi
     TOKEN = tokenfile.readline().strip()
 
 
-### Functions
+# Functions
 def str_cleanup(str, chars):
     str = [str]
     for char in chars:
@@ -3434,7 +3504,7 @@ async def generate_possibilities(text, people):
     possibilities = []
     for person in people:
         if (
-            person.nick is not None and text.lower() in person.nick.lower()
+                person.nick is not None and text.lower() in person.nick.lower()
         ) or text.lower() in person.name.lower():
             possibilities.append(person)
     return possibilities
@@ -3530,7 +3600,6 @@ async def yes_no(user, text):
         return await safe_send(
             user, "Your answer must be 'yes,' 'y,' 'no,' or 'n' exactly. Try again."
         )
-        return await yes_no(user, text)
 
 
 async def get_player(user):
@@ -3562,7 +3631,7 @@ async def make_active(user):
     notActive = [
         player
         for player in game.seatingOrder
-        if player.isActive == False and player.alignment != STORYTELLER_ALIGNMENT
+        if not player.isActive and player.alignment != STORYTELLER_ALIGNMENT
     ]
     if len(notActive) == 1:
         for memb in gamemasterRole.members:
@@ -3581,9 +3650,9 @@ async def cannot_nominate(user):
     canNominate = [
         player
         for player in game.seatingOrder
-        if player.canNominate == True
-           and player.hasSkipped == False
-           and player.isGhost == False
+        if player.canNominate
+           and not player.hasSkipped
+           and not player.isGhost
     ]
     if len(canNominate) == 1:
         for memb in gamemasterRole.members:
@@ -3603,15 +3672,17 @@ async def update_presence(client):
         await client.change_presence(
             status=discord.Status.dnd, activity=discord.Game(name="No ongoing game!")
         )
-    elif game.isDay == False:
+    elif not game.isDay:
         await client.change_presence(
             status=discord.Status.idle, activity=discord.Game(name="It's nighttime!")
         )
     else:
         clopen = ["Closed", "Open"]
 
-        whisper_state = "to " + game.whisper_mode if game.days[-1].isPms and game.whisper_mode != WhisperMode.ALL else clopen[game.days[-1].isPms]
-        status = "PMs {}, Nominations {}!".format(whisper_state, clopen[game.days[-1].isNoms])
+        whisper_state = "to " + game.whisper_mode if game.days[-1].isPms and game.whisper_mode != WhisperMode.ALL else \
+            clopen[game.days[-1].isPms]
+        status = "PMs {}, Nominations {}!".format(
+            whisper_state, clopen[game.days[-1].isNoms])
         await client.change_presence(
             status=discord.Status.online,
             activity=discord.Game(
@@ -3693,7 +3764,8 @@ async def safe_send(target: discord.abc.Messageable, msg: str):
     """
 
     try:
-        # This is the only place that should send the message raw. all other message sendings should use this function
+        # This is the only place that should send the message raw. all other
+        # message sendings should use this function
         return await target.send(msg)
 
     except discord.HTTPException as e:
@@ -3705,10 +3777,10 @@ async def safe_send(target: discord.abc.Messageable, msg: str):
             return out
 
         else:
-            raise (e)
+            raise e
 
 
-### Event Handling
+# Event Handling
 @client.event
 async def on_ready():
     # On startup
@@ -3719,8 +3791,13 @@ async def on_ready():
 
     server = client.get_guild(serverid)
     channel = client.get_channel(channelid)
-    whisper_channel = client.get_channel(whisperchannelid) if whisperchannelid else None
-    logger.info("channel: " + channel.name + ", whisper_channel: " + whisper_channel.name)
+    whisper_channel = client.get_channel(
+        whisperchannelid) if whisperchannelid else None
+    logger.info(
+        "channel: " +
+        channel.name +
+        ", whisper_channel: " +
+        whisper_channel.name)
 
     for role in server.roles:
         if role.name == playerName:
@@ -3774,8 +3851,10 @@ async def on_message(message):
         if message.content.startswith(prefixes):
 
             if " " in message.content:
-                command = message.content[1: message.content.index(" ")].lower()
-                argument = message.content[message.content.index(" ") + 1:].lower()
+                command = message.content[1: message.content.index(
+                    " ")].lower()
+                argument = message.content[message.content.index(
+                    " ") + 1:].lower()
             else:
                 command = message.content[1:].lower()
                 argument = ""
@@ -3786,19 +3865,19 @@ async def on_message(message):
                     await safe_send(channel, "There's no game right now.")
                     return
 
-                if game.isDay == False:
+                if not game.isDay:
                     await safe_send(channel, "It's not day right now.")
                     return
 
-                if game.days[-1].votes == [] or game.days[-1].votes[-1].done == True:
+                if game.days[-1].votes == [] or game.days[-1].votes[-1].done:
                     await safe_send(channel, "There's no vote right now.")
                     return
 
                 if (
-                    argument != "yes"
-                    and argument != "y"
-                    and argument != "no"
-                    and argument != "n"
+                        argument != "yes"
+                        and argument != "y"
+                        and argument != "no"
+                        and argument != "n"
                 ):
                     await safe_send(
                         channel,
@@ -3811,8 +3890,8 @@ async def on_message(message):
                 vote = game.days[-1].votes[-1]
 
                 if (
-                    vote.order[vote.position].user
-                    != (await get_player(message.author)).user
+                        vote.order[vote.position].user
+                        != (await get_player(message.author)).user
                 ):
                     await safe_send(channel, "It's not your vote right now.")
                     return
@@ -3837,17 +3916,22 @@ async def on_message(message):
                 # if message.author.id == 149969652141785088:
                 # await aexec(message.content[message.content.index(' ') + 1:])
                 # return
-                command = message.content[1: message.content.index(" ")].lower()
-                argument = message.content[message.content.index(" ") + 1:].lower()
+                command = message.content[1: message.content.index(
+                    " ")].lower()
+                argument = message.content[message.content.index(
+                    " ") + 1:].lower()
             else:
                 command = message.content[1:].lower()
                 argument = ""
 
             try:
                 preferences = {}
-                if os.path.isfile(os.path.dirname(os.getcwd()) + "/preferences.pckl"):
+                if os.path.isfile(
+                        os.path.dirname(
+                            os.getcwd()) +
+                        "/preferences.pckl"):
                     with open(
-                        os.path.dirname(os.getcwd()) + "/preferences.pckl", "rb"
+                            os.path.dirname(os.getcwd()) + "/preferences.pckl", "rb"
                     ) as file:
                         preferences = dill.load(file)
                 command = preferences[message.author.id]["aliases"][command]
@@ -3860,11 +3944,12 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to open PMs.")
                     return
 
-                if game.isDay == False:
+                if not game.isDay:
                     await safe_send(message.author, "It's not day right now.")
                     return
 
@@ -3878,11 +3963,12 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to open nominations.")
                     return
 
-                if game.isDay == False:
+                if not game.isDay:
                     await safe_send(message.author, "It's not day right now.")
                     return
 
@@ -3896,11 +3982,12 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to open PMs and nominations.")
                     return
 
-                if game.isDay == False:
+                if not game.isDay:
                     await safe_send(message.author, "It's not day right now.")
                     return
 
@@ -3915,11 +4002,12 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to close PMs.")
                     return
 
-                if game.isDay == False:
+                if not game.isDay:
                     await safe_send(message.author, "It's not day right now.")
                     return
 
@@ -3933,11 +4021,12 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to close nominations.")
                     return
 
-                if game.isDay == False:
+                if not game.isDay:
                     await safe_send(message.author, "It's not day right now.")
                     return
 
@@ -3951,31 +4040,36 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to change the whispermode.")
                     return
 
                 new_mode = to_whisper_mode(argument)
 
-                if (new_mode):
+                if new_mode:
                     game.whisper_mode = new_mode
                     await update_presence(client)
                     #  for each gamemaster let them know
                     for memb in gamemasterRole.members:
-                        await safe_send(memb, "{} has set whisper mode to {}.".format(message.author.display_name, game.whisper_mode))
+                        await safe_send(memb, "{} has set whisper mode to {}.".format(message.author.display_name,
+                                                                                      game.whisper_mode))
                 else:
-                    await safe_send(message.author, "Invalid whisper mode: {}\nUsage is `@whispermode [all/neighbors/storytellers]`".format(argument))
+                    await safe_send(message.author,
+                                    "Invalid whisper mode: {}\nUsage is `@whispermode [all/neighbors/storytellers]`".format(
+                                        argument))
             # Closes pms and nominations
             elif command == "close":
                 if game is NULL_GAME:
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to close PMs and nominations.")
                     return
 
-                if game.isDay == False:
+                if not game.isDay:
                     await safe_send(message.author, "It's not day right now.")
                     return
 
@@ -3991,14 +4085,16 @@ async def on_message(message):
                 if player is None:
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to do that.")
                     return
 
                 botNick = server.get_member(client.user.id).nick
                 channelName = channel.name
                 serverName = server.name
-                storytellers = [st.display_name for st in gamemasterRole.members]
+                storytellers = [
+                    st.display_name for st in gamemasterRole.members]
 
                 if len(storytellers) == 1:
                     text = storytellers[0]
@@ -4006,9 +4102,9 @@ async def on_message(message):
                     text = storytellers[0] + " and " + storytellers[1]
                 else:
                     text = (
-                        ", ".join([x for x in storytellers[:-1]])
-                        + ", and "
-                        + storytellers[-1]
+                            ", ".join([x for x in storytellers[:-1]])
+                            + ", and "
+                            + storytellers[-1]
                     )
 
                 await safe_send(
@@ -4034,7 +4130,8 @@ async def on_message(message):
                     await safe_send(message.author, "There's already an ongoing game!")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to start a game.")
                     return
 
@@ -4106,9 +4203,9 @@ async def on_message(message):
                     if gamemasterRole in server.get_member(memb.id).roles:
                         pass
                     else:
-                        for rl in set(server.get_member(memb.id).roles).intersection(
-                            rls
-                        ):
+                        for rl in set(
+                                server.get_member(
+                                    memb.id).roles).intersection(rls):
                             await memb.remove_roles(rl)
 
                 for index, user in enumerate(users):
@@ -4143,8 +4240,8 @@ async def on_message(message):
                             return
 
                         if (
-                            alignment.content.lower() != "good"
-                            and alignment.content.lower() != "evil"
+                                alignment.content.lower() != "good"
+                                and alignment.content.lower() != "evil"
                         ):
                             await safe_send(message.author, "The alignment must be 'good' or 'evil' exactly.")
                             return
@@ -4186,7 +4283,8 @@ async def on_message(message):
                     await safe_send(message.author, "Game cancelled!")
                     return
 
-                scriptList = ''.join(script.content.split())[8:-3].split('"},{"id":"')
+                scriptList = ''.join(script.content.split())[
+                             8:-3].split('"},{"id":"')
 
                 script = Script(scriptList)
 
@@ -4247,7 +4345,8 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to end the game.")
                     return
 
@@ -4276,11 +4375,12 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to start the day.")
                     return
 
-                if game.isDay == True:
+                if game.isDay:
                     await safe_send(message.author, "It's already day!")
                     return
 
@@ -4309,11 +4409,12 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to end the day.")
                     return
 
-                if game.isDay == False:
+                if not game.isDay:
                     await safe_send(message.author, "It's already night!")
                     return
 
@@ -4329,7 +4430,8 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to kill players.")
                     return
 
@@ -4355,7 +4457,8 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to execute players.")
                     return
 
@@ -4377,7 +4480,8 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to exile travelers.")
                     return
 
@@ -4402,7 +4506,8 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to revive players.")
                     return
 
@@ -4428,7 +4533,8 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to change roles.")
                     return
 
@@ -4478,7 +4584,8 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to change alignments.")
                     return
 
@@ -4524,7 +4631,8 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to give abilities.")
                     return
 
@@ -4569,13 +4677,15 @@ async def on_message(message):
                 await safe_send(message.author, "New ability added.")
                 return
 
-            # removes an ability from an AbilityModifier ability (useful if a nested ability is gained)
+            # removes an ability from an AbilityModifier ability (useful if a
+            # nested ability is gained)
             elif command == "removeability":
                 if game is NULL_GAME:
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to remove abilities.")
                     return
 
@@ -4586,11 +4696,12 @@ async def on_message(message):
                     return
 
                 if not isinstance(person.character, AbilityModifier):
-                    await safe_send(message.author, "The {} cannot gain abilities to clear.".format(person.character.role_name))
+                    await safe_send(message.author,
+                                    "The {} cannot gain abilities to clear.".format(person.character.role_name))
                     return
 
                 removed_ability = person.character.clear_ability()
-                if (removed_ability):
+                if removed_ability:
                     await safe_send(message.author, "Ability removed: {}".format(removed_ability.role_name))
                 else:
                     await safe_send(message.author, "No ability to remove")
@@ -4603,7 +4714,8 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to make players inactive.")
                     return
 
@@ -4625,7 +4737,8 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to make players active.")
                     return
 
@@ -4647,7 +4760,8 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to add travelers.")
                     return
 
@@ -4656,7 +4770,8 @@ async def on_message(message):
                     return
 
                 if await get_player(person) is not None:
-                    await safe_send(message.author, "{} is already in the game.".format(person.nick if person.nick else person.name))
+                    await safe_send(message.author,
+                                    "{} is already in the game.".format(person.nick if person.nick else person.name))
                     return
 
                 msg = await safe_send(message.author, "What role?")
@@ -4689,7 +4804,8 @@ async def on_message(message):
                     return
 
                 # Determine position in order
-                msg = await safe_send(message.author, "Where in the order are they? (send the player before them or a one-indexed integer)")
+                msg = await safe_send(message.author,
+                                      "Where in the order are they? (send the player before them or a one-indexed integer)")
                 try:
                     pos = await client.wait_for(
                         "message",
@@ -4733,8 +4849,8 @@ async def on_message(message):
                     return
 
                 if (
-                    alignment.content.lower() != "good"
-                    and alignment.content.lower() != "evil"
+                        alignment.content.lower() != "good"
+                        and alignment.content.lower() != "evil"
                 ):
                     await safe_send(message.author, "The alignment must be 'good' or 'evil' exactly.")
                     return
@@ -4753,7 +4869,8 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to remove travelers.")
                     return
 
@@ -4773,7 +4890,8 @@ async def on_message(message):
                 if game is NULL_GAME:
                     await safe_send(message.author, "There's no game right now.")
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to change the seating chart.")
                     return
 
@@ -4786,7 +4904,8 @@ async def on_message(message):
                 if game is NULL_GAME:
                     await safe_send(message.author, "There's no game right now.")
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to change the seating chart.")
                     return
 
@@ -4827,7 +4946,8 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to poison players.")
                     return
 
@@ -4848,7 +4968,8 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to revive players.")
                     return
 
@@ -4868,15 +4989,16 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to cancel nominations.")
                     return
 
-                if game.isDay == False:
+                if not game.isDay:
                     await safe_send(message.author, "It's not day right now.")
                     return
 
-                if game.days[-1].votes == [] or game.days[-1].votes[-1].done == True:
+                if game.days[-1].votes == [] or game.days[-1].votes[-1].done:
                     await safe_send(message.author, "There's no vote right now.")
                     return
 
@@ -4898,7 +5020,8 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if gamemasterRole not in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to set deadlines.")
                     return
 
@@ -4909,7 +5032,8 @@ async def on_message(message):
                 deadline = parse_deadline(argument)
 
                 if deadline is None:
-                    await safe_send(message.author, "Unrecognized format. Please provide a deadline in the format 'HH:MM', '+[HHh][MMm]', or a Unix timestamp.")
+                    await safe_send(message.author,
+                                    "Unrecognized format. Please provide a deadline in the format 'HH:MM', '+[HHh][MMm]', or a Unix timestamp.")
                     return
 
                 if len(game.days[-1].deadlineMessages) > 0:
@@ -4938,7 +5062,8 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to give dead votes.")
                     return
 
@@ -4959,7 +5084,8 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to remove dead votes.")
                     return
 
@@ -4980,11 +5106,12 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if gamemasterRole not in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to report the message tally.")
                     return
 
-                if game.days == []:
+                if not game.days:
                     await safe_send(message.author, "There have been no days.")
                     return
 
@@ -5013,7 +5140,8 @@ async def on_message(message):
                                     message_tally[(msg["to"], person)] += 1
                                 else:
                                     message_tally[(person, msg["to"])] = 1
-                sorted_tally = sorted(message_tally.items(), key=lambda x: -x[1])
+                sorted_tally = sorted(
+                    message_tally.items(), key=lambda x: -x[1])
                 messageText = "Message Tally:"
                 for pair in sorted_tally:
                     if pair[1] > 0:
@@ -5026,7 +5154,8 @@ async def on_message(message):
                 await safe_send(channel, messageText)
             elif command == "whispers":
                 person = None
-                if gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole in server.get_member(
+                        message.author.id).roles:
                     argument = argument.split(" ")
                     if len(argument) != 1:
                         await safe_send(message.author, "Usage: @whispers <player>")
@@ -5043,19 +5172,22 @@ async def on_message(message):
 
                 # initialize counts with zero for all players
                 day = 1
-                counts = OrderedDict([(player, 0) for player in game.seatingOrder])
+                counts = OrderedDict([(player, 0)
+                                      for player in game.seatingOrder])
 
                 for msg in person.messageHistory:
                     if msg["day"] != day:
                         # share summary and reset counts
                         messageText = "Day {}\n".format(day)
                         for player, count in counts.items():
-                            messageText += "{}: {}\n".format(player if player == "Storytellers" else player.nick, count)
+                            messageText += "{}: {}\n".format(
+                                player if player == "Storytellers" else player.nick, count)
                         await safe_send(message.author, messageText)
-                        counts = OrderedDict([(player, 0) for player in game.seatingOrder])
+                        counts = OrderedDict([(player, 0)
+                                              for player in game.seatingOrder])
                         day = msg["day"]
                     if msg["from"] == person:
-                        if (msg["to"] in counts):
+                        if msg["to"] in counts:
                             counts[msg["to"]] += 1
                         else:
                             if "Storytellers" in counts:
@@ -5067,7 +5199,8 @@ async def on_message(message):
 
                 messageText = "Day {}\n".format(day)
                 for player, count in counts.items():
-                    messageText += "{}: {}\n".format(player if player == "Storytellers" else player.nick, count)
+                    messageText += "{}: {}\n".format(
+                        player if player == "Storytellers" else player.nick, count)
                 await safe_send(message.author, messageText)
                 return
             elif command == "enabletally":
@@ -5075,30 +5208,35 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to enable tally.")
                     return
                 game.show_tally = True
                 for memb in game.storytellers:
-                    await safe_send(memb.user, "The message tally has been enabled by {}.".format(message.author.display_name))
+                    await safe_send(memb.user,
+                                    "The message tally has been enabled by {}.".format(message.author.display_name))
             elif command == "disabletally":
                 if game is NULL_GAME:
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to disable tally.")
                     return
                 game.show_tally = False
                 for memb in game.storytellers:
-                    await safe_send(memb.user, "The message tally has been disabled by {}.".format(message.author.display_name))
+                    await safe_send(memb.user,
+                                    "The message tally has been disabled by {}.".format(message.author.display_name))
             # Views relevant information about a player
             elif command == "info":
                 if game is NULL_GAME:
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to view player information.")
                     return
 
@@ -5108,15 +5246,19 @@ async def on_message(message):
                 if person is None:
                     return
 
-                base_info = inspect.cleandoc("""
+                base_info = inspect.cleandoc(
+                    """
                     Player: {}
                     Character: {}
                     Alignment: {}
                     Alive: {}
                     Dead Votes: {}
                     Poisoned: {}
-                    """.format(person.nick, person.character.role_name, person.alignment, str(not person.isGhost),
-                               str(person.deadVotes), str(person.character.is_poisoned)))
+                    """.format(
+                        person.nick, person.character.role_name, person.alignment, str(
+                            not person.isGhost), str(
+                            person.deadVotes), str(
+                            person.character.is_poisoned)))
                 await safe_send(message.author, "\n".join([base_info, person.character.extra_info()]))
                 return
             elif command == "setatheist":
@@ -5124,7 +5266,8 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to configure the game.")
                     return
 
@@ -5132,7 +5275,8 @@ async def on_message(message):
                 game.script.isAtheist = argument.lower() == "true" or argument.lower() == "t"
                 #  message storytellers that atheist game is set to false
                 for memb in gamemasterRole.members:
-                    await safe_send(memb, "Atheist game is set to {} by {}".format(game.script.isAtheist, message.author.display_name))
+                    await safe_send(memb, "Atheist game is set to {} by {}".format(game.script.isAtheist,
+                                                                                   message.author.display_name))
                 pass
             # Views the grimoire
             elif command == "grimoire":
@@ -5140,7 +5284,8 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to view player information.")
                     return
 
@@ -5167,7 +5312,8 @@ async def on_message(message):
             # Checks active players
             elif command == "notactive":
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(
+                        message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to view that information.")
                     return
 
@@ -5175,17 +5321,17 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if game.isDay == False:
+                if not game.isDay:
                     await safe_send(message.author, "It's not day right now.")
                     return
 
                 notActive = [
                     player
                     for player in game.seatingOrder
-                    if player.isActive == False and player.alignment != STORYTELLER_ALIGNMENT
+                    if not player.isActive and player.alignment != STORYTELLER_ALIGNMENT
                 ]
 
-                if notActive == []:
+                if not notActive:
                     await safe_send(message.author, "Everyone has spoken!")
                     return
 
@@ -5203,19 +5349,19 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if game.isDay == False:
+                if not game.isDay:
                     await safe_send(message.author, "It's not day right now.")
                     return
 
                 canNominate = [
                     player
                     for player in game.seatingOrder
-                    if player.canNominate == True
-                       and player.hasSkipped == False
+                    if player.canNominate
+                       and not player.hasSkipped
                        and player.alignment != STORYTELLER_ALIGNMENT
-                       and player.isGhost == False
+                       and not player.isGhost
                 ]
-                if canNominate == []:
+                if not canNominate:
                     await safe_send(message.author, "Everyone has nominated or skipped!")
                     return
 
@@ -5233,16 +5379,16 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if game.isDay == False:
+                if not game.isDay:
                     await safe_send(message.author, "It's not day right now.")
                     return
 
                 canBeNominated = [
                     player
                     for player in game.seatingOrder
-                    if player.canBeNominated == True
+                    if player.canBeNominated
                 ]
-                if canBeNominated == []:
+                if not canBeNominated:
                     await safe_send(message.author, "Everyone has been nominated!")
                     return
 
@@ -5282,11 +5428,11 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if game.isDay == False:
+                if not game.isDay:
                     await safe_send(message.author, "It's not day right now.")
                     return
 
-                if game.days[-1].isNoms == False:
+                if not game.days[-1].isNoms:
                     await safe_send(message.author, "Nominations aren't open right now.")
                     return
 
@@ -5296,13 +5442,16 @@ async def on_message(message):
                     message.author, argument, game.seatingOrder
                 ) if not story_teller_is_nominated else None
 
-                traveler_called = person is not None and isinstance(person.character, Traveler)
+                traveler_called = person is not None and isinstance(
+                    person.character, Traveler)
 
-                banshee_ability_of_player = the_ability(nominator_player.character, Banshee) if nominator_player else None
+                banshee_ability_of_player = the_ability(
+                    nominator_player.character, Banshee) if nominator_player else None
                 banshee_override = banshee_ability_of_player is not None and banshee_ability_of_player.is_screaming
 
                 if not nominator_player:
-                    if not gamemasterRole in server.get_member(message.author.id).roles:
+                    if gamemasterRole not in server.get_member(
+                            message.author.id).roles:
                         await safe_send(message.author, "You aren't in the game, and so cannot nominate.")
                         return
                     else:
@@ -5373,7 +5522,8 @@ async def on_message(message):
                 if person is None:
                     return
 
-                if gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole in server.get_member(
+                        message.author.id).roles:
                     await game.days[-1].nomination(person, None)
                     if game is not NULL_GAME:
                         backup("current_game.pckl")
@@ -5398,26 +5548,28 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if game.isDay == False:
+                if not game.isDay:
                     await safe_send(message.author, "It's not day right now.")
                     return
 
-                if game.days[-1].votes == [] or game.days[-1].votes[-1].done == True:
+                if game.days[-1].votes == [] or game.days[-1].votes[-1].done:
                     await safe_send(message.author, "There's no vote right now.")
                     return
 
                 if (
-                    argument != "yes"
-                    and argument != "y"
-                    and argument != "no"
-                    and argument != "n"
+                        argument != "yes"
+                        and argument != "y"
+                        and argument != "no"
+                        and argument != "n"
                 ):
-                    await safe_send(message.author, "{} is not a valid vote. Use 'yes', 'y', 'no', or 'n'.".format(argument))
+                    await safe_send(message.author,
+                                    "{} is not a valid vote. Use 'yes', 'y', 'no', or 'n'.".format(argument))
                     return
 
                 vote = game.days[-1].votes[-1]
 
-                if gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole in server.get_member(
+                        message.author.id).roles:
                     msg = await safe_send(message.author, "Whose vote is this?")
                     try:
                         reply = await client.wait_for(
@@ -5454,8 +5606,8 @@ async def on_message(message):
                     return
 
                 if (
-                    vote.order[vote.position].user
-                    != (await get_player(message.author)).user
+                        vote.order[vote.position].user
+                        != (await get_player(message.author)).user
                 ):
                     await safe_send(message.author, "It's not your vote right now. Do you mean @presetvote?")
                     return
@@ -5474,28 +5626,31 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if game.isDay == False:
+                if not game.isDay:
                     await safe_send(message.author, "It's not day right now.")
                     return
 
-                if game.days[-1].votes == [] or game.days[-1].votes[-1].done == True:
+                if game.days[-1].votes == [] or game.days[-1].votes[-1].done:
                     await safe_send(message.author, "There's no vote right now.")
                     return
 
-                # if player has active banshee ability then they can prevote 0, 1, or 2 as well
+                # if player has active banshee ability then they can prevote 0,
+                # 1, or 2 as well
                 if (
-                    argument != "yes"
-                    and argument != "y"
-                    and argument != "no"
-                    and argument != "n"
-                    and argument not in ["0", "1", "2"]
+                        argument != "yes"
+                        and argument != "y"
+                        and argument != "no"
+                        and argument != "n"
+                        and argument not in ["0", "1", "2"]
                 ):
-                    await safe_send(message.author, "{} is not a valid vote. Use 'yes', 'y', 'no', or 'n'.".format(argument))
+                    await safe_send(message.author,
+                                    "{} is not a valid vote. Use 'yes', 'y', 'no', or 'n'.".format(argument))
                     return
 
                 vote = game.days[-1].votes[-1]
 
-                if gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole in server.get_member(
+                        message.author.id).roles:
                     msg = await safe_send(message.author, "Whose vote is this?")
                     try:
                         reply = await client.wait_for(
@@ -5520,7 +5675,8 @@ async def on_message(message):
                     if person is None:
                         return
 
-                    player_banshee_ability = the_ability(person.character, Banshee)
+                    player_banshee_ability = the_ability(
+                        person.character, Banshee)
                     banshee_override = player_banshee_ability and player_banshee_ability.is_screaming
 
                     if argument in ["0", "1", "2"]:
@@ -5533,7 +5689,7 @@ async def on_message(message):
                         vt = int(yes_entered) * (2 if banshee_override else 1)
 
                     await vote.preset_vote(person, vt, operator=message.author)
-                    if (banshee_override):
+                    if banshee_override:
                         await safe_send(message.author, "Successfully preset to {}!".format(vt))
                     else:
                         await safe_send(message.author, "Successfully preset to {}!".format(argument))
@@ -5542,19 +5698,22 @@ async def on_message(message):
                     return
 
                 the_player = await get_player(message.author)
-                player_banshee_ability = the_ability(the_player.character, Banshee)
+                player_banshee_ability = the_ability(
+                    the_player.character, Banshee)
                 banshee_override = player_banshee_ability and player_banshee_ability.is_screaming
 
                 if argument in ["0", "1", "2"]:
                     if not banshee_override:
-                        await safe_send(message.author, "is not a valid vote. Use 'yes', 'y', 'no', or 'n'.".format(argument))
+                        await safe_send(message.author,
+                                        "is not a valid vote. Use 'yes', 'y', 'no', or 'n'.".format(argument))
                         return
                     vt = int(argument)
                 else:
                     vt = int(argument == "yes" or argument == "y")
 
                 await vote.preset_vote(the_player, vt)
-                await safe_send(message.author, "Successfully preset! For more nuanced presets, contact the storytellers.")
+                await safe_send(message.author,
+                                "Successfully preset! For more nuanced presets, contact the storytellers.")
                 if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
@@ -5566,17 +5725,18 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if game.isDay == False:
+                if not game.isDay:
                     await safe_send(message.author, "It's not day right now.")
                     return
 
-                if game.days[-1].votes == [] or game.days[-1].votes[-1].done == True:
+                if game.days[-1].votes == [] or game.days[-1].votes[-1].done:
                     await safe_send(message.author, "There's no vote right now.")
                     return
 
                 vote = game.days[-1].votes[-1]
 
-                if gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole in server.get_member(
+                        message.author.id).roles:
                     msg = await safe_send(message.author, "Whose vote do you want to cancel?")
                     try:
                         reply = await client.wait_for(
@@ -5608,18 +5768,22 @@ async def on_message(message):
                     return
 
                 await vote.cancel_preset(await get_player(message.author))
-                await safe_send(message.author, "Successfully canceled! For more nuanced presets, contact the storytellers.")
+                await safe_send(message.author,
+                                "Successfully canceled! For more nuanced presets, contact the storytellers.")
                 if game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
 
             elif command == "adjustvotes" or command == "adjustvote":
-                if game is NULL_GAME or gamemasterRole not in server.get_member(message.author.id).roles:
-                    await safe_send(message.author, "Command {} not recognized. For a list of commands, type @help.".format(command))
+                if game is NULL_GAME or gamemasterRole not in server.get_member(
+                        message.author.id).roles:
+                    await safe_send(message.author,
+                                    "Command {} not recognized. For a list of commands, type @help.".format(command))
                     return
                 argument = argument.split(" ")
                 if len(argument) != 3:
-                    await safe_send(message.author, "adjustvotes takes three arguments: `@adjustvotes amnesiac target multiplier`. For example `@adjustvotes alfred charlie 2`")
+                    await safe_send(message.author,
+                                    "adjustvotes takes three arguments: `@adjustvotes amnesiac target multiplier`. For example `@adjustvotes alfred charlie 2`")
                     return
                 try:
                     multiplier = int(argument[2])
@@ -5634,15 +5798,20 @@ async def on_message(message):
                     await safe_send(message.author, "{} isn't an amnesiac".format(amnesiac.nick))
                     return
                 amnesiac.character.enhance_votes(target_player, multiplier)
-                await safe_send(message.author, "Amnesiac {} is currently multiplying the vote of {} by a factor of {}".format(amnesiac.nick, target_player.nick, multiplier))
+                await safe_send(message.author,
+                                "Amnesiac {} is currently multiplying the vote of {} by a factor of {}".format(
+                                    amnesiac.nick, target_player.nick, multiplier))
 
             # Set a default vote
             elif command == "defaultvote":
 
                 preferences = {}
-                if os.path.isfile(os.path.dirname(os.getcwd()) + "/preferences.pckl"):
+                if os.path.isfile(
+                        os.path.dirname(
+                            os.getcwd()) +
+                        "/preferences.pckl"):
                     with open(
-                        os.path.dirname(os.getcwd()) + "/preferences.pckl", "rb"
+                            os.path.dirname(os.getcwd()) + "/preferences.pckl", "rb"
                     ) as file:
                         preferences = dill.load(file)
 
@@ -5651,7 +5820,7 @@ async def on_message(message):
                         del preferences[message.author.id]["defaultvote"]
                         await safe_send(message.author, "Removed your default vote.")
                         with open(
-                            os.path.dirname(os.getcwd()) + "/preferences.pckl", "wb"
+                                os.path.dirname(os.getcwd()) + "/preferences.pckl", "wb"
                         ) as file:
                             dill.dump(preferences, file)
                     except KeyError:
@@ -5661,7 +5830,8 @@ async def on_message(message):
                 else:
                     argument = argument.split(" ")
                     if len(argument) > 2:
-                        await safe_send(message.author, "defaultvote takes at most two arguments: @defaultvote <vote = no> <time = 3600>")
+                        await safe_send(message.author,
+                                        "defaultvote takes at most two arguments: @defaultvote <vote = no> <time = 3600>")
                         return
                     elif len(argument) == 1:
                         try:
@@ -5672,7 +5842,8 @@ async def on_message(message):
                                 vt = argument[0] in ["yes", "y"]
                                 time = 3600
                             else:
-                                await safe_send(message.author, "{} is not a valid number of minutes or vote.".format(argument[0]))
+                                await safe_send(message.author,
+                                                "{} is not a valid number of minutes or vote.".format(argument[0]))
                                 return
                     else:
                         if argument[0] in ["yes", "y", "no", "n"]:
@@ -5687,13 +5858,17 @@ async def on_message(message):
                             return
 
                     try:
-                        preferences[message.author.id]["defaultvote"] = (vt, time)
+                        preferences[message.author.id]["defaultvote"] = (
+                            vt, time)
                     except KeyError:
-                        preferences[message.author.id] = {"defaultvote": (vt, time)}
+                        preferences[message.author.id] = {
+                            "defaultvote": (vt, time)}
 
-                    await safe_send(message.author, "Successfully set default {} vote at {} minutes.".format(["no", "yes"][vt], str(int(time / 60))))
+                    await safe_send(message.author,
+                                    "Successfully set default {} vote at {} minutes.".format(["no", "yes"][vt],
+                                                                                             str(int(time / 60))))
                     with open(
-                        os.path.dirname(os.getcwd()) + "/preferences.pckl", "wb"
+                            os.path.dirname(os.getcwd()) + "/preferences.pckl", "wb"
                     ) as file:
                         dill.dump(preferences, file)
                     return
@@ -5719,7 +5894,8 @@ async def on_message(message):
 
                 candidates_for_whispers = await chose_whisper_candidates(game, message.author)
                 person = await select_player(
-                    # fixme: get players from everyone and then provide feedback if it is not appropriate
+                    # fixme: get players from everyone and then provide
+                    # feedback if it is not appropriate
                     message.author, argument, game.seatingOrder + game.storytellers
                 )
                 if person is None:
@@ -5730,8 +5906,7 @@ async def on_message(message):
                     return
 
                 messageText = "Messaging {}. What would you like to send?".format(
-                    person.nick
-                )
+                    person.nick)
                 reply = await safe_send(message.author, messageText)
 
                 # Process reply
@@ -5823,14 +5998,12 @@ async def on_message(message):
                         return
 
                     messageText = "**History between {} and {} (Times in UTC):**\n\n**Day 1:**".format(
-                        person1.nick, person2.nick
-                    )
+                        person1.nick, person2.nick)
                     day = 1
                     for msg in person1.messageHistory:
                         if not (
-                            (msg["from"] == person1 and msg["to"] == person2)
-                            or (msg["to"] == person1 and msg["from"] == person2)
-                        ):
+                                (msg["from"] == person1 and msg["to"] == person2) or (
+                                msg["to"] == person1 and msg["from"] == person2)):
                             continue
                         if len(messageText) > 1500:
                             await safe_send(message.author, messageText)
@@ -5907,8 +6080,7 @@ async def on_message(message):
                     history = sorted(history, key=lambda i: i["time"])
 
                     messageText = "**Messages mentioning {} (Times in UTC):**\n\n**Day 1:**".format(
-                        argument
-                    )
+                        argument)
                     day = 1
                     for msg in history:
                         if not (argument.lower() in msg["content"].lower()):
@@ -5932,10 +6104,7 @@ async def on_message(message):
                     return
 
                 messageText = (
-                    "**Messages mentioning {} (Times in UTC):**\n\n**Day 1:**".format(
-                        argument
-                    )
-                )
+                    "**Messages mentioning {} (Times in UTC):**\n\n**Day 1:**".format(argument))
                 day = 1
                 for msg in (await get_player(message.author)).messageHistory:
                     if not (argument.lower() in msg["content"].lower()):
@@ -5958,18 +6127,23 @@ async def on_message(message):
 
                 argument = argument.split(" ")
                 if len(argument) != 2:
-                    await safe_send(message.author, "makealias takes exactly two arguments: @makealias <alias> <command>")
+                    await safe_send(message.author,
+                                    "makealias takes exactly two arguments: @makealias <alias> <command>")
                     return
 
                 preferences = {}
-                if os.path.isfile(os.path.dirname(os.getcwd()) + "/preferences.pckl"):
+                if os.path.isfile(
+                        os.path.dirname(
+                            os.getcwd()) +
+                        "/preferences.pckl"):
                     with open(
-                        os.path.dirname(os.getcwd()) + "/preferences.pckl", "rb"
+                            os.path.dirname(os.getcwd()) + "/preferences.pckl", "rb"
                     ) as file:
                         preferences = dill.load(file)
 
                 try:
-                    preferences[message.author.id]["aliases"][argument[0]] = argument[1]
+                    preferences[message.author.id]["aliases"][argument[0]
+                    ] = argument[1]
                 except KeyError:
                     try:
                         preferences[message.author.id]["aliases"] = {
@@ -5980,16 +6154,18 @@ async def on_message(message):
                             "aliases": {argument[0]: argument[1]}
                         }
 
-                await safe_send(message.author, "Successfully created alias {} for command {}.".format(argument[0], argument[1]))
+                await safe_send(message.author,
+                                "Successfully created alias {} for command {}.".format(argument[0], argument[1]))
                 with open(
-                    os.path.dirname(os.getcwd()) + "/preferences.pckl", "wb"
+                        os.path.dirname(os.getcwd()) + "/preferences.pckl", "wb"
                 ) as file:
                     dill.dump(preferences, file)
                 return
 
             # Help dialogue
             elif command == "help":
-                if gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole in server.get_member(
+                        message.author.id).roles:
                     if argument == "":
                         embed = discord.Embed(
                             title="Storyteller Help",
@@ -6003,8 +6179,10 @@ async def on_message(message):
                         embed.add_field(
                             name="Formatting commands",
                             value="Prefixes on this server are {}; any multiple arguments are space-separated".format(
-                                "'" + "".join(list(prefixes)) + "'"
-                            ),
+                                "'" +
+                                "".join(
+                                    list(prefixes)) +
+                                "'"),
                         )
                         embed.add_field(
                             name="help common",
@@ -6046,7 +6224,9 @@ async def on_message(message):
                             value="Discuss or provide feedback at https://github.com/fiveofswords/botc-bot",
                             inline=False,
                         )
-                        # this is a rare place that should use .send -- it is sending an embed and safe_send is not set up to split if needed
+                        # this is a rare place that should use .send -- it is
+                        # sending an embed and safe_send is not set up to split
+                        # if needed
                         await message.author.send(embed=embed)
                         return
                     elif argument == "common":
@@ -6055,8 +6235,9 @@ async def on_message(message):
                             description="Multiple arguments are space-separated.",
                         )
                         embed.add_field(
-                            name="startgame", value="starts the game", inline=False
-                        )
+                            name="startgame",
+                            value="starts the game",
+                            inline=False)
                         embed.add_field(
                             name="endgame <<team>>",
                             value="ends the game, with winner team",
@@ -6073,8 +6254,9 @@ async def on_message(message):
                             inline=False,
                         )
                         embed.add_field(
-                            name="kill <<player>>", value="kills player", inline=False
-                        )
+                            name="kill <<player>>",
+                            value="kills player",
+                            inline=False)
                         embed.add_field(
                             name="execute <<player>>",
                             value="executes player",
@@ -6100,7 +6282,9 @@ async def on_message(message):
                             value="unpoisons player",
                             inline=False,
                         )
-                        # this is a rare place that should use .send -- it is sending an embed and safe_send is not set up to split if needed
+                        # this is a rare place that should use .send -- it is
+                        # sending an embed and safe_send is not set up to split
+                        # if needed
                         await message.author.send(embed=embed)
                         return
                     elif argument == "player":
@@ -6111,8 +6295,9 @@ async def on_message(message):
                             description="Commands which progress game-time.",
                         )
                         embed.add_field(
-                            name="startgame", value="starts the game", inline=False
-                        )
+                            name="startgame",
+                            value="starts the game",
+                            inline=False)
                         embed.add_field(
                             name="endgame <<team>>",
                             value="ends the game, with winner team",
@@ -6128,7 +6313,9 @@ async def on_message(message):
                             value="ends the day. if there is an execution, execute is preferred",
                             inline=False,
                         )
-                        # this is a rare place that should use .send -- it is sending an embed and safe_send is not set up to split if needed
+                        # this is a rare place that should use .send -- it is
+                        # sending an embed and safe_send is not set up to split
+                        # if needed
                         await message.author.send(embed=embed)
                         return
                     elif argument == "day":
@@ -6141,22 +6328,27 @@ async def on_message(message):
                             value="sends a message with time in UTC as the deadline and opens nominations. The format can be HH:MM to specify a UTC time, or +HHhMMm to specify a relative time from now e.g. +3h15m; alternatively an epoch timestamp can be used - see https://www.epochconverter.com/",
                             inline=False,
                         )
-                        embed.add_field(name="openpms", value="opens pms", inline=False)
                         embed.add_field(
-                            name="opennoms", value="opens nominations", inline=False
-                        )
+                            name="openpms", value="opens pms", inline=False)
                         embed.add_field(
-                            name="open", value="opens pms and nominations", inline=False
-                        )
+                            name="opennoms",
+                            value="opens nominations",
+                            inline=False)
+                        embed.add_field(
+                            name="open",
+                            value="opens pms and nominations",
+                            inline=False)
                         embed.add_field(
                             name="closepms", value="closes pms", inline=False
                         )
                         embed.add_field(
-                            name="closenoms", value="closes nominations", inline=False
-                        )
+                            name="closenoms",
+                            value="closes nominations",
+                            inline=False)
                         embed.add_field(
-                            name="whispermode", value="modifies whisper mode to 'all', 'neighbors', or 'storytellers'", inline=False
-                        )
+                            name="whispermode",
+                            value="modifies whisper mode to 'all', 'neighbors', or 'storytellers'",
+                            inline=False)
                         embed.add_field(
                             name="close",
                             value="closes pms and nominations",
@@ -6167,7 +6359,9 @@ async def on_message(message):
                             value="votes for the current player",
                             inline=False,
                         )
-                        # this is a rare place that should use .send -- it is sending an embed and safe_send is not set up to split if needed
+                        # this is a rare place that should use .send -- it is
+                        # sending an embed and safe_send is not set up to split
+                        # if needed
                         await message.author.send(embed=embed)
                         return
                     elif argument == "gamestate":
@@ -6176,8 +6370,9 @@ async def on_message(message):
                             description="Commands which directly affect the game-state.",
                         )
                         embed.add_field(
-                            name="kill <<player>>", value="kills player", inline=False
-                        )
+                            name="kill <<player>>",
+                            value="kills player",
+                            inline=False)
                         embed.add_field(
                             name="execute <<player>>",
                             value="executes player",
@@ -6233,7 +6428,9 @@ async def on_message(message):
                             value="unpoisons player",
                             inline=False,
                         )
-                        # this is a rare place that should use .send -- it is sending an embed and safe_send is not set up to split if needed
+                        # this is a rare place that should use .send -- it is
+                        # sending an embed and safe_send is not set up to split
+                        # if needed
                         await message.author.send(embed=embed)
                         return
                     elif argument == "info":
@@ -6267,9 +6464,12 @@ async def on_message(message):
                             inline=False,
                         )
                         embed.add_field(
-                            name="grimoire", value="views the grimoire", inline=False
-                        )
-                        # this is a rare place that should use .send -- it is sending an embed and safe_send is not set up to split if needed
+                            name="grimoire",
+                            value="views the grimoire",
+                            inline=False)
+                        # this is a rare place that should use .send -- it is
+                        # sending an embed and safe_send is not set up to split
+                        # if needed
                         await message.author.send(embed=embed)
                         return
                     elif argument == "misc":
@@ -6303,9 +6503,12 @@ async def on_message(message):
                             inline=False,
                         )
                         embed.add_field(
-                            name="reseat", value="reseats the game", inline=False
-                        )
-                        # this is a rare place that should use .send -- it is sending an embed and safe_send is not set up to split if needed
+                            name="reseat",
+                            value="reseats the game",
+                            inline=False)
+                        # this is a rare place that should use .send -- it is
+                        # sending an embed and safe_send is not set up to split
+                        # if needed
                         await message.author.send(embed=embed)
                         return
                 embed = discord.Embed(
@@ -6320,8 +6523,10 @@ async def on_message(message):
                 embed.add_field(
                     name="Formatting commands",
                     value="Prefixes on this server are {}; any multiple arguments are space-separated".format(
-                        "'" + "".join(list(prefixes)) + "'"
-                    ),
+                        "'" +
+                        "".join(
+                            list(prefixes)) +
+                        "'"),
                 )
                 embed.add_field(
                     name="pm <<player>> or message <<player>>",
@@ -6349,8 +6554,9 @@ async def on_message(message):
                     inline=False,
                 )
                 embed.add_field(
-                    name="nominate <<player>>", value="nominates player", inline=False
-                )
+                    name="nominate <<player>>",
+                    value="nominates player",
+                    inline=False)
                 embed.add_field(
                     name="presetvote <<yes/no>> or prevote <<yes/no>>",
                     value="submits a preset vote. will not work if it is your turn to vote. not reccomended -- contact the storytellers instead",
@@ -6368,10 +6574,13 @@ async def on_message(message):
                 )
                 embed.add_field(
                     name="makealias <<alias>> <<command>>",
-                    value="creats an alias for a command",
+                    value="creates an alias for a command",
                     inline=False,
                 )
-                embed.add_field(name="clear", value="returns whitespace", inline=False)
+                embed.add_field(
+                    name="clear",
+                    value="returns whitespace",
+                    inline=False)
                 embed.add_field(
                     name="notactive",
                     value="lists players who are yet to speak",
@@ -6388,15 +6597,18 @@ async def on_message(message):
                     inline=False,
                 )
                 embed.add_field(
-                    name="Bot Questions?", value="Discuss or provide feedback at https://github.com/fiveofswords/botc-bot", inline=False
-                )
-                # this is a rare place that should use .send -- it is sending an embed and safe_send is not set up to split if needed
+                    name="Bot Questions?",
+                    value="Discuss or provide feedback at https://github.com/fiveofswords/botc-bot",
+                    inline=False)
+                # this is a rare place that should use .send -- it is sending
+                # an embed and safe_send is not set up to split if needed
                 await message.author.send(embed=embed)
                 return
 
             # Command unrecognized
             else:
-                await safe_send(message.author, "Command {} not recognized. For a list of commands, type @help.".format(command))
+                await safe_send(message.author,
+                                "Command {} not recognized. For a list of commands, type @help.".format(command))
 
 
 def to_whisper_mode(argument):
@@ -6421,16 +6633,22 @@ async def chose_whisper_candidates(game, author):
         # determine neighbors
         player_self = await get_player(author)
         author_index = game.seatingOrder.index(player_self)
-        neighbor_left = game.seatingOrder[(author_index - 1) % len(game.seatingOrder)]
-        neighbor_right = game.seatingOrder[(author_index + 1) % len(game.seatingOrder)]
+        neighbor_left = game.seatingOrder[(
+                                                  author_index - 1) % len(game.seatingOrder)]
+        neighbor_right = game.seatingOrder[(
+                                                   author_index + 1) % len(game.seatingOrder)]
         return [neighbor_left, player_self, neighbor_right] + game.storytellers
 
 
 async def is_storyteller(arg):
-    if arg in ["storytellers", "the storytellers", "storyteller", "the storyteller"]:
+    if arg in [
+        "storytellers",
+        "the storytellers",
+        "storyteller",
+        "the storyteller"]:
         return True
     options = await generate_possibilities(arg, server.members)
-    return len(options) == 1 and gamemasterRole in server.get_member((options)[0].id).roles
+    return len(options) == 1 and gamemasterRole in server.get_member(options[0].id).roles
 
 
 @client.event
@@ -6441,24 +6659,25 @@ async def on_message_edit(before, after):
 
     # On pin
     message_author_player = await get_player(after.author)
-    if after.channel == channel and before.pinned == False and after.pinned == True:
+    if after.channel == channel and not before.pinned and after.pinned:
 
         # Nomination
         if "nominate " in after.content.lower():
 
-            argument = after.content.lower()[after.content.lower().index("nominate ") + 9:]
+            argument = after.content.lower()[
+                       after.content.lower().index("nominate ") + 9:]
 
             if game is NULL_GAME:
                 await safe_send(channel, "There's no game right now.")
                 await after.unpin()
                 return
 
-            if game.isDay == False:
+            if not game.isDay:
                 await safe_send(channel, "It's not day right now.")
                 await after.unpin()
                 return
 
-            if game.days[-1].isNoms == False:
+            if not game.days[-1].isNoms:
                 await safe_send(channel, "Nominations aren't open right now.")
                 await after.unpin()
                 return
@@ -6471,16 +6690,20 @@ async def on_message_edit(before, after):
                 return
 
             names = await generate_possibilities(argument, game.seatingOrder)
-            traveler_called = len(names) == 1 and isinstance(names[0].character, Traveler)
+            traveler_called = len(names) == 1 and isinstance(
+                names[0].character, Traveler)
 
-            banshee_ability_of_player = the_ability(message_author_player.character, Banshee) if message_author_player else None
+            banshee_ability_of_player = the_ability(
+                message_author_player.character,
+                Banshee) if message_author_player else None
             banshee_override = banshee_ability_of_player and banshee_ability_of_player.is_screaming and not banshee_ability_of_player.is_poisoned
 
             if message_author_player.isGhost and not traveler_called and not message_author_player.riot_nominee and not banshee_override:
                 await safe_send(channel, "You are dead, and so cannot nominate.")
                 await after.unpin()
                 return
-            if (banshee_override and banshee_ability_of_player.remaining_nominations < 1) and not traveler_called:
+            if (banshee_override and banshee_ability_of_player.remaining_nominations <
+                1) and not traveler_called:
                 await safe_send(channel, "You have already nominated twice.")
                 await after.unpin()
                 return
@@ -6488,7 +6711,8 @@ async def on_message_edit(before, after):
                 await safe_send(channel, "Riot is active. It is not your turn to nominate.")
                 await after.unpin()
                 return
-            if not (message_author_player).canNominate and not traveler_called and not banshee_override:
+            if not (
+                    message_author_player).canNominate and not traveler_called and not banshee_override:
                 await safe_send(channel, "You have already nominated.")
                 await after.unpin()
                 return
@@ -6559,17 +6783,17 @@ async def on_message_edit(before, after):
                 await after.unpin()
                 return
 
-            (message_author_player).hasSkipped = True
+            message_author_player.hasSkipped = True
             if game is not NULL_GAME:
                 backup("current_game.pckl")
 
             canNominate = [
                 player
                 for player in game.seatingOrder
-                if player.canNominate == True
-                   and player.hasSkipped == False
+                if player.canNominate
+                   and not player.hasSkipped
                    and player.alignment != STORYTELLER_ALIGNMENT
-                   and player.isGhost == False
+                   and not player.isGhost
             ]
             if len(canNominate) == 1:
                 for memb in gamemasterRole.members:
@@ -6588,11 +6812,11 @@ async def on_message_edit(before, after):
             return
 
     # On unpin
-    elif after.channel == channel and before.pinned == True and after.pinned == False:
+    elif after.channel == channel and before.pinned and not after.pinned:
 
         # Unskip
         if "skip" in after.content.lower():
-            (message_author_player).hasSkipped = False
+            message_author_player.hasSkipped = False
             if game is not NULL_GAME:
                 backup("current_game.pckl")
 
@@ -6616,17 +6840,25 @@ async def on_member_update(before, after):
                 await safe_send(after, "Your nickname has been updated.")
                 backup("current_game.pckl")
 
-        if gamemasterRole in after.roles and not gamemasterRole in before.roles:
-            game.storytellers.append(Player(Storyteller, STORYTELLER_ALIGNMENT, after))
-        elif gamemasterRole in before.roles and not gamemasterRole in after.roles:
+        if gamemasterRole in after.roles and gamemasterRole not in before.roles:
+            game.storytellers.append(
+                Player(
+                    Storyteller,
+                    STORYTELLER_ALIGNMENT,
+                    after))
+        elif gamemasterRole in before.roles and gamemasterRole not in after.roles:
             for st in game.storytellers:
                 if st.user.id == after.id:
                     game.storytellers.remove(st)
 
 
-NULL_GAME = Game(seatingOrder=[], seatingOrderMessage=0, script=[], skip_storytellers=True)
+NULL_GAME = Game(
+    seatingOrder=[],
+    seatingOrderMessage=0,
+    script=[],
+    skip_storytellers=True)
 
-### Event loop
+# Event loop
 while True:
     try:
         client.run(TOKEN)
