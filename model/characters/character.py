@@ -3,8 +3,8 @@ from __future__ import annotations
 
 class Character:
     # A generic character
-    def __init__(self, parent):
-        self.parent = parent
+    def __init__(self, parent: 'Player'):
+        self.parent: 'Player' = parent
         self.role_name: str = "Character"
         self._is_poisoned: bool = False
         self.refresh()
