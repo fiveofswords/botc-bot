@@ -6083,7 +6083,7 @@ async def on_message(message):
                         )
                         embed.add_field(
                             name="setdeadline <time>",
-                            value="sends a message with time in UTC as the deadline and opens nominations",
+                            value="sends a message with time in UTC as the deadline and opens nominations. The format can be HH:MM to specify a UTC time, or +HHhMMm to specify a relative time from now e.g. +3h15m; alternatively an epoch timestamp can be used - see https://www.epochconverter.com/",
                             inline=False,
                         )
                         embed.add_field(
@@ -6134,7 +6134,7 @@ async def on_message(message):
                         )
                         embed.add_field(
                             name="setdeadline <time>",
-                            value="sends a message with time in UTC as the deadline and opens nominations",
+                            value="sends a message with time in UTC as the deadline and opens nominations. The format can be HH:MM to specify a UTC time, or +HHhMMm to specify a relative time from now e.g. +3h15m; alternatively an epoch timestamp can be used - see https://www.epochconverter.com/",
                             inline=False,
                         )
                         embed.add_field(name="openpms", value="opens pms", inline=False)
