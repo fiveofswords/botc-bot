@@ -14,8 +14,7 @@ def parse_deadline(deadline_string: str) -> Optional[datetime]:
         result = parser(deadline_string, now)
         if result:
             return result
-    raise ValueError(
-        "Unrecognized format. Please provide a deadline in the format 'HH:MM', '+[HHh][MMm]', or a Unix timestamp.")
+    return None
 
 
 def _parse_deadline_from_utc(deadline_string: str, now: datetime) -> Optional[datetime]:

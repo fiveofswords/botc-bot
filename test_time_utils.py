@@ -71,10 +71,9 @@ class TestParseDeadline(TestCase):
 
         self.assertEqual(expected, actual, "The parsed deadline does not match the expected value.")
 
-    def test_invalid_string_raises_error(self):
+    def test_invalid_string_returns_none(self):
         input_deadline = "1223"
-        with self.assertRaises(ValueError):
-            parse_deadline(input_deadline)
+        self.assertIsNone(parse_deadline(input_deadline))
 
 
 class TestConvertToTimeDelta(TestCase):

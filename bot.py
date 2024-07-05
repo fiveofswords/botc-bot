@@ -4898,11 +4898,15 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not gamemasterRole in server.get_member(message.author.id).roles:
+                if gamemasterRole not in server.get_member(message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to set deadlines.")
                     return
 
                 deadline = parse_deadline(argument)
+
+                if deadline is None:
+                    await safe_send(message.author, "Unrecognized format. Please provide a deadline in the format 'HH:MM', '+[HHh][MMm]', or a Unix timestamp.")
+                    return
 
                 if len(game.days[-1].deadlineMessages) > 0:
                     previous_deadline = game.days[-1].deadlineMessages[-1]
