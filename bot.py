@@ -31,12 +31,6 @@ handler.setFormatter(
 logger.addHandler(handler)
 
 
-class WhisperMode:
-    ALL = 'all'
-    NEIGHBORS = 'neighbors'
-    STORYTELLERS = 'storytellers'
-
-
 ### Classes
 class Game:
     def __init__(self, seatingOrder, seatingOrderMessage, script, skip_storytellers=False):
@@ -3891,9 +3885,9 @@ async def on_message(message):
                     await safe_send(message.author, "You don't have permission to change the whispermode.")
                     return
 
-                new_mode = to_whisper_mode(argument)
+                new_mode = WhisperMode.to_whisper_mode(argument)
 
-                if (new_mode):
+                if new_mode:
                     game.whisper_mode = new_mode
                     await update_presence(client)
                     #  for each gamemaster let them know
@@ -6333,19 +6327,6 @@ async def on_message(message):
             # Command unrecognized
             else:
                 await safe_send(message.author, "Command {} not recognized. For a list of commands, type @help.".format(command))
-
-
-def to_whisper_mode(argument):
-    new_mode = WhisperMode.ALL
-    if WhisperMode.ALL.casefold() == argument.casefold():
-        new_mode = WhisperMode.ALL
-    elif WhisperMode.NEIGHBORS.casefold() == argument.casefold():
-        new_mode = WhisperMode.NEIGHBORS
-    elif WhisperMode.STORYTELLERS.casefold() == argument.casefold():
-        new_mode = WhisperMode.STORYTELLERS
-    else:
-        new_mode = None
-    return new_mode
 
 
 async def chose_whisper_candidates(game, author):
