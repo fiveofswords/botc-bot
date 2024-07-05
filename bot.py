@@ -4902,6 +4902,10 @@ async def on_message(message):
                     await safe_send(message.author, "You don't have permission to set deadlines.")
                     return
 
+                if not game.isDay:
+                    await safe_send(message.author, "It's not day right now.")
+                    return
+
                 deadline = parse_deadline(argument)
 
                 if deadline is None:
