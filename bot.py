@@ -14,6 +14,7 @@ import discord
 
 from config import *
 from model import *
+from model.characters import *
 from time_utils import parse_deadline
 
 print("Starting bot...")
@@ -1204,38 +1205,6 @@ class Player:
             # Cannot remove role from user that does not exist on the server
             logger.info("could not remove roles for %s: %s", self.nick, e.text)
             pass
-
-
-class Townsfolk(Character):
-    # A generic townsfolk
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Townsfolk"
-
-
-class Outsider(Character):
-    # A generic outsider
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Outsider"
-
-
-class Minion(Character):
-    # A generic minion
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Minion"
-
-
-class Demon(Character):
-    # A generic demon
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.role_name = "Demon"
 
 
 class SeatingOrderModifier(Character):

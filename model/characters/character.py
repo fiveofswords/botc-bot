@@ -1,10 +1,10 @@
-from typing import Any
+from __future__ import annotations
 
 
 class Character:
     # A generic character
-    def __init__(self, parent: Any) -> None:
-        self.parent: Any = parent
+    def __init__(self, parent):
+        self.parent = parent
         self.role_name: str = "Character"
         self._is_poisoned: bool = False
         self.refresh()
