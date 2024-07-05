@@ -3523,7 +3523,7 @@ async def choices(user, possibilities, text):
             index + 1, person.nick if person.nick else person.name
         )
 
-    # Request clarifciation from user
+    # Request clarification from user
     reply = await safe_send(user, messageText)
     try:
         choice = await client.wait_for(
