@@ -6627,7 +6627,7 @@ while True:
     try:
         client.run(TOKEN)
         print("end")
-        time.sleep(5)
+        time_utils.sleep(5)
     except Exception as e:
         logging.exception("Ignoring exception")
         print(str(e))

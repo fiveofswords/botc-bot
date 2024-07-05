@@ -1,6 +1,6 @@
 from datetime import datetime, timezone, timedelta
 from unittest import TestCase, mock
-from time_utils import parse_deadline, _convert_to_timedelta, _round_datetime_to_nearest_half_hour
+from .time_utils import parse_deadline, _convert_to_timedelta, _round_datetime_to_nearest_half_hour
 
 
 class TestParseDeadline(TestCase):
