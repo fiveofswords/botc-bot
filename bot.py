@@ -1,19 +1,19 @@
 import asyncio
+import inspect
 import itertools
 import logging
+import math
 import os
 import sys
 import time
+from collections import OrderedDict
+from datetime import datetime
 
 import dill
 import discord
-import math
-import inspect
-from collections import OrderedDict
 
 from config import *
-from datetime import datetime, timedelta
-from dateutil.parser import parse
+from time_utils import parse_deadline
 
 print("Starting bot...")
 print("discord version is " + discord.__version__)
@@ -4902,15 +4902,7 @@ async def on_message(message):
                     await safe_send(message.author, "You don't have permission to set deadlines.")
                     return
 
-                try:
-                    time = parse(argument)
-                    if time < datetime.now():
-                        time += timedelta(days=1)
-                except ValueError:
-                    try:
-                        time = datetime.fromtimestamp(int(argument))
-                    except ValueError:
-                        raise ValueError("Time format not recognized. If in doubt, use 'HH:MM' for date strings or Unix timestamp for epoch time. All times must be in UTC.")
+                deadline = parse_deadline(argument)
 
                 if len(game.days[-1].deadlineMessages) > 0:
                     previous_deadline = game.days[-1].deadlineMessages[-1]
@@ -4924,8 +4916,8 @@ async def on_message(message):
                     channel,
                     "{}, nominations are open. The deadline is <t:{}:R> at <t:{}:t> unless someone nominates or everyone skips.".format(
                         playerRole.mention,
-                        str(int(time.timestamp())),
-                        str(int(time.timestamp()))
+                        str(int(deadline.timestamp())),
+                        str(int(deadline.timestamp()))
                     ),
                 )
                 await announcement.pin()
