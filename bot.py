@@ -13,6 +13,7 @@ import dill
 import discord
 
 from config import *
+from model import *
 from time_utils import parse_deadline
 
 print("Starting bot...")
@@ -157,15 +158,6 @@ class Game:
         self.days.append(Day())
         self.isDay = True
         await update_presence(client)
-
-
-class Script:
-    # Stores booleans for characters which modify the game rules from the script
-
-    def __init__(self, scriptList):
-        self.isAtheist = "atheist" in scriptList
-        self.isWitch = "witch" in scriptList
-        self.list = scriptList
 
 
 class Day:
@@ -1212,31 +1204,6 @@ class Player:
             # Cannot remove role from user that does not exist on the server
             logger.info("could not remove roles for %s: %s", self.nick, e.text)
             pass
-
-
-class Character:
-    # A generic character
-    def __init__(self, parent):
-        self.parent = parent
-        self.role_name = "Character"
-        self._is_poisoned = False
-        self.refresh()
-
-    def refresh(self):
-        pass
-
-    def extra_info(self):
-        return ""
-
-    @property
-    def is_poisoned(self):
-        return self._is_poisoned
-
-    def poison(self):
-        self._is_poisoned = True
-
-    def unpoison(self):
-        self._is_poisoned = False
 
 
 class Townsfolk(Character):
