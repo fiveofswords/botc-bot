@@ -5,7 +5,7 @@ import logging
 from bot_client import client, token
 
 import bot_impl
-_ = bot.__name__  # need to reference the bot module to "install" event handlers
+_ = bot_impl.__name__  # need to reference the bot module to "install" event handlers
 
 
 class BotApp:
