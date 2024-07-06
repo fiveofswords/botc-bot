@@ -4,7 +4,7 @@ import discord
 import logging
 from bot_client import client, token
 
-import bot
+import bot_impl
 _ = bot.__name__  # need to reference the bot module to "install" event handlers
 
 
