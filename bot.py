@@ -3,11 +3,9 @@ from __future__ import annotations
 import asyncio
 import inspect
 import itertools
-import logging
 import math
 import os
 import sys
-import time
 from collections import OrderedDict
 from datetime import datetime
 
@@ -15,21 +13,11 @@ import dill
 import discord
 
 import global_vars
+from bot_client import client, logger
 from config import *
 from time_utils import parse_deadline
 
-print("Starting bot...")
-print("discord version is " + discord.__version__)
-
 STORYTELLER_ALIGNMENT = "neutral"
-
-logger = logging.getLogger("discord")
-logger.setLevel(logging.WARNING)
-handler = logging.FileHandler(filename="discord.log", encoding="utf-8", mode="w")
-handler.setFormatter(
-    logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s")
-)
-logger.addHandler(handler)
 
 
 class WhisperMode:
@@ -3402,18 +3390,6 @@ except TypeError:
         joined=True
     )
 
-intents = discord.Intents.all()
-intents.members = True
-intents.presences = True
-client = discord.Client(
-    intents=intents, member_cache_flags=member_cache
-)  # discord client
-
-# Read API Token
-with open(os.path.dirname(os.path.realpath(__file__)) + "/token.txt") as tokenfile:
-    TOKEN = tokenfile.readline().strip()
-
-
 ### Functions
 def str_cleanup(str, chars):
     str = [str]
@@ -3710,6 +3686,7 @@ async def safe_send(target: discord.abc.Messageable, msg: str):
         else:
             raise (e)
 
+NULL_GAME = Game(seatingOrder=[], seatingOrderMessage=0, script=[], skip_storytellers=True)
 
 ### Event Handling
 @client.event
@@ -6601,16 +6578,3 @@ async def on_member_update(before, after):
             for st in global_vars.game.storytellers:
                 if st.user.id == after.id:
                     global_vars.game.storytellers.remove(st)
-
-
-NULL_GAME = Game(seatingOrder=[], seatingOrderMessage=0, script=[], skip_storytellers=True)
-
-### Event loop
-while True:
-    try:
-        client.run(TOKEN)
-        print("end")
-        time.sleep(5)
-    except Exception as e:
-        logging.exception("Ignoring exception")
-        print(str(e))
