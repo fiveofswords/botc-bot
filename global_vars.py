@@ -5,7 +5,7 @@ from typing import Optional, Union, TYPE_CHECKING
 from discord import Guild, ForumChannel, TextChannel, CategoryChannel, Role
 
 if TYPE_CHECKING:
-    from bot import Game
+    from bot_impl import Game
 
 # The following are global variables that are used throughout the bot from a global context
 
