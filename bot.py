@@ -216,7 +216,7 @@ class Day:
         await update_presence(client)
 
     async def nomination(self, nominee, nominator):
-        await self.close_pms()
+        game.whisper_mode = WhisperMode.NEIGHBORS
         await self.close_noms()
         # todo: if organ grinder ability is active, then this first message should not be output.
         if not nominee:
@@ -408,6 +408,7 @@ class Day:
                 print("Missing message: ", str(msg))
 
         game.isDay = False
+        game.whisper_mode = WhisperMode.ALL
         self.isNoms = False
         self.isPms = False
 
