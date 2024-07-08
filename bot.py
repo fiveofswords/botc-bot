@@ -2438,12 +2438,19 @@ class Apprentice(Traveler, AbilityModifier):
         return "\n".join([("Apprenticing: {}\n{}".format(x.role_name, x.extra_info())) for x in self.abilities])
 
 
-class Matron(Traveler):
+class Matron(Traveler, DayStartModifier):
     # the matron
 
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Matron"
+
+    async def on_day_start(self, origin, kills):
+        if self.parent.isGhost or self.parent in kills:
+            return True
+        # If matron is alive, then only allow neighbor whispers
+        game.whisper_mode = WhisperMode.NEIGHBORS
+        return True
 
 
 class Judge(Traveler):
