@@ -3725,13 +3725,13 @@ async def on_ready():
     game = NULL_GAME
     observerRole = None
 
-    server = client.get_guild(serverid)
+    server = client.get_guild(SERVER_ID)
     game_category = client.get_channel(GAME_CATEGORY_ID)
     hands_channel = client.get_channel(HANDS_CHANNEL_ID)
     observer_channel = client.get_channel(OBSERVER_CHANNEL_ID)
     info_channel = client.get_channel(INFO_CHANNEL_ID)
-    whisper_channel = client.get_channel(whisperchannelid)
-    channel = client.get_channel(channelid)
+    whisper_channel = client.get_channel(WHISPER_CHANNEL_ID)
+    channel = client.get_channel(TOWN_SQUARE_CHANNEL_ID)
     out_of_play_category = client.get_channel(OUT_OF_PLAY_CATEGORY_ID)
     logger.info(logger.info(
         f"server: {server.name}, "
@@ -3745,19 +3745,19 @@ async def on_ready():
     ))
 
     for role in server.roles:
-        if role.name == playerName:
+        if role.name == PLAYER_ROLE:
             playerRole = role
-        elif role.name == travelerName:
+        elif role.name == TRAVELER_ROLE:
             travelerRole = role
-        elif role.name == ghostName:
+        elif role.name == GHOST_ROLE:
             ghostRole = role
-        elif role.name == deadVoteName:
+        elif role.name == DEAD_VOTE_ROLE:
             deadVoteRole = role
-        elif role.name == gamemasterName:
+        elif role.name == STORYTELLER_ROLE:
             gamemasterRole = role
-        elif role.name == inactiveName:
+        elif role.name == INACTIVE_ROLE:
             inactiveRole = role
-        elif role.name == observerName:
+        elif role.name == OBSERVER_ROLE:
             observerRole = role
 
     if os.path.isfile("current_game.pckl"):
