@@ -13,6 +13,7 @@ import dill
 import discord
 
 from config import *
+from model.settings.game_settings import GameSettings
 from time_utils import parse_deadline
 
 print("Starting bot...")
@@ -929,6 +930,7 @@ class Player:
         self.messageHistory = []
         self.riot_nominee = False
         self.last_active = datetime.now().timestamp()
+        self.st_channel = GameSettings.load_from_file().get_st_channel(user.id)
 
         if inactiveRole in self.user.roles:
             self.isInactive = True
