@@ -28,6 +28,9 @@ class TestGameSettings(unittest.TestCase):
         self.game_settings._settings[1] = {"st_channel": 12345}
         self.assertEqual(self.game_settings.get_st_channel(1), 12345)
 
+    def test_get_unset_st_channel(self):
+        self.assertIsNone(self.game_settings.get_st_channel(1))
+
     def test_clear_st_channel(self):
         self.game_settings._settings[1] = {"st_channel": 12345}
         self.game_settings.clear_st_channel(1)
@@ -42,6 +45,11 @@ class TestGameSettings(unittest.TestCase):
         self.game_settings._update_settings(1, {"volume": 50})
         self.game_settings._update_settings(1, {"surface_area": 25})
         self.assertEqual(self.game_settings._settings[1], {"volume": 50, "surface_area": 25})
+
+    def test_load_no_file(self):
+        loaded_settings = GameSettings.load_from_file()
+        self.assertTrue(os.path.exists(self.test_filename))
+        self.assertDictEqual(loaded_settings._settings, {})
 
     def test_save_and_load(self):
         self.game_settings.set_st_channel(1, 12345)

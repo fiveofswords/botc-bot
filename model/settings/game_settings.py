@@ -1,4 +1,5 @@
 import json
+import os
 
 _SETTINGS_FILENAME = 'settings.json'
 
@@ -59,8 +60,16 @@ class GameSettings:
     @staticmethod
     def load_from_file():
         """Load settings from a JSON file and return a new GameSettings object."""
+        # Check if the file exists
+        if not os.path.exists(_SETTINGS_FILENAME):
+            # Create the file with default settings
+            with open(_SETTINGS_FILENAME, 'w') as f:
+                json.dump({}, f)
+
+        # Proceed with loading the settings
         with open(_SETTINGS_FILENAME, 'r') as f:
             settings_data = json.load(f)
+
         # Convert keys from string to int
         normalized_data = {int(k): v for k, v in settings_data.items()}
         new_game_settings = GameSettings()
