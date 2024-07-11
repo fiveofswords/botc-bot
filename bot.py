@@ -3721,14 +3721,28 @@ async def safe_send(target: discord.abc.Messageable, msg: str):
 async def on_ready():
     # On startup
 
-    global server, channel, whisper_channel, playerRole, travelerRole, ghostRole, deadVoteRole, gamemasterRole, inactiveRole, observerRole, game
+    global server, game_category, hands_channel, observer_channel, info_channel, whisper_channel, channel, out_of_play_category, playerRole, travelerRole, ghostRole, deadVoteRole, gamemasterRole, inactiveRole, observerRole, game
     game = NULL_GAME
     observerRole = None
 
     server = client.get_guild(serverid)
+    game_category = client.get_channel(GAME_CATEGORY_ID)
+    hands_channel = client.get_channel(HANDS_CHANNEL_ID)
+    observer_channel = client.get_channel(OBSERVER_CHANNEL_ID)
+    info_channel = client.get_channel(INFO_CHANNEL_ID)
+    whisper_channel = client.get_channel(whisperchannelid)
     channel = client.get_channel(channelid)
-    whisper_channel = client.get_channel(whisperchannelid) if whisperchannelid else None
-    logger.info("channel: " + channel.name + ", whisper_channel: " + whisper_channel.name)
+    out_of_play_category = client.get_channel(OUT_OF_PLAY_CATEGORY_ID)
+    logger.info(logger.info(
+        f"server: {server.name}, "
+        f"game_category: {game_category.name}, "
+        f"hands_channel: {hands_channel.name}, "
+        f"observer_channel: {observer_channel.name}, "
+        f"info_channel: {info_channel.name}, "
+        f"whisper_channel: {whisper_channel.name}, "
+        f"townsquare_channel: {channel.name}, "
+        f"out_of_play_category: {out_of_play_category.name}, "
+    ))
 
     for role in server.roles:
         if role.name == playerName:
