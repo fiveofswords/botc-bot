@@ -206,7 +206,7 @@ class Day:
         await update_presence(client)
 
     async def nomination(self, nominee, nominator):
-        await self.close_pms()
+        global_vars.game.whisper_mode = WhisperMode.NEIGHBORS
         await self.close_noms()
         # todo: if organ grinder ability is active, then this first message should not be output.
         if not nominee:
@@ -398,6 +398,7 @@ class Day:
                 print("Missing message: ", str(msg))
 
         global_vars.game.isDay = False
+        global_vars.game.whisper_mode = WhisperMode.ALL
         self.isNoms = False
         self.isPms = False
 
@@ -2427,12 +2428,19 @@ class Apprentice(Traveler, AbilityModifier):
         return "\n".join([("Apprenticing: {}\n{}".format(x.role_name, x.extra_info())) for x in self.abilities])
 
 
-class Matron(Traveler):
+class Matron(Traveler, DayStartModifier):
     # the matron
 
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Matron"
+
+    async def on_day_start(self, origin, kills):
+        if self.parent.isGhost or self.parent in kills:
+            return True
+        # If matron is alive, then only allow neighbor whispers
+        global_vars.game.whisper_mode = WhisperMode.NEIGHBORS
+        return True
 
 
 class Judge(Traveler):
