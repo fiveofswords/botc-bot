@@ -15,6 +15,7 @@ import discord
 import global_vars
 from bot_client import client, logger
 from config import *
+from model.settings import GlobalSettings
 from time_utils import parse_deadline
 
 STORYTELLER_ALIGNMENT = "neutral"
@@ -518,12 +519,9 @@ class Vote:
                 self.nominee.nick if self.nominee else "the storytellers",
             ),
         )
-        try:
-            preferences = {}
-            if os.path.isfile(os.path.dirname(os.getcwd()) + "/preferences.pckl"):
-                with open(os.path.dirname(os.getcwd()) + "/preferences.pckl", "rb") as file:
-                    preferences = dill.load(file)
-            default = preferences[toCall.user.id]["defaultvote"]
+        global_settings: GlobalSettings = GlobalSettings.load()
+        default = global_settings.get_default_vote(toCall.user.id)
+        if default:
             time = default[1]
             await safe_send(toCall.user, "Will enter a {} vote in {} minutes.".format(
                 ["no", "yes"][default[0]], str(int(default[1] / 60))
@@ -540,7 +538,7 @@ class Vote:
             await asyncio.sleep(time)
             if toCall == global_vars.game.days[-1].votes[-1].order[global_vars.game.days[-1].votes[-1].position]:
                 await self.vote(default[0])
-        except KeyError:
+        else:
             for memb in global_vars.gamemaster_role.members:
                 await safe_send(
                     memb, "{}'s vote. They have no default.".format(toCall.nick)
@@ -771,12 +769,9 @@ class TravelerVote:
                 self.nominee.nick if self.nominee else "the storytellers",
             ),
         )
-        try:
-            preferences = {}
-            if os.path.isfile(os.path.dirname(os.getcwd()) + "/preferences.pckl"):
-                with open(os.path.dirname(os.getcwd()) + "/preferences.pckl", "rb") as file:
-                    preferences = dill.load(file)
-            default = preferences[toCall.user.id]["defaultvote"]
+        global_settings: GlobalSettings = GlobalSettings.load()
+        default = global_settings.get_default_vote(toCall.user.id)
+        if default:
             time = default[1]
             await safe_send(toCall.user, "Will enter a {} vote in {} minutes.".format(
                 ["no", "yes"][default[0]], str(int(default[1] / 60))
@@ -793,7 +788,7 @@ class TravelerVote:
                         str(int(default[1] / 60)),
                     ),
                 )
-        except KeyError:
+        else:
             for memb in global_vars.gamemaster_role.members:
                 await safe_send(
                     memb, "{}'s vote. They have no default.".format(toCall.nick)
@@ -3829,16 +3824,9 @@ async def on_message(message):
                 command = message.content[1:].lower()
                 argument = ""
 
-            try:
-                preferences = {}
-                if os.path.isfile(os.path.dirname(os.getcwd()) + "/preferences.pckl"):
-                    with open(
-                        os.path.dirname(os.getcwd()) + "/preferences.pckl", "rb"
-                    ) as file:
-                        preferences = dill.load(file)
-                command = preferences[message.author.id]["aliases"][command]
-            except KeyError:
-                pass
+            alias = GlobalSettings.load().get_alias(message.author.id, command)
+            if alias:
+                command = alias
 
             # Opens pms
             if command == "openpms":
@@ -5604,22 +5592,14 @@ async def on_message(message):
             # Set a default vote
             elif command == "defaultvote":
 
-                preferences = {}
-                if os.path.isfile(os.path.dirname(os.getcwd()) + "/preferences.pckl"):
-                    with open(
-                        os.path.dirname(os.getcwd()) + "/preferences.pckl", "rb"
-                    ) as file:
-                        preferences = dill.load(file)
+                global_settings: GlobalSettings = GlobalSettings.load()
 
                 if argument == "":
-                    try:
-                        del preferences[message.author.id]["defaultvote"]
+                    if global_settings.get_default_vote(message.author.id):
+                        global_settings.clear_default_vote(message.author.id)
+                        global_settings.save()
                         await safe_send(message.author, "Removed your default vote.")
-                        with open(
-                            os.path.dirname(os.getcwd()) + "/preferences.pckl", "wb"
-                        ) as file:
-                            dill.dump(preferences, file)
-                    except KeyError:
+                    else:
                         await safe_send(message.author, "You have no default vote to remove.")
                     return
 
@@ -5631,7 +5611,7 @@ async def on_message(message):
                     elif len(argument) == 1:
                         try:
                             time = int(argument[0]) * 60
-                            vt = 0
+                            vt = False
                         except ValueError:
                             if argument[0] in ["yes", "y", "no", "n"]:
                                 vt = argument[0] in ["yes", "y"]
@@ -5651,16 +5631,9 @@ async def on_message(message):
                             await safe_send(message.author, "{} is not a valid number of minutes.".format(argument[1]))
                             return
 
-                    try:
-                        preferences[message.author.id]["defaultvote"] = (vt, time)
-                    except KeyError:
-                        preferences[message.author.id] = {"defaultvote": (vt, time)}
-
+                    global_settings.set_default_vote(message.author.id, vt, time)
+                    global_settings.save()
                     await safe_send(message.author, "Successfully set default {} vote at {} minutes.".format(["no", "yes"][vt], str(int(time / 60))))
-                    with open(
-                        os.path.dirname(os.getcwd()) + "/preferences.pckl", "wb"
-                    ) as file:
-                        dill.dump(preferences, file)
                     return
 
             # Sends pm
@@ -5926,30 +5899,10 @@ async def on_message(message):
                     await safe_send(message.author, "makealias takes exactly two arguments: @makealias <alias> <command>")
                     return
 
-                preferences = {}
-                if os.path.isfile(os.path.dirname(os.getcwd()) + "/preferences.pckl"):
-                    with open(
-                        os.path.dirname(os.getcwd()) + "/preferences.pckl", "rb"
-                    ) as file:
-                        preferences = dill.load(file)
-
-                try:
-                    preferences[message.author.id]["aliases"][argument[0]] = argument[1]
-                except KeyError:
-                    try:
-                        preferences[message.author.id]["aliases"] = {
-                            argument[0]: argument[1]
-                        }
-                    except KeyError:
-                        preferences[message.author.id] = {
-                            "aliases": {argument[0]: argument[1]}
-                        }
-
+                global_settings: GlobalSettings = GlobalSettings.load()
+                global_settings.set_alias(message.author.id, argument[0], argument[1])
+                global_settings.save()
                 await safe_send(message.author, "Successfully created alias {} for command {}.".format(argument[0], argument[1]))
-                with open(
-                    os.path.dirname(os.getcwd()) + "/preferences.pckl", "wb"
-                ) as file:
-                    dill.dump(preferences, file)
                 return
 
             # Help dialogue
