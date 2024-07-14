@@ -6407,7 +6407,7 @@ async def on_message_edit(before, after):
 
     # On pin
     message_author_player = await get_player(after.author)
-    if global_vars.channel == global_vars.channel and before.pinned == False and after.pinned == True:
+    if before.channel == global_vars.channel and before.pinned == False and after.pinned == True:
 
         # Nomination
         if "nominate " in after.content.lower():
@@ -6554,7 +6554,7 @@ async def on_message_edit(before, after):
             return
 
     # On unpin
-    elif global_vars.channel == global_vars.channel and before.pinned == True and after.pinned == False:
+    elif before.channel == global_vars.channel and before.pinned == True and after.pinned == False:
 
         # Unskip
         if "skip" in after.content.lower():
