@@ -3604,6 +3604,8 @@ async def update_presence(client):
 
 def backup(fileName):
     # Backs up the game-state
+    if not global_vars.game or global_vars.game is NULL_GAME:
+        return
 
     objects = [
         x
@@ -3738,15 +3740,14 @@ async def on_ready():
 async def on_message(message):
     # Handles messages
 
-    if global_vars.game is not NULL_GAME:
-        backup("current_game.pckl")
+    backup("current_game.pckl")
 
     # Don't respond to self
     if message.author == client.user:
         return
 
     # Update activity
-    if global_vars.channel == global_vars.channel:
+    if message.channel == global_vars.channel:
         if global_vars.game is not NULL_GAME:
             await make_active(message.author)
             backup("current_game.pckl")
@@ -6401,7 +6402,7 @@ async def on_message_edit(before, after):
 
     # On pin
     message_author_player = await get_player(after.author)
-    if global_vars.channel == global_vars.channel and before.pinned == False and after.pinned == True:
+    if before.channel == global_vars.channel and before.pinned == False and after.pinned == True:
 
         # Nomination
         if "nominate " in after.content.lower():
@@ -6548,7 +6549,7 @@ async def on_message_edit(before, after):
             return
 
     # On unpin
-    elif global_vars.channel == global_vars.channel and before.pinned == True and after.pinned == False:
+    elif before.channel == global_vars.channel and before.pinned == True and after.pinned == False:
 
         # Unskip
         if "skip" in after.content.lower():
