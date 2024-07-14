@@ -47,7 +47,7 @@ class TestChannelManager(unittest.IsolatedAsyncioTestCase):
     async def test_toggle_ghost_channel_not_found(self):
         self.mock_client.get_channel.return_value = None
 
-        with self.assertLogs(level='INFO') as log:
+        with self.assertLogs(level='INFO', logger='discord') as log:
             await self.channel_manager.toggle_ghost(123)
             self.assertIn("Channel with ID 123 not found.", log.output[0])
 
