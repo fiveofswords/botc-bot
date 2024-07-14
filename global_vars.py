@@ -5,7 +5,7 @@ from typing import Optional, Union, TYPE_CHECKING
 from discord import Guild, ForumChannel, TextChannel, CategoryChannel, Role
 
 if TYPE_CHECKING:
-    from bot_impl import Game, NULL_GAME
+    from bot_impl import Game
 
 # The following are global variables that are used throughout the bot from a global context
 
@@ -19,4 +19,4 @@ dead_vote_role: Optional[Role] = None
 gamemaster_role: Optional[Role] = None
 inactive_role: Optional[Role] = None
 observer_role: Optional[Role] = None
-game: Game = NULL_GAME
+game: Optional[Game] = None

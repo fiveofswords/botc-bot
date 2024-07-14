@@ -3609,6 +3609,8 @@ async def update_presence(client):
 
 def backup(fileName):
     # Backs up the game-state
+    if not global_vars.game or global_vars.game is NULL_GAME:
+        return
 
     objects = [
         x
@@ -3743,8 +3745,7 @@ async def on_ready():
 async def on_message(message):
     # Handles messages
 
-    if global_vars.game is not NULL_GAME:
-        backup("current_game.pckl")
+    backup("current_game.pckl")
 
     # Don't respond to self
     if message.author == client.user:
