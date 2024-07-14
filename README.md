@@ -4,6 +4,7 @@ A bot for playing Blood on the Clocktower.
 ## config.py
 You'll want a `config.py` file in the root directory with the following variables declared
 ```
+# Guild ID for Game Server
 SERVER_ID = 721446589750706266 # Guild ID for Game Server
 GAME_CATEGORY_ID = 1202456091057725550  # Category for in play player channels and game channels
 HANDS_CHANNEL_ID = 1260773800400912545  # Hands ST Channel
@@ -22,7 +23,7 @@ STORYTELLER_ROLE = "gamemaster"
 INACTIVE_ROLE = "inactive"
 OBSERVER_ROLE = "observer"
 
-prefixes = (',', '@')
+PREFIXES = (',', '@')
 ```
 Switch the values for your own server's IDs and names.
 
