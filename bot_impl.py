@@ -2992,10 +2992,6 @@ class Banshee(Townsfolk, DayStartModifier):
             await safe_send(origin, "Message timed out!")
             return False
 
-    def refresh(self):
-        super().refresh()
-        self.is_screaming = False
-
     def extra_info(self):
         return "Banshee: Has Ability" if self.is_screaming else super().extra_info()
 
@@ -3516,7 +3512,6 @@ async def yes_no(user, text):
         return await safe_send(
             user, "Your answer must be 'yes,' 'y,' 'no,' or 'n' exactly. Try again."
         )
-        return await yes_no(user, text)
 
 
 async def get_player(user):
