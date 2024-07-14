@@ -6,7 +6,7 @@ from .time_utils import parse_deadline, _convert_to_timedelta, _round_datetime_t
 class TestParseDeadline(TestCase):
 
     def setUp(self):
-        patcher = mock.patch('time_utils.datetime', autospec=True)
+        patcher = mock.patch('time_utils.time_utils.datetime', autospec=True)
         self.addCleanup(patcher.stop)
         self.mock_datetime = patcher.start()
 
