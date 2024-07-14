@@ -24,19 +24,19 @@ class TestGlobalSettings(unittest.TestCase):
 
     def test_add_alias_new_player(self):
         self.settings.set_alias(2, 'NewAlias', "NewAliasedCommand")
-        self.assertEquals(self.settings.get_alias(2, 'NewAlias'), "NewAliasedCommand")
+        self.assertEqual(self.settings.get_alias(2, 'NewAlias'), "NewAliasedCommand")
 
     def test_add_alias_new_alias(self):
         self.settings.set_alias(1, 'NewAlias', "NewAliasedCommand")
-        self.assertEquals(self.settings.get_alias(1, 'NewAlias'), "NewAliasedCommand")
+        self.assertEqual(self.settings.get_alias(1, 'NewAlias'), "NewAliasedCommand")
 
     def test_add_alias_does_not_remove_old_alias(self):
         self.settings.set_alias(1, 'NewAlias', "NewAliasedCommand")
-        self.assertEquals(self.settings.get_alias(1, 'TestAlias'), "AliasedCommand")
+        self.assertEqual(self.settings.get_alias(1, 'TestAlias'), "AliasedCommand")
 
     def test_update_existing_alias(self):
         self.settings.set_alias(1, 'TestAlias', "NewAliasedCommand")
-        self.assertEquals(self.settings.get_alias(1, 'TestAlias'), "NewAliasedCommand")
+        self.assertEqual(self.settings.get_alias(1, 'TestAlias'), "NewAliasedCommand")
 
     def test_get_default_vote(self):
         self.assertEqual(self.settings.get_default_vote(1), (True, 30))
