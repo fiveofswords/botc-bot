@@ -8,9 +8,11 @@ import os
 import sys
 from collections import OrderedDict
 from datetime import datetime
+from typing import Optional, TypeVar, Protocol, Sequence
 
 import dill
 import discord
+from discord import User, Member
 
 import global_vars
 from bot_client import client, logger
@@ -3401,11 +3403,11 @@ def str_cleanup(str, chars):
     return "".join([x.capitalize() for x in str])
 
 
-def str_to_class(str):
-    return getattr(sys.modules[__name__], str)
+def str_to_class(role: str) -> type[Character]:
+    return getattr(sys.modules[__name__], role)
 
 
-async def generate_possibilities(text, people):
+async def generate_possibilities(text: str, people: Sequence[T]) -> list[T]:
     # Generates possible users with name or nickname matching text
 
     possibilities = []
@@ -3417,21 +3419,21 @@ async def generate_possibilities(text, people):
     return possibilities
 
 
-async def choices(user, possibilities, text):
+async def choices(user: User, possibilities: list[Player], text: str) -> Optional[Player]:
     # Clarifies which user is indended when there are multiple matches
 
     # Generate clarification message
     if text == "":
-        messageText = "Who do you mean? or use 'cancel'"
+        message_text = "Who do you mean? or use 'cancel'"
     else:
-        messageText = "Who do you mean by {}? or use 'cancel'".format(text)
+        message_text = "Who do you mean by {}? or use 'cancel'".format(text)
     for index, person in enumerate(possibilities):
-        messageText += "\n({}). {}".format(
+        message_text += "\n({}). {}".format(
             index + 1, person.nick if person.nick else person.name
         )
 
     # Request clarifciation from user
-    reply = await safe_send(user, messageText)
+    reply = await safe_send(user, message_text)
     try:
         choice = await client.wait_for(
             "message",
@@ -3457,7 +3459,7 @@ async def choices(user, possibilities, text):
         return await select_player(user, choice.content, possibilities)
 
 
-async def select_player(user, text, possibilities):
+async def select_player(user: User, text: str, possibilities: Sequence[T]) -> Optional[T]:
     # Finds a player from players matching a string
 
     new_possibilities = await generate_possibilities(text, possibilities)
@@ -4024,7 +4026,7 @@ async def on_message(message):
 
                 msg = await safe_send(message.author, "What is the seating order? (separate users with line breaks)")
                 try:
-                    order = await client.wait_for(
+                    order_message = await client.wait_for(
                         "message",
                         check=(lambda x: x.author == message.author and x.channel == msg.channel),
                         timeout=200,
@@ -4033,13 +4035,13 @@ async def on_message(message):
                     await safe_send(message.author, "Time out.")
                     return
 
-                if order.content == "cancel":
+                if order_message.content == "cancel":
                     await safe_send(message.author, "Game cancelled!")
                     return
 
-                order = order.content.split("\n")
+                order: list[str] = order_message.content.split("\n")
 
-                users = []
+                users: list[Member] = []
                 for person in order:
                     name = await select_player(message.author, person, global_vars.server.members)
                     if name is None:
@@ -4048,7 +4050,7 @@ async def on_message(message):
 
                 await safe_send(message.author, "What are the corresponding roles? (also separated with line breaks)")
                 try:
-                    roles = await client.wait_for(
+                    roles_message = await client.wait_for(
                         "message",
                         check=(lambda x: x.author == message.author and x.channel == msg.channel),
                         timeout=200,
@@ -4057,17 +4059,17 @@ async def on_message(message):
                     await safe_send(message.author, "Timed out.")
                     return
 
-                if roles.content == "cancel":
+                if roles_message.content == "cancel":
                     await safe_send(message.author, "Game cancelled!")
                     return
 
-                roles = roles.content.split("\n")
+                roles: list[str] = roles_message.content.split("\n")
 
                 if len(roles) != len(order):
                     await safe_send(message.author, "Players and roles do not match.")
                     return
 
-                characters = []
+                characters: list[type[Character]] = []
                 for text in roles:
                     role = str_cleanup(text, [",", " ", "-", "'"])
                     try:
@@ -4096,7 +4098,7 @@ async def on_message(message):
                     if issubclass(characters[index], Traveler):
                         await user.add_roles(global_vars.traveler_role)
 
-                alignments = []
+                alignments: list[str] = []
                 for role in characters:
                     if issubclass(role, Traveler):
                         msg = await safe_send(
@@ -4134,9 +4136,9 @@ async def on_message(message):
 
                 indicies = [x for x in range(len(users))]
 
-                seatingOrder = []
+                seating_order: list[Player] = []
                 for x in indicies:
-                    seatingOrder.append(
+                    seating_order.append(
                         Player(characters[x], alignments[x], users[x], x)
                     )
 
@@ -4145,7 +4147,7 @@ async def on_message(message):
                     "What roles are on the script? (send the text of the json file from the script creator)"
                 )
                 try:
-                    script = await client.wait_for(
+                    script_message = await client.wait_for(
                         "message",
                         check=(lambda x: x.author == message.author and x.channel == msg.channel),
                         timeout=200,
@@ -4154,13 +4156,13 @@ async def on_message(message):
                     await safe_send(message.author, "Timed out.")
                     return
 
-                if script.content == "cancel":
+                if script_message.content == "cancel":
                     await safe_send(message.author, "Game cancelled!")
                     return
 
-                scriptList = ''.join(script.content.split())[8:-3].split('"},{"id":"')
+                script_list = ''.join(script_message.content.split())[8:-3].split('"},{"id":"')
 
-                script = Script(scriptList)
+                script = Script(script_list)
 
                 await safe_send(
                     global_vars.channel,
@@ -4169,15 +4171,15 @@ async def on_message(message):
                     ),
                 )
 
-                messageText = "**Seating Order:**"
-                for person in seatingOrder:
-                    messageText += "\n{}".format(person.nick)
+                message_text = "**Seating Order:**"
+                for person in seating_order:
+                    message_text += "\n{}".format(person.nick)
                     if isinstance(person.character, SeatingOrderModifier):
-                        messageText += person.character.seating_order_message(
-                            seatingOrder
+                        message_text += person.character.seating_order_message(
+                            seating_order
                         )
-                seatingOrderMessage = await safe_send(global_vars.channel, messageText)
-                await seatingOrderMessage.pin()
+                seating_order_message = await safe_send(global_vars.channel, message_text)
+                await seating_order_message.pin()
 
                 n = len([x for x in characters if not issubclass(x, Traveler)])
                 if n == 5:
@@ -4205,7 +4207,7 @@ async def on_message(message):
                 )
                 await msg.pin()
 
-                global_vars.game = Game(seatingOrder, seatingOrderMessage, script)
+                global_vars.game = Game(seating_order, seating_order_message, script)
 
                 backup("current_game.pckl")
                 await update_presence(client)
@@ -4755,7 +4757,7 @@ async def on_message(message):
 
                 msg = await safe_send(message.author, "What is the seating order? (separate users with line breaks)")
                 try:
-                    order = await client.wait_for(
+                    order_message = await client.wait_for(
                         "message",
                         check=(lambda x: x.author == message.author and x.channel == msg.channel),
                         timeout=200,
@@ -4765,16 +4767,16 @@ async def on_message(message):
                     await safe_send(message.author, "Timed out.")
                     return
 
-                if order.content == "cancel":
+                if order_message.content == "cancel":
                     await safe_send(message.author, "Reseating cancelled!")
                     return
 
-                if order.content == "none":
+                if order_message.content == "none":
                     await global_vars.game.reseat(global_vars.game.seatingOrder)
 
                 order = [
                     await select_player(message.author, person, global_vars.game.seatingOrder)
-                    for person in order.content.split("\n")
+                    for person in order_message.content.split("\n")
                 ]
                 if None in order:
                     return
@@ -4977,16 +4979,16 @@ async def on_message(message):
                                 else:
                                     message_tally[(person, msg["to"])] = 1
                 sorted_tally = sorted(message_tally.items(), key=lambda x: -x[1])
-                messageText = "Message Tally:"
+                message_text = "Message Tally:"
                 for pair in sorted_tally:
                     if pair[1] > 0:
-                        messageText += "\n> {person1} - {person2}: {n}".format(
+                        message_text += "\n> {person1} - {person2}: {n}".format(
                             person1=pair[0][0].nick, person2=pair[0][1].nick, n=pair[1]
                         )
                     else:
-                        messageText += "\n> All other pairs: 0"
+                        message_text += "\n> All other pairs: 0"
                         break
-                await safe_send(global_vars.channel, messageText)
+                await safe_send(global_vars.channel, message_text)
             elif command == "whispers":
                 person = None
                 if global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
@@ -5011,10 +5013,10 @@ async def on_message(message):
                 for msg in person.messageHistory:
                     if msg["day"] != day:
                         # share summary and reset counts
-                        messageText = "Day {}\n".format(day)
+                        message_text = "Day {}\n".format(day)
                         for player, count in counts.items():
-                            messageText += "{}: {}\n".format(player if player == "Storytellers" else player.nick, count)
-                        await safe_send(message.author, messageText)
+                            message_text += "{}: {}\n".format(player if player == "Storytellers" else player.nick, count)
+                        await safe_send(message.author, message_text)
                         counts = OrderedDict([(player, 0) for player in global_vars.game.seatingOrder])
                         day = msg["day"]
                     if msg["from"] == person:
@@ -5028,10 +5030,10 @@ async def on_message(message):
                     else:
                         counts[msg["from"]] += 1
 
-                messageText = "Day {}\n".format(day)
+                message_text = "Day {}\n".format(day)
                 for player, count in counts.items():
-                    messageText += "{}: {}\n".format(player if player == "Storytellers" else player.nick, count)
-                await safe_send(message.author, messageText)
+                    message_text += "{}: {}\n".format(player if player == "Storytellers" else player.nick, count)
+                await safe_send(message.author, message_text)
                 return
             elif command == "enabletally":
                 if global_vars.game is NULL_GAME:
@@ -5107,19 +5109,19 @@ async def on_message(message):
                     await safe_send(message.author, "You don't have permission to view player information.")
                     return
 
-                messageText = "**Grimoire:**"
+                message_text = "**Grimoire:**"
                 for player in global_vars.game.seatingOrder:
-                    messageText += "\n{}: {}".format(
+                    message_text += "\n{}: {}".format(
                         player.nick, player.character.role_name
                     )
                     if player.character.is_poisoned and player.isGhost:
-                        messageText += " (Poisoned, Dead)"
+                        message_text += " (Poisoned, Dead)"
                     elif player.character.is_poisoned and not player.isGhost:
-                        messageText += " (Poisoned)"
+                        message_text += " (Poisoned)"
                     elif not player.character.is_poisoned and player.isGhost:
-                        messageText += " (Dead)"
+                        message_text += " (Dead)"
 
-                await safe_send(message.author, messageText)
+                await safe_send(message.author, message_text)
                 return
 
             # Clears history
@@ -5152,11 +5154,11 @@ async def on_message(message):
                     await safe_send(message.author, "Everyone has spoken!")
                     return
 
-                messageText = "These players have not spoken:"
+                message_text = "These players have not spoken:"
                 for player in notActive:
-                    messageText += "\n{}".format(player.nick)
+                    message_text += "\n{}".format(player.nick)
 
-                await safe_send(message.author, messageText)
+                await safe_send(message.author, message_text)
                 return
 
             # Checks who can nominate
@@ -5182,11 +5184,11 @@ async def on_message(message):
                     await safe_send(message.author, "Everyone has nominated or skipped!")
                     return
 
-                messageText = "These players have not nominated or skipped:"
+                message_text = "These players have not nominated or skipped:"
                 for player in canNominate:
-                    messageText += "\n{}".format(player.nick)
+                    message_text += "\n{}".format(player.nick)
 
-                await safe_send(message.author, messageText)
+                await safe_send(message.author, message_text)
                 return
 
             # Checks who can be nominated
@@ -5209,11 +5211,11 @@ async def on_message(message):
                     await safe_send(message.author, "Everyone has been nominated!")
                     return
 
-                messageText = "These players have not been nominated:"
+                message_text = "These players have not been nominated:"
                 for player in canBeNominated:
-                    messageText += "\n{}".format(player.nick)
+                    message_text += "\n{}".format(player.nick)
 
-                await safe_send(message.author, messageText)
+                await safe_send(message.author, message_text)
                 return
 
             # Checks when a given player was last active
@@ -5677,10 +5679,10 @@ async def on_message(message):
                     await safe_send(message.author, "You cannot whisper to this player at this time.")
                     return
 
-                messageText = "Messaging {}. What would you like to send?".format(
+                message_text = "Messaging {}. What would you like to send?".format(
                     person.nick
                 )
-                reply = await safe_send(message.author, messageText)
+                reply = await safe_send(message.author, message_text)
 
                 # Process reply
                 try:
@@ -5732,21 +5734,21 @@ async def on_message(message):
                         if person is None:
                             return
 
-                        messageText = (
+                        message_text = (
                             "**History for {} (Times in UTC):**\n\n**Day 1:**".format(
                                 person.nick
                             )
                         )
                         day = 1
                         for msg in person.messageHistory:
-                            if len(messageText) > 1500:
-                                await safe_send(message.author, messageText)
-                                messageText = ""
+                            if len(message_text) > 1500:
+                                await safe_send(message.author, message_text)
+                                message_text = ""
                             while msg["day"] != day:
-                                await safe_send(message.author, messageText)
+                                await safe_send(message.author, message_text)
                                 day += 1
-                                messageText = "**Day {}:**".format(str(day))
-                            messageText += (
+                                message_text = "**Day {}:**".format(str(day))
+                            message_text += (
                                 "\nFrom: {} | To: {} | Time: {}\n**{}**".format(
                                     msg["from"].nick,
                                     msg["to"].nick,
@@ -5755,7 +5757,7 @@ async def on_message(message):
                                 )
                             )
 
-                        await safe_send(message.author, messageText)
+                        await safe_send(message.author, message_text)
                         return
 
                     person1 = await select_player(
@@ -5770,7 +5772,7 @@ async def on_message(message):
                     if person2 is None:
                         return
 
-                    messageText = "**History between {} and {} (Times in UTC):**\n\n**Day 1:**".format(
+                    message_text = "**History between {} and {} (Times in UTC):**\n\n**Day 1:**".format(
                         person1.nick, person2.nick
                     )
                     day = 1
@@ -5780,22 +5782,22 @@ async def on_message(message):
                             or (msg["to"] == person1 and msg["from"] == person2)
                         ):
                             continue
-                        if len(messageText) > 1500:
-                            await safe_send(message.author, messageText)
-                            messageText = ""
+                        if len(message_text) > 1500:
+                            await safe_send(message.author, message_text)
+                            message_text = ""
                         while msg["day"] != day:
-                            if messageText != "":
-                                await safe_send(message.author, messageText)
+                            if message_text != "":
+                                await safe_send(message.author, message_text)
                             day += 1
-                            messageText = "**Day {}:**".format(str(day))
-                        messageText += "\nFrom: {} | To: {} | Time: {}\n**{}**".format(
+                            message_text = "**Day {}:**".format(str(day))
+                        message_text += "\nFrom: {} | To: {} | Time: {}\n**{}**".format(
                             msg["from"].nick,
                             msg["to"].nick,
                             msg["time"].strftime("%m/%d, %H:%M:%S"),
                             msg["content"],
                         )
 
-                    await safe_send(message.author, messageText)
+                    await safe_send(message.author, message_text)
                     return
 
                 if not await get_player(message.author):
@@ -5808,7 +5810,7 @@ async def on_message(message):
                 if person is None:
                     return
 
-                messageText = (
+                message_text = (
                     "**History with {} (Times in UTC):**\n\n**Day 1:**".format(
                         person.nick
                     )
@@ -5817,22 +5819,22 @@ async def on_message(message):
                 for msg in (await get_player(message.author)).messageHistory:
                     if not msg["from"] == person and not msg["to"] == person:
                         continue
-                    if len(messageText) > 1500:
-                        await safe_send(message.author, messageText)
-                        messageText = ""
+                    if len(message_text) > 1500:
+                        await safe_send(message.author, message_text)
+                        message_text = ""
                     while msg["day"] != day:
-                        if messageText != "":
-                            await safe_send(message.author, messageText)
+                        if message_text != "":
+                            await safe_send(message.author, message_text)
                         day += 1
-                        messageText = "\n\n**Day {}:**".format(str(day))
-                    messageText += "\nFrom: {} | To: {} | Time: {}\n**{}**".format(
+                        message_text = "\n\n**Day {}:**".format(str(day))
+                    message_text += "\nFrom: {} | To: {} | Time: {}\n**{}**".format(
                         msg["from"].nick,
                         msg["to"].nick,
                         msg["time"].strftime("%m/%d, %H:%M:%S"),
                         msg["content"],
                     )
 
-                await safe_send(message.author, messageText)
+                await safe_send(message.author, message_text)
                 return
 
             # Message search
@@ -5854,7 +5856,7 @@ async def on_message(message):
 
                     history = sorted(history, key=lambda i: i["time"])
 
-                    messageText = "**Messages mentioning {} (Times in UTC):**\n\n**Day 1:**".format(
+                    message_text = "**Messages mentioning {} (Times in UTC):**\n\n**Day 1:**".format(
                         argument
                     )
                     day = 1
@@ -5862,24 +5864,24 @@ async def on_message(message):
                         if not (argument.lower() in msg["content"].lower()):
                             continue
                         while msg["day"] != day:
-                            await safe_send(message.author, messageText)
+                            await safe_send(message.author, message_text)
                             day += 1
-                            messageText = "**Day {}:**".format(str(day))
-                        messageText += "\nFrom: {} | To: {} | Time: {}\n**{}**".format(
+                            message_text = "**Day {}:**".format(str(day))
+                        message_text += "\nFrom: {} | To: {} | Time: {}\n**{}**".format(
                             msg["from"].nick,
                             msg["to"].nick,
                             msg["time"].strftime("%m/%d, %H:%M:%S"),
                             msg["content"],
                         )
 
-                    await safe_send(message.author, messageText)
+                    await safe_send(message.author, message_text)
                     return
 
                 if not await get_player(message.author):
                     await safe_send(message.author, "You are not in the game. You have no message history.")
                     return
 
-                messageText = (
+                message_text = (
                     "**Messages mentioning {} (Times in UTC):**\n\n**Day 1:**".format(
                         argument
                     )
@@ -5889,16 +5891,16 @@ async def on_message(message):
                     if not (argument.lower() in msg["content"].lower()):
                         continue
                     while msg["day"] != day:
-                        await safe_send(message.author, messageText)
+                        await safe_send(message.author, message_text)
                         day += 1
-                        messageText = "**Day {}:**".format(str(day))
-                    messageText += "\nFrom: {} | To: {} | Time: {}\n**{}**".format(
+                        message_text = "**Day {}:**".format(str(day))
+                    message_text += "\nFrom: {} | To: {} | Time: {}\n**{}**".format(
                         msg["from"].nick,
                         msg["to"].nick,
                         msg["time"].strftime("%m/%d, %H:%M:%S"),
                         msg["content"],
                     )
-                await safe_send(message.author, messageText)
+                await safe_send(message.author, message_text)
                 return
 
             # Create custom alias
@@ -6549,3 +6551,13 @@ async def on_member_update(before, after):
             for st in global_vars.game.storytellers:
                 if st.user.id == after.id:
                     global_vars.game.storytellers.remove(st)
+
+
+#######################
+# TypeVar Magic
+#######################
+class HasNick(Protocol):
+    nick: Optional[str]
+
+
+T = TypeVar('T', bound=HasNick)
