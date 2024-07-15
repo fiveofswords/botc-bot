@@ -4092,6 +4092,8 @@ async def on_message(message):
                 for index, user in enumerate(users):
                     if global_vars.gamemaster_role in user.roles:
                         await user.remove_roles(global_vars.gamemaster_role)
+                    if global_vars.observer_role in user.roles:
+                        await user.remove_roles(global_vars.observer_role)
                     await user.add_roles(global_vars.player_role)
                     if issubclass(characters[index], Traveler):
                         await user.add_roles(global_vars.traveler_role)
