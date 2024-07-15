@@ -2,6 +2,7 @@ token.txt
 config.py
 discord.log
 *.pckl
+*.json
 +class_generator.py
 .DS_Store
 testing.py
