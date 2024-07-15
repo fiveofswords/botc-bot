@@ -12,9 +12,9 @@ class ChannelManager:
     def __init__(self, client: discord.client.Client):
         self._client = client
 
-    async def toggle_ghost(self, channel_id: int):
+    async def set_ghost(self, channel_id: int):
         """
-        Toggles '👤' and '👻' in the channel name for the given channel ID.
+        Toggles from '👤' to '👻' in the channel name for the given channel ID.
 
         Parameters:
         - channel_id: The ID of the channel to update.
@@ -25,18 +25,48 @@ class ChannelManager:
             logger.info(f"Channel with ID {channel_id} not found.")
             return
 
+        new_name = None
         if channel is not None:
             # Check and replace '👤' with '👻' or vice versa
             if "👤" in channel.name:
                 new_name = channel.name.replace("👤", "👻")
             elif "👻" in channel.name:
-                new_name = channel.name.replace("👻", "👤")
+                logger.info("Player is currently 👻 and not 👤.")
             else:
-                logger.info("No emoji found to toggle.")
+                logger.warning("No emoji found to toggle.")
                 return
 
             # Update the channel name
-            await channel.edit(name=new_name)
+            if new_name:
+                await channel.edit(name=new_name)
+
+    async def remove_ghost(self, channel_id: int):
+        """
+        Toggles from '👻' to '👤' in the channel name for the given channel ID.
+
+        Parameters:
+        - channel_id: The ID of the channel to update.
+        """
+        # Retrieve the channel object using the channel ID
+        channel = self._client.get_channel(channel_id)
+        if channel is None:
+            logger.info(f"Channel with ID {channel_id} not found.")
+            return
+
+        new_name = None
+        if channel is not None:
+            # Check and replace '👤' with '👻' or vice versa
+            if "👻" in channel.name:
+                new_name = channel.name.replace("👻", "👤")
+            elif "👤" in channel.name:
+                logger.info("Player is currently 👤 and not 👻.")
+            else:
+                logger.warning("No emoji found to toggle.")
+                return
+
+            # Update the channel name
+            if new_name:
+                await channel.edit(name=new_name)
 
     async def move_channel_to_category(self, channel_id: int, category_id: int) -> bool:
         """

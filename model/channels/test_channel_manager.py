@@ -15,41 +15,84 @@ class TestChannelManager(unittest.IsolatedAsyncioTestCase):
         self.channel_manager = ChannelManager(self.mock_client)
 
     # ==============================
-    # Tests for toggle_ghost
+    # Tests for updating ghost state
     # ==============================
-    async def test_toggle_ghost_from_person_to_ghost(self):
+
+    # Tests for set_ghost
+    async def test_set_ghost_with_person(self):
         mock_channel = MagicMock()
         mock_channel.name = "Test Channel 👤"
         mock_channel.edit = AsyncMock()
         self.mock_client.get_channel.return_value = mock_channel
 
-        await self.channel_manager.toggle_ghost(123)
+        await self.channel_manager.set_ghost(123)
         mock_channel.edit.assert_called_once_with(name="Test Channel 👻")
 
-    async def test_toggle_ghost_from_ghost_to_person(self):
+    async def test_set_ghost_with_ghost(self):
         mock_channel = MagicMock()
         mock_channel.name = "Test Channel 👻"
         mock_channel.edit = AsyncMock()
         self.mock_client.get_channel.return_value = mock_channel
 
-        await self.channel_manager.toggle_ghost(123)
-        mock_channel.edit.assert_called_once_with(name="Test Channel 👤")
+        await self.channel_manager.set_ghost(123)
+        mock_channel.edit.assert_not_called()
 
-    async def test_toggle_ghost_no_emoji_found(self):
+    async def test_set_ghost_no_emoji_found(self):
         mock_channel = MagicMock()
         mock_channel.name = "Test Channel"
         mock_channel.edit = AsyncMock()
         self.mock_client.get_channel.return_value = mock_channel
 
-        await self.channel_manager.toggle_ghost(123)
+        with self.assertLogs(level='INFO', logger='discord') as log:
+            await self.channel_manager.set_ghost(123)
+            self.assertIn("No emoji found", log.output[0])
         mock_channel.edit.assert_not_called()
 
-    async def test_toggle_ghost_channel_not_found(self):
+    async def test_set_ghost_channel_not_found(self):
         self.mock_client.get_channel.return_value = None
 
         with self.assertLogs(level='INFO', logger='discord') as log:
-            await self.channel_manager.toggle_ghost(123)
+            await self.channel_manager.set_ghost(123)
             self.assertIn("Channel with ID 123 not found.", log.output[0])
+
+    # Tests for remove_ghost
+    async def test_remove_ghost_with_person(self):
+        mock_channel = MagicMock()
+        mock_channel.name = "Test Channel 👤"
+        mock_channel.edit = AsyncMock()
+        self.mock_client.get_channel.return_value = mock_channel
+
+        await self.channel_manager.remove_ghost(123)
+        mock_channel.edit.assert_not_called()
+
+    async def test_remove_ghost_with_ghost(self):
+        mock_channel = MagicMock()
+        mock_channel.name = "Test Channel 👻"
+        mock_channel.edit = AsyncMock()
+        self.mock_client.get_channel.return_value = mock_channel
+
+        await self.channel_manager.remove_ghost(123)
+        mock_channel.edit.assert_called_once_with(name="Test Channel 👤")
+
+    async def test_remove_ghost_no_emoji_found(self):
+        mock_channel = MagicMock()
+        mock_channel.name = "Test Channel"
+        mock_channel.edit = AsyncMock()
+        self.mock_client.get_channel.return_value = mock_channel
+
+        with self.assertLogs(level='INFO', logger='discord') as log:
+            await self.channel_manager.remove_ghost(123)
+            self.assertIn("No emoji found", log.output[0])
+        mock_channel.edit.assert_not_called()
+
+    async def test_remove_ghost_channel_not_found(self):
+        self.mock_client.get_channel.return_value = None
+
+        with self.assertLogs(level='INFO', logger='discord') as log:
+            await self.channel_manager.remove_ghost(123)
+            self.assertIn("Channel with ID 123 not found.", log.output[0])
+
+
 
     # ==================================
     # Tests for move_channel_to_category
