@@ -3696,25 +3696,39 @@ async def on_ready():
     global_vars.game = NULL_GAME
     global_vars.observer_role = None
 
-    global_vars.server = client.get_guild(serverid)
-    global_vars.channel = client.get_channel(channelid)
-    global_vars.whisper_channel = client.get_channel(whisperchannelid) if whisperchannelid else None
-    logger.info("channel: " + global_vars.channel.name + ", whisper_channel: " + global_vars.whisper_channel.name)
+    global_vars.server = client.get_guild(SERVER_ID)
+    global_vars.game_category = client.get_channel(GAME_CATEGORY_ID)
+    global_vars.hands_channel = client.get_channel(HANDS_CHANNEL_ID)
+    global_vars.observer_channel = client.get_channel(OBSERVER_CHANNEL_ID)
+    global_vars.info_channel = client.get_channel(INFO_CHANNEL_ID)
+    global_vars.whisper_channel = client.get_channel(WHISPER_CHANNEL_ID)
+    global_vars.channel = client.get_channel(TOWN_SQUARE_CHANNEL_ID)
+    global_vars.out_of_play_category = client.get_channel(OUT_OF_PLAY_CATEGORY_ID)
+    logger.info(logger.info(
+        f"server: {global_vars.server.name}, "
+        f"game_category: {global_vars.game_category.name if global_vars.game_category else None}, "
+        f"hands_channel: {global_vars.hands_channel.name if global_vars.hands_channel else None}, "
+        f"observer_channel: {global_vars.observer_channel.name if global_vars.observer_channel else None}, "
+        f"info_channel: {global_vars.info_channel.name if global_vars.info_channel else None}, "
+        f"whisper_channel: {global_vars.whisper_channel.name if global_vars.whisper_channel else None}, "
+        f"townsquare_channel: {global_vars.channel.name}, "
+        f"out_of_play_category: {global_vars.out_of_play_category.name if global_vars.out_of_play_category else None}, "
+    ))
 
     for role in global_vars.server.roles:
-        if role.name == playerName:
+        if role.name == PLAYER_ROLE:
             global_vars.player_role = role
-        elif role.name == travelerName:
+        elif role.name == TRAVELER_ROLE:
             global_vars.traveler_role = role
-        elif role.name == ghostName:
+        elif role.name == GHOST_ROLE:
             global_vars.ghost_role = role
-        elif role.name == deadVoteName:
+        elif role.name == DEAD_VOTE_ROLE:
             global_vars.dead_vote_role = role
-        elif role.name == gamemasterName:
+        elif role.name == STORYTELLER_ROLE:
             global_vars.gamemaster_role = role
-        elif role.name == inactiveName:
+        elif role.name == INACTIVE_ROLE:
             global_vars.inactive_role = role
-        elif role.name == observerName:
+        elif role.name == OBSERVER_ROLE:
             global_vars.observer_role = role
 
     if os.path.isfile("current_game.pckl"):
@@ -3748,7 +3762,7 @@ async def on_message(message):
             backup("current_game.pckl")
 
         # Votes
-        if message.content.startswith(prefixes):
+        if message.content.startswith(PREFIXES):
 
             if " " in message.content:
                 command = message.content[1: message.content.index(" ")].lower()
@@ -3805,7 +3819,7 @@ async def on_message(message):
     if message.guild is None:
 
         # Check if command
-        if message.content.startswith(prefixes):
+        if message.content.startswith(PREFIXES):
 
             # Generate command and arguments
             if " " in message.content:
@@ -5917,7 +5931,7 @@ async def on_message(message):
                         embed.add_field(
                             name="Formatting commands",
                             value="Prefixes on this server are {}; any multiple arguments are space-separated".format(
-                                "'" + "".join(list(prefixes)) + "'"
+                                "'" + "".join(list(PREFIXES)) + "'"
                             ),
                         )
                         embed.add_field(
@@ -6234,7 +6248,7 @@ async def on_message(message):
                 embed.add_field(
                     name="Formatting commands",
                     value="Prefixes on this server are {}; any multiple arguments are space-separated".format(
-                        "'" + "".join(list(prefixes)) + "'"
+                        "'" + "".join(list(PREFIXES)) + "'"
                     ),
                 )
                 embed.add_field(
