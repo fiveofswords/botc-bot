@@ -12,12 +12,12 @@ from typing import Optional, TypeVar, Protocol, Sequence, TypedDict
 
 import dill
 import discord
-from discord import User, Member
+from discord import User, Member, TextChannel
 
 import global_vars
 from bot_client import client, logger
 from config import *
-from model.settings import GlobalSettings
+from model.settings import GlobalSettings, GameSettings
 from time_utils import parse_deadline
 
 STORYTELLER_ALIGNMENT = "neutral"
@@ -39,7 +39,7 @@ class Game:
         self.whisper_mode = WhisperMode.ALL
         self.seatingOrderMessage = seatingOrderMessage
         self.storytellers = [
-            Player(Storyteller, STORYTELLER_ALIGNMENT, person, None)
+            Player(Storyteller, STORYTELLER_ALIGNMENT, person, st_channel=None, position=None)
             for person in global_vars.gamemaster_role.members
         ] if not skip_storytellers else []
         self.show_tally = False
@@ -901,6 +901,7 @@ class Player:
     character: Character
     alignment: str
     user: Member
+    st_channel: Optional[TextChannel]
     name: str
     nick: str
     position: Optional[int]
@@ -917,10 +918,17 @@ class Player:
 
     # Stores information about a player
 
-    def __init__(self, character: type[Character], alignment: str, user: Member, position=None):
+    def __init__(
+            self,
+            character: type[Character],
+            alignment: str,
+            user: Member,
+            st_channel: Optional[TextChannel],
+            position: Optional[int]):
         self.character = character(self)
         self.alignment = alignment
         self.user = user
+        self.st_channel = st_channel
         self.name = user.name
         self.display_name = user.display_name
         self.position = position
@@ -942,11 +950,13 @@ class Player:
     def __getstate__(self):
         state = self.__dict__.copy()
         state["user"] = self.user.id
+        state["st_channel"] = self.st_channel.id if self.st_channel else None
         return state
 
     def __setstate__(self, state):
         self.__dict__.update(state)
         self.user = global_vars.server.get_member(state["user"])
+        self.st_channel = global_vars.server.get_channel(state["st_channel"]) if state["st_channel"] else None
 
     async def morning(self):
         if global_vars.inactive_role in self.user.roles:
@@ -4040,6 +4050,7 @@ async def on_message(message):
 
             # Starts game
             elif command == "startgame":
+                game_settings: GameSettings = GameSettings.load()
 
                 if global_vars.game is not NULL_GAME:
                     await safe_send(message.author, "There's already an ongoing game!")
@@ -4072,6 +4083,8 @@ async def on_message(message):
                     if name is None:
                         return
                     users.append(name)
+
+                st_channels: list[TextChannel] = [game_settings.get_st_channel(x.id) for x in users]
 
                 await safe_send(message.author, "What are the corresponding roles? (also separated with line breaks)")
                 try:
@@ -4166,7 +4179,7 @@ async def on_message(message):
                 seating_order: list[Player] = []
                 for x in indicies:
                     seating_order.append(
-                        Player(characters[x], alignments[x], users[x], x)
+                        Player(characters[x], alignments[x], users[x], st_channels[x], position=x)
                     )
 
                 msg = await safe_send(
@@ -4630,7 +4643,7 @@ async def on_message(message):
                     await safe_send(message.author, "There's no game right now.")
                     return
 
-                if not global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
+                if global_vars.gamemaster_role not in global_vars.server.get_member(message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to add travelers.")
                     return
 
@@ -4641,6 +4654,8 @@ async def on_message(message):
                 if await get_player(person) is not None:
                     await safe_send(message.author, "{} is already in the game.".format(person.display_name if person.display_name else person.name))
                     return
+
+                st_channel = GameSettings.load().get_st_channel(person.id)
 
                 msg = await safe_send(message.author, "What role?")
                 try:
@@ -4723,7 +4738,7 @@ async def on_message(message):
                     return
 
                 await global_vars.game.add_traveler(
-                    Player(role, alignment.content.lower(), person, pos)
+                    Player(role, alignment.content.lower(), person, st_channel, position=pos)
                 )
                 if global_vars.game is not NULL_GAME:
                     backup("current_game.pckl")
@@ -5091,15 +5106,15 @@ async def on_message(message):
                 if person is None:
                     return
 
-                base_info = inspect.cleandoc("""
-                    Player: {}
-                    Character: {}
-                    Alignment: {}
-                    Alive: {}
-                    Dead Votes: {}
-                    Poisoned: {}
-                    """.format(person.display_name, person.character.role_name, person.alignment, str(not person.is_ghost),
-                               str(person.dead_votes), str(person.character.is_poisoned)))
+                base_info = inspect.cleandoc(f"""
+                    Player: {person.display_name}
+                    Character: {person.character.role_name}
+                    Alignment: {person.alignment}
+                    Alive: {not person.is_ghost}
+                    Dead Votes: {person.dead_votes}
+                    Poisoned: {person.character.is_poisoned}
+                    ST Channel: {person.st_channel.name if person.st_channel else "None"}
+                    """)
                 await safe_send(message.author, "\n".join([base_info, person.character.extra_info()]))
                 return
             # Views relevant information about a player
@@ -6587,9 +6602,10 @@ async def on_member_update(before, after):
             await safe_send(after, "Your nickname has been updated.")
             backup("current_game.pckl")
 
-        if global_vars.gamemaster_role in after.roles and not global_vars.gamemaster_role in before.roles:
-            global_vars.game.storytellers.append(Player(Storyteller, STORYTELLER_ALIGNMENT, after))
-        elif global_vars.gamemaster_role in before.roles and not global_vars.gamemaster_role in after.roles:
+        if global_vars.gamemaster_role in after.roles and global_vars.gamemaster_role not in before.roles:
+            st_player = Player(Storyteller, STORYTELLER_ALIGNMENT, after, st_channel=None, position=None)
+            global_vars.game.storytellers.append(st_player)
+        elif global_vars.gamemaster_role in before.roles and global_vars.gamemaster_role not in after.roles:
             for st in global_vars.game.storytellers:
                 if st.user.id == after.id:
                     global_vars.game.storytellers.remove(st)
