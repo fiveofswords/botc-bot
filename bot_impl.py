@@ -4076,7 +4076,8 @@ async def on_message(message):
                         return
                     users.append(name)
 
-                st_channels: list[TextChannel] = [game_settings.get_st_channel(x.id) for x in users]
+                st_channels: list[TextChannel] = [global_vars.server.get_channel(game_settings.get_st_channel(x.id)) for
+                                                  x in users]
 
                 await safe_send(message.author, "What are the corresponding roles? (also separated with line breaks)")
                 try:
@@ -4654,7 +4655,7 @@ async def on_message(message):
                     await safe_send(message.author, "{} is already in the game.".format(person.nick if person.nick else person.name))
                     return
 
-                st_channel = GameSettings.load().get_st_channel(person.id)
+                st_channel = global_vars.server.get_channel(GameSettings.load().get_st_channel(person.id))
 
                 msg = await safe_send(message.author, "What role?")
                 try:
