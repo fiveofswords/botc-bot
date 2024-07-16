@@ -8,7 +8,7 @@ import os
 import sys
 from collections import OrderedDict
 from datetime import datetime
-from typing import Optional, TypeVar, Protocol, Sequence
+from typing import Optional, TypeVar, Protocol, Sequence, TypedDict
 
 import dill
 import discord
@@ -89,12 +89,12 @@ class Game:
         messageText = "**Seating Order:**"
         for index, person in enumerate(self.seatingOrder):
 
-            if person.isGhost:
-                if person.deadVotes <= 0:
+            if person.is_ghost:
+                if person.dead_votes <= 0:
                     messageText += "\n{}".format("~~" + person.display_name + "~~ X")
                 else:
                     messageText += "\n{}".format(
-                        "~~" + person.display_name + "~~ " + "O" * person.deadVotes
+                        "~~" + person.display_name + "~~ " + "O" * person.dead_votes
                     )
 
             else:
@@ -244,7 +244,7 @@ class Day:
                 )
             await announcement.pin()
             if nominator and nominee and not isinstance(nominee.character, Traveler):
-                nominator.canNominate = False
+                nominator.can_nominate = False
             proceed = True
             # FIXME:there might be a case where a player earlier in the seating order makes the nomination not proceed
             #  but one later in the seating order may be relevant. Short circuit here stops two Riot messages, e.g.
@@ -258,7 +258,7 @@ class Day:
                 # do not proceed with collecting votes
                 return
         elif isinstance(nominee.character, Traveler):
-            nominee.canBeNominated = False
+            nominee.can_be_nominated = False
             self.votes.append(TravelerVote(nominee, nominator))
             announcement = await safe_send(
                 global_vars.channel,
@@ -271,7 +271,7 @@ class Day:
             )
             await announcement.pin()
         else:
-            nominee.canBeNominated = False
+            nominee.can_be_nominated = False
             self.votes.append(Vote(nominee, nominator))
             # FIXME:there might be a case where a player earlier in the seating order makes the nomination not proceed
             #  but one later in the seating order may be relevant. Short circuit here stops two Riot messages, e.g.
@@ -321,7 +321,7 @@ class Day:
                 )
             await announcement.pin()
             if nominator:
-                nominator.canNominate = False
+                nominator.can_nominate = False
             proceed = True
             # FIXME:there might be a case where a player earlier in the seating order makes the nomination not proceed
             #  but one later in the seating order may be relevant. Short circuit here stops two Riot messages, e.g.
@@ -342,7 +342,7 @@ class Day:
             last_vote_message = None if not has_had_multiple_votes else await global_vars.channel.fetch_message(self.votes[-2].announcements[0])
 
             for person in global_vars.game.seatingOrder:
-                for msg in person.messageHistory:
+                for msg in person.message_history:
                     if msg["from"] == person:
                         if has_had_multiple_votes:
                             if msg["time"] >= last_vote_message.created_at:
@@ -419,7 +419,7 @@ class Day:
                     await global_vars.channel.fetch_message(self.votes[-1].announcements[0]) if self.votes and self.votes[-1].announcements else None
                 )
                 for person in global_vars.game.seatingOrder:
-                    for msg in person.messageHistory:
+                    for msg in person.message_history:
                         if msg["from"] == person:
                             if has_had_multiple_votes:
                                 if msg["time"] >= last_vote_message.created_at:
@@ -483,7 +483,7 @@ class Vote:
         self.values = {person: (0, 1) for person in self.order}
         self.majority = 0.0
         for person in self.order:
-            if not person.isGhost:
+            if not person.is_ghost:
                 self.majority += 0.5
         for person in global_vars.game.seatingOrder:
             if isinstance(person.character, VoteBeginningModifier):
@@ -506,7 +506,7 @@ class Vote:
         for person in global_vars.game.seatingOrder:
             if isinstance(person.character, VoteModifier):
                 person.character.on_vote_call(toCall)
-        if toCall.isGhost and toCall.deadVotes < 1 and not player_is_active_banshee:
+        if toCall.is_ghost and toCall.dead_votes < 1 and not player_is_active_banshee:
             await self.vote(0)
             return
         if toCall.user.id in self.presetVotes:
@@ -554,7 +554,7 @@ class Vote:
         potential_banshee = the_ability(voter.character, Banshee)
         player_is_active_banshee = potential_banshee and voter.character.is_screaming
         # Check dead votes
-        if vt == 1 and voter.isGhost and voter.deadVotes < 1 and not (player_is_active_banshee and not potential_banshee.is_poisoned):
+        if vt == 1 and voter.is_ghost and voter.dead_votes < 1 and not (player_is_active_banshee and not potential_banshee.is_poisoned):
             if not operator:
                 await safe_send(voter.user, "You do not have any dead votes. Entering a no vote.")
                 await self.vote(0)
@@ -566,7 +566,7 @@ class Vote:
                     ),
                 )
             return
-        if vt == 1 and voter.isGhost and not (player_is_active_banshee and not potential_banshee.is_poisoned):
+        if vt == 1 and voter.is_ghost and not (player_is_active_banshee and not potential_banshee.is_poisoned):
             await voter.remove_dead_vote()
 
         # On vote character powers
@@ -700,7 +700,7 @@ class Vote:
         # Check dead votes
         banshee_ability = the_ability(person.character, Banshee)
         banshee_override = banshee_ability and banshee_ability.is_screaming
-        if vt > 0 and person.isGhost and person.deadVotes < 1 and not banshee_override:
+        if vt > 0 and person.is_ghost and person.dead_votes < 1 and not banshee_override:
             if not operator:
                 await safe_send(person.user, "You do not have any dead votes. Please vote no.")
             else:
@@ -722,9 +722,9 @@ class Vote:
         # Undoes an unintentional nomination
 
         if self.nominator:
-            self.nominator.canNominate = True
+            self.nominator.can_nominate = True
         if self.nominee:
-            self.nominee.canBeNominated = True
+            self.nominee.can_be_nominated = True
 
         for msg in self.announcements:
             try:
@@ -882,9 +882,9 @@ class TravelerVote:
         # Undoes an unintentional nomination
 
         if self.nominator:
-            self.nominator.canNominate = True
+            self.nominator.can_nominate = True
         if self.nominee:
-            self.nominee.canBeNominated = True
+            self.nominee.can_be_nominated = True
 
         for msg in self.announcements:
             try:
@@ -898,29 +898,46 @@ class TravelerVote:
 
 
 class Player:
+    character: Character
+    alignment: str
+    user: Member
+    name: str
+    nick: str
+    position: Optional[int]
+    is_ghost: bool
+    dead_votes: int
+    is_active: bool
+    can_nominate: bool
+    can_be_nominated: bool
+    has_skipped: bool
+    message_history: list[MessageDict]
+    riot_nominee: bool
+    last_active: float
+    is_inactive: bool
+
     # Stores information about a player
 
-    def __init__(self, character, alignment, user, position=None):
+    def __init__(self, character: type[Character], alignment: str, user: Member, position=None):
         self.character = character(self)
         self.alignment = alignment
         self.user = user
         self.name = user.name
         self.display_name = user.display_name
         self.position = position
-        self.isGhost = False
-        self.deadVotes = 0
-        self.isActive = False
-        self.canNominate = True
-        self.canBeNominated = True
-        self.hasSkipped = False
-        self.messageHistory = []
+        self.is_ghost = False
+        self.dead_votes = 0
+        self.is_active = False
+        self.can_nominate = True
+        self.can_be_nominated = True
+        self.has_skipped = False
+        self.message_history = []
         self.riot_nominee = False
         self.last_active = datetime.now().timestamp()
 
         if global_vars.inactive_role in self.user.roles:
-            self.isInactive = True
+            self.is_inactive = True
         else:
-            self.isInactive = False
+            self.is_inactive = False
 
     def __getstate__(self):
         state = self.__dict__.copy()
@@ -929,17 +946,17 @@ class Player:
 
     def __setstate__(self, state):
         self.__dict__.update(state)
-        self.user = global_vars.server.get_member(self.user)
+        self.user = global_vars.server.get_member(state["user"])
 
     async def morning(self):
         if global_vars.inactive_role in self.user.roles:
-            self.isInactive = True
+            self.is_inactive = True
         else:
-            self.isInactive = False
-        self.canNominate = not self.isGhost
-        self.canBeNominated = True
-        self.isActive = self.isInactive
-        self.hasSkipped = self.isInactive
+            self.is_inactive = False
+        self.can_nominate = not self.is_ghost
+        self.can_be_nominated = True
+        self.is_active = self.is_inactive
+        self.has_skipped = self.is_inactive
         self.riot_nominee = False
 
     async def kill(self, suppress=False, force=False):
@@ -950,8 +967,8 @@ class Player:
 
         if not dies and not force:
             return dies
-        self.isGhost = True
-        self.deadVotes = 1
+        self.is_ghost = True
+        self.dead_votes = 1
         if not suppress:
             announcement = await safe_send(
                 global_vars.channel, "{} has died.".format(self.user.mention)
@@ -1034,7 +1051,7 @@ class Player:
                 )
                 await announcement.pin()
             else:
-                if self.isGhost:
+                if self.is_ghost:
                     await safe_send(
                         global_vars.channel,
                         "{} has been executed, but is already dead.".format(
@@ -1049,7 +1066,7 @@ class Player:
                         ),
                     )
         else:
-            if self.isGhost:
+            if self.is_ghost:
                 await safe_send(
                     global_vars.channel,
                     "{} has been executed, but is already dead.".format(
@@ -1067,8 +1084,8 @@ class Player:
                 await global_vars.game.days[-1].end()
 
     async def revive(self):
-        self.isGhost = False
-        self.deadVotes = 0
+        self.is_ghost = False
+        self.dead_votes = 0
         announcement = await safe_send(
             global_vars.channel, "{} has come back to life.".format(self.user.mention)
         )
@@ -1094,7 +1111,7 @@ class Player:
             logger.info("could not send message to {}; it is {} characters long; error {}".format(self.display_name, len(content), e.text))
             return
 
-        message_to = {
+        message_to: MessageDict = {
             "from": frm,
             "to": self,
             "content": content,
@@ -1102,7 +1119,7 @@ class Player:
             "time": message.created_at,
             "jump": message.jump_url,
         }
-        message_from = {
+        message_from: MessageDict = {
             "from": frm,
             "to": self,
             "content": content,
@@ -1110,8 +1127,8 @@ class Player:
             "time": message.created_at,
             "jump": jump,
         }
-        self.messageHistory.append(message_to)
-        frm.messageHistory.append(message_from)
+        self.message_history.append(message_to)
+        frm.message_history.append(message_from)
 
         if global_vars.whisper_channel:
             await safe_send(
@@ -1132,17 +1149,17 @@ class Player:
         return
 
     async def make_inactive(self):
-        self.isInactive = True
+        self.is_inactive = True
         await self.user.add_roles(global_vars.inactive_role)
-        self.hasSkipped = True
-        self.isActive = True
+        self.has_skipped = True
+        self.is_active = True
 
         if global_vars.game.isDay:
 
             notActive = [
                 player
                 for player in global_vars.game.seatingOrder
-                if player.isActive == False and player.alignment != STORYTELLER_ALIGNMENT
+                if player.is_active == False and player.alignment != STORYTELLER_ALIGNMENT
             ]
             if len(notActive) == 1:
                 for memb in global_vars.gamemaster_role.members:
@@ -1153,44 +1170,44 @@ class Player:
                 for memb in global_vars.gamemaster_role.members:
                     await safe_send(memb, "Everyone has spoken!")
 
-            canNominate = [
+            can_nominate = [
                 player
                 for player in global_vars.game.seatingOrder
-                if player.canNominate == True
-                   and player.hasSkipped == False
+                if player.can_nominate == True
+                   and player.has_skipped == False
                    and player.alignment != STORYTELLER_ALIGNMENT
-                   and player.isGhost == False
+                   and player.is_ghost == False
             ]
-            if len(canNominate) == 1:
+            if len(can_nominate) == 1:
                 for memb in global_vars.gamemaster_role.members:
                     await safe_send(
                         memb,
                         "Just waiting on {} to nominate or skip.".format(
-                            canNominate[0].display_name
+                            can_nominate[0].display_name
                         ),
                     )
-            if len(canNominate) == 0:
+            if len(can_nominate) == 0:
                 for memb in global_vars.gamemaster_role.members:
                     await safe_send(memb, "Everyone has nominated or skipped!")
 
     async def undo_inactive(self):
-        self.isInactive = False
+        self.is_inactive = False
         await self.user.remove_roles(global_vars.inactive_role)
-        self.hasSkipped = False
+        self.has_skipped = False
 
     def update_last_active(self):
         self.last_active = datetime.now().timestamp()
 
     async def add_dead_vote(self):
-        if self.deadVotes == 0:
+        if self.dead_votes == 0:
             await self.user.add_roles(global_vars.dead_vote_role)
-        self.deadVotes += 1
+        self.dead_votes += 1
         await global_vars.game.reseat(global_vars.game.seatingOrder)
 
     async def remove_dead_vote(self):
-        if self.deadVotes == 1:
+        if self.dead_votes == 1:
             await self.user.remove_roles(global_vars.dead_vote_role)
-        self.deadVotes += -1
+        self.dead_votes += -1
         await global_vars.game.reseat(global_vars.game.seatingOrder)
 
     async def wipe_roles(self):
@@ -1490,7 +1507,7 @@ class AbilityModifier(
 
     def on_death_priority(self):
         priority = DeathModifier.UNSET
-        if not self.is_poisoned and not self.parent.isGhost:
+        if not self.is_poisoned and not self.parent.is_ghost:
             for role in self.abilities:
                 if isinstance(role, DeathModifier):
                     priority = min(priority, role.on_death_priority())
@@ -1544,7 +1561,7 @@ class Traveler(SeatingOrderModifier):
                 announcement = await safe_send(global_vars.channel, "{} has been exiled.".format(person.user.mention))
                 await announcement.pin()
             else:
-                if person.isGhost:
+                if person.is_ghost:
                     await safe_send(
                         global_vars.channel,
                         "{} has been exiled, but is already dead.".format(
@@ -1559,7 +1576,7 @@ class Traveler(SeatingOrderModifier):
                         ),
                     )
         else:
-            if person.isGhost:
+            if person.is_ghost:
                 await safe_send(
                     global_vars.channel,
                     "{} has been exiled, but is already dead.".format(
@@ -1699,7 +1716,7 @@ class Virgin(Townsfolk, NominationModifier):
             if not self.beenNominated:
                 self.beenNominated = True
                 if isinstance(nominator.character, Townsfolk) and not self.is_poisoned:
-                    if not nominator.isGhost:
+                    if not nominator.is_ghost:
                         # fixme: nominator should be executed rather than killed
                         await nominator.kill()
         return proceed
@@ -1831,14 +1848,14 @@ class TeaLady(Townsfolk, DeathModifier):
         player_count = len(global_vars.game.seatingOrder)
         ccw = self.parent.position - 1
         neighbor1 = global_vars.game.seatingOrder[ccw]
-        while neighbor1.isGhost:
+        while neighbor1.is_ghost:
             ccw = ccw - 1
             neighbor1 = global_vars.game.seatingOrder[ccw]
 
         # look right for living neighbor
         cw = self.parent.position + 1 - player_count
         neighbor2 = global_vars.game.seatingOrder[cw]
-        while neighbor2.isGhost:
+        while neighbor2.is_ghost:
             cw = cw + 1
             neighbor2 = global_vars.game.seatingOrder[cw]
 
@@ -2147,7 +2164,7 @@ class Assassin(Minion, DayStartModifier, DeathModifier):
         return "Assassinated: {}".format(self.target and self.target.display_name)
 
     async def on_day_start(self, origin, kills):
-        if self.parent.isGhost or self.target or len(global_vars.game.days) < 1:
+        if self.parent.is_ghost or self.target or len(global_vars.game.days) < 1:
             return True
         else:
             msg = await safe_send(origin, "Does {} use Assassin ability?".format(self.parent.display_name))
@@ -2196,7 +2213,7 @@ class Assassin(Minion, DayStartModifier, DeathModifier):
                 return False
 
     def on_death(self, person, dies):
-        if self.is_poisoned or self.parent.isGhost:
+        if self.is_poisoned or self.parent.is_ghost:
             return dies
         if person == self.target:
             return True
@@ -2227,7 +2244,7 @@ class Witch(Minion, NominationModifier, DayStartModifier):
 
     async def on_day_start(self, origin, kills):
         # todo: consider minions killed by vigormortis as active
-        if self.parent.isGhost == True or self.parent in kills:
+        if self.parent.is_ghost == True or self.parent in kills:
             self.witched = None
             return True
 
@@ -2253,8 +2270,8 @@ class Witch(Minion, NominationModifier, DayStartModifier):
         if (
             self.witched
             and self.witched == nominator
-            and not self.witched.isGhost
-            and not self.parent.isGhost
+            and not self.witched.is_ghost
+            and not self.parent.is_ghost
             and not self.is_poisoned
         ):
             await self.witched.kill()
@@ -2433,7 +2450,7 @@ class Matron(Traveler, DayStartModifier):
         self.role_name = "Matron"
 
     async def on_day_start(self, origin, kills):
-        if self.parent.isGhost or self.parent in kills:
+        if self.parent.is_ghost or self.parent in kills:
             return True
         # If matron is alive, then only allow neighbor whispers
         global_vars.game.whisper_mode = WhisperMode.NEIGHBORS
@@ -2524,7 +2541,7 @@ class Bureaucrat(Traveler, DayStartModifier, VoteBeginningModifier):
 
     async def on_day_start(self, origin, kills):
 
-        if self.is_poisoned or self.parent.isGhost == True or self.parent in kills:
+        if self.is_poisoned or self.parent.is_ghost == True or self.parent in kills:
             self.target = None
             return True
 
@@ -2547,7 +2564,7 @@ class Bureaucrat(Traveler, DayStartModifier, VoteBeginningModifier):
         return True
 
     def modify_vote_values(self, order, values, majority):
-        if self.target and not self.is_poisoned and not self.parent.isGhost:
+        if self.target and not self.is_poisoned and not self.parent.is_ghost:
             values[self.target] = (values[self.target][0], values[self.target][1] * 3)
 
         return order, values, majority
@@ -2563,7 +2580,7 @@ class Thief(Traveler, DayStartModifier, VoteBeginningModifier):
 
     async def on_day_start(self, origin, kills):
 
-        if self.parent.isGhost == True or self.parent in kills:
+        if self.parent.is_ghost == True or self.parent in kills:
             self.target = None
             return True
 
@@ -2586,7 +2603,7 @@ class Thief(Traveler, DayStartModifier, VoteBeginningModifier):
         return True
 
     def modify_vote_values(self, order, values, majority):
-        if self.target and not self.is_poisoned and not self.parent.isGhost:
+        if self.target and not self.is_poisoned and not self.parent.is_ghost:
             values[self.target] = (values[self.target][0], values[self.target][1] * -1)
 
         return order, values, majority
@@ -2677,7 +2694,7 @@ class Amnesiac(Townsfolk, AbilityModifier):
         return super().extra_info()
 
     def modify_vote_values(self, order, values, majority):
-        if self.player_with_votes and not self.is_poisoned and not self.parent.isGhost:
+        if self.player_with_votes and not self.is_poisoned and not self.parent.is_ghost:
             values[self.player_with_votes] = (values[self.player_with_votes][0], values[self.player_with_votes][1] * self.vote_mod)
 
         return order, values, majority
@@ -3018,7 +3035,7 @@ class Golem(Outsider, NominationModifier):
             if (
                 not isinstance(nominee.character, Demon)
                 and not self.is_poisoned
-                and not self.parent.isGhost
+                and not self.parent.is_ghost
                 and not self.hasNominated
             ):
                 await nominee.kill()
@@ -3106,7 +3123,7 @@ class OrganGrinder(Minion, NominationModifier):
         self.role_name = "Organ Grinder"
 
     async def on_nomination(self, nominee, nominator, proceed):
-        if not self.is_poisoned and not self.parent.isGhost:
+        if not self.is_poisoned and not self.parent.is_ghost:
             nominee_display_name = nominator.display_name if nominator else "the storytellers"
             nominator_mention = nominee.user.mention if nominee else "the storytellers"
             announcement = await safe_send(
@@ -3125,7 +3142,7 @@ class OrganGrinder(Minion, NominationModifier):
             last_vote_message = None if not has_had_multiple_votes else await global_vars.channel.fetch_message(
                 this_day.votes[-2].announcements[0])
             for person in global_vars.game.seatingOrder:
-                for msg in person.messageHistory:
+                for msg in person.message_history:
                     if msg["from"] == person:
                         if has_had_multiple_votes:
                             if msg["time"] >= last_vote_message.created_at:
@@ -3202,7 +3219,7 @@ class Lleech(Demon, DeathModifier, DayStartModifier):
         self.hosted = None
 
     async def on_day_start(self, origin, kills):
-        if self.hosted or self.parent.isGhost:
+        if self.hosted or self.parent.is_ghost:
             return True
 
         msg = await safe_send(origin, "Who is hosted by the Lleech?")
@@ -3226,7 +3243,7 @@ class Lleech(Demon, DeathModifier, DayStartModifier):
     def on_death(self, person, dies):
         # todo: if the host has died, the lleech should also die
         if self.parent == person and not self.is_poisoned:
-            if not (self.hosted and self.hosted.isGhost):
+            if not (self.hosted and self.hosted.is_ghost):
                 return False
         return dies
 
@@ -3270,7 +3287,7 @@ class Riot(Demon, NominationModifier):
         self.role_name = "Riot"
 
     async def on_nomination(self, nominee, nominator, proceed):
-        if self.is_poisoned or self.parent.isGhost or not nominee:
+        if self.is_poisoned or self.parent.is_ghost or not nominee:
             return proceed
 
         nominee_nick = nominator.display_name if nominator else "the storytellers"
@@ -3289,7 +3306,7 @@ class Riot(Demon, NominationModifier):
                 X: 0 for X in itertools.combinations(global_vars.game.seatingOrder, 2)
             }
             for person in global_vars.game.seatingOrder:
-                for msg in person.messageHistory:
+                for msg in person.message_history:
                     if msg["from"] == person:
                         if msg["day"] == len(global_vars.game.days):
                             if (person, msg["to"]) in message_tally:
@@ -3314,7 +3331,7 @@ class Riot(Demon, NominationModifier):
 
         # handle the soldier jinx - If Riot nominates the Soldier, the Soldier does not die
         soldier_jinx = nominator and nominee and not nominee.character.is_poisoned and has_ability(nominator.character, Riot) and has_ability(nominee.character, Soldier)
-        golem_jinx = nominator and nominee and not nominator.character.is_poisoned and not nominator.isGhost and has_ability(nominee.character, Riot) and has_ability(nominator.character, Golem)
+        golem_jinx = nominator and nominee and not nominator.character.is_poisoned and not nominator.is_ghost and has_ability(nominee.character, Riot) and has_ability(nominator.character, Golem)
         if not (nominator):
             if this_day.st_riot_kill_override:
                 this_day.st_riot_kill_override = False
@@ -3334,7 +3351,7 @@ class Riot(Demon, NominationModifier):
                 p.riot_nominee = False
         if nominee:
             nominee.riot_nominee = True
-            nominee.canNominate = True
+            nominee.can_nominate = True
 
         msg = await safe_send(
             global_vars.channel,
@@ -3541,14 +3558,14 @@ async def make_active(user):
 
     person.update_last_active()
 
-    if person.isActive or not global_vars.game.isDay:
+    if person.is_active or not global_vars.game.isDay:
         return
 
-    person.isActive = True
+    person.is_active = True
     notActive = [
         player
         for player in global_vars.game.seatingOrder
-        if player.isActive == False and player.alignment != STORYTELLER_ALIGNMENT
+        if player.is_active == False and player.alignment != STORYTELLER_ALIGNMENT
     ]
     if len(notActive) == 1:
         for memb in global_vars.gamemaster_role.members:
@@ -3563,21 +3580,21 @@ async def make_active(user):
 async def cannot_nominate(user):
     # Uses user's nomination
 
-    (await get_player(user)).canNominate = False
-    canNominate = [
+    (await get_player(user)).can_nominate = False
+    can_nominate = [
         player
         for player in global_vars.game.seatingOrder
-        if player.canNominate == True
-           and player.hasSkipped == False
-           and player.isGhost == False
+        if player.can_nominate == True
+           and player.has_skipped == False
+           and player.is_ghost == False
     ]
-    if len(canNominate) == 1:
+    if len(can_nominate) == 1:
         for memb in global_vars.gamemaster_role.members:
             await safe_send(
                 memb,
-                "Just waiting on {} to nominate or skip.".format(canNominate[0].display_name),
+                "Just waiting on {} to nominate or skip.".format(can_nominate[0].display_name),
             )
-    if len(canNominate) == 0:
+    if len(can_nominate) == 0:
         for memb in global_vars.gamemaster_role.members:
             await safe_send(memb, "Everyone has nominated or skipped!")
 
@@ -4314,7 +4331,7 @@ async def on_message(message):
                 if person is None:
                     return
 
-                if person.isGhost:
+                if person.is_ghost:
                     await safe_send(message.author, "{} is already dead.".format(person.display_name))
                     return
 
@@ -4387,7 +4404,7 @@ async def on_message(message):
                 if person is None:
                     return
 
-                if not person.isGhost:
+                if not person.is_ghost:
                     await safe_send(message.author, "{} is not dead.".format(person.display_name))
                     return
 
@@ -4848,7 +4865,7 @@ async def on_message(message):
 
                 if global_vars.game.days[-1].votes[-1].nominator:
                     # check for storyteller
-                    global_vars.game.days[-1].votes[-1].nominator.canNominate = True
+                    global_vars.game.days[-1].votes[-1].nominator.can_nominate = True
 
                 await global_vars.game.days[-1].votes[-1].delete()
                 await global_vars.game.days[-1].open_pms()
@@ -4970,7 +4987,7 @@ async def on_message(message):
                     X: 0 for X in itertools.combinations(global_vars.game.seatingOrder, 2)
                 }
                 for person in global_vars.game.seatingOrder:
-                    for msg in person.messageHistory:
+                    for msg in person.message_history:
                         if msg["from"] == person:
                             if msg["time"] >= origin_msg.created_at:
                                 if (person, msg["to"]) in message_tally:
@@ -5011,7 +5028,7 @@ async def on_message(message):
                 day = 1
                 counts = OrderedDict([(player, 0) for player in global_vars.game.seatingOrder])
 
-                for msg in person.messageHistory:
+                for msg in person.message_history:
                     if msg["day"] != day:
                         # share summary and reset counts
                         message_text = "Day {}\n".format(day)
@@ -5081,8 +5098,8 @@ async def on_message(message):
                     Alive: {}
                     Dead Votes: {}
                     Poisoned: {}
-                    """.format(person.display_name, person.character.role_name, person.alignment, str(not person.isGhost),
-                               str(person.deadVotes), str(person.character.is_poisoned)))
+                    """.format(person.display_name, person.character.role_name, person.alignment, str(not person.is_ghost),
+                               str(person.dead_votes), str(person.character.is_poisoned)))
                 await safe_send(message.author, "\n".join([base_info, person.character.extra_info()]))
                 return
             # Views relevant information about a player
@@ -5134,11 +5151,11 @@ async def on_message(message):
                     message_text += "\n{}: {}".format(
                         player.display_name, player.character.role_name
                     )
-                    if player.character.is_poisoned and player.isGhost:
+                    if player.character.is_poisoned and player.is_ghost:
                         message_text += " (Poisoned, Dead)"
-                    elif player.character.is_poisoned and not player.isGhost:
+                    elif player.character.is_poisoned and not player.is_ghost:
                         message_text += " (Poisoned)"
-                    elif not player.character.is_poisoned and player.isGhost:
+                    elif not player.character.is_poisoned and player.is_ghost:
                         message_text += " (Dead)"
 
                 await safe_send(message.author, message_text)
@@ -5167,7 +5184,7 @@ async def on_message(message):
                 notActive = [
                     player
                     for player in global_vars.game.seatingOrder
-                    if player.isActive == False and player.alignment != STORYTELLER_ALIGNMENT
+                    if player.is_active == False and player.alignment != STORYTELLER_ALIGNMENT
                 ]
 
                 if notActive == []:
@@ -5192,20 +5209,20 @@ async def on_message(message):
                     await safe_send(message.author, "It's not day right now.")
                     return
 
-                canNominate = [
+                can_nominate = [
                     player
                     for player in global_vars.game.seatingOrder
-                    if player.canNominate == True
-                       and player.hasSkipped == False
+                    if player.can_nominate == True
+                       and player.has_skipped == False
                        and player.alignment != STORYTELLER_ALIGNMENT
-                       and player.isGhost == False
+                       and player.is_ghost == False
                 ]
-                if canNominate == []:
+                if can_nominate == []:
                     await safe_send(message.author, "Everyone has nominated or skipped!")
                     return
 
                 message_text = "These players have not nominated or skipped:"
-                for player in canNominate:
+                for player in can_nominate:
                     message_text += "\n{}".format(player.display_name)
 
                 await safe_send(message.author, message_text)
@@ -5222,17 +5239,17 @@ async def on_message(message):
                     await safe_send(message.author, "It's not day right now.")
                     return
 
-                canBeNominated = [
+                can_be_nominated = [
                     player
                     for player in global_vars.game.seatingOrder
-                    if player.canBeNominated == True
+                    if player.can_be_nominated == True
                 ]
-                if canBeNominated == []:
+                if can_be_nominated == []:
                     await safe_send(message.author, "Everyone has been nominated!")
                     return
 
                 message_text = "These players have not been nominated:"
-                for player in canBeNominated:
+                for player in can_be_nominated:
                     message_text += "\n{}".format(player.display_name)
 
                 await safe_send(message.author, message_text)
@@ -5294,7 +5311,7 @@ async def on_message(message):
                             player for player in global_vars.game.seatingOrder
                             if player.character.role_name == "Riot"
                             if not player.character.is_poisoned
-                            if not player.isGhost
+                            if not player.is_ghost
                         ]) > 0:
                             # todo: ask if the nominee dies
                             st_user = message.author
@@ -5330,7 +5347,7 @@ async def on_message(message):
                         if not nominator_player.riot_nominee:
                             await safe_send(message.author, "Riot is active, you may not nominate.")
                             return
-                    if nominator_player.isGhost and not traveler_called and not nominator_player.riot_nominee and not banshee_override:
+                    if nominator_player.is_ghost and not traveler_called and not nominator_player.riot_nominee and not banshee_override:
                         await safe_send(
                             message.author, "You are dead, and so cannot nominate."
                         )
@@ -5338,7 +5355,7 @@ async def on_message(message):
                     if banshee_override and banshee_ability_of_player.remaining_nominations < 1:
                         await safe_send(message.author, "You have already nominated twice.")
                         return
-                    if not nominator_player.canNominate and not traveler_called and not banshee_override:
+                    if not nominator_player.can_nominate and not traveler_called and not banshee_override:
                         await safe_send(message.author, "You have already nominated.")
                         return
 
@@ -5364,7 +5381,7 @@ async def on_message(message):
                     return
 
                 #  make sure that the nominee has not been nominated yet
-                if not person.canBeNominated:
+                if not person.can_be_nominated:
                     await safe_send(message.author, "{} has already been nominated".format(person.display_name))
                     return
 
@@ -5759,7 +5776,7 @@ async def on_message(message):
                             )
                         )
                         day = 1
-                        for msg in person.messageHistory:
+                        for msg in person.message_history:
                             if len(message_text) > 1500:
                                 await safe_send(message.author, message_text)
                                 message_text = ""
@@ -5795,7 +5812,7 @@ async def on_message(message):
                         person1.display_name, person2.display_name
                     )
                     day = 1
-                    for msg in person1.messageHistory:
+                    for msg in person1.message_history:
                         if not (
                             (msg["from"] == person1 and msg["to"] == person2)
                             or (msg["to"] == person1 and msg["from"] == person2)
@@ -5835,7 +5852,7 @@ async def on_message(message):
                     )
                 )
                 day = 1
-                for msg in (await get_player(message.author)).messageHistory:
+                for msg in (await get_player(message.author)).message_history:
                     if not msg["from"] == person and not msg["to"] == person:
                         continue
                     if len(message_text) > 1500:
@@ -5868,7 +5885,7 @@ async def on_message(message):
                     history = []
                     people = []
                     for person in global_vars.game.seatingOrder:
-                        for msg in person.messageHistory:
+                        for msg in person.message_history:
                             if not msg["from"] in people and not msg["to"] in people:
                                 history.append(msg)
                         people.append(person)
@@ -5906,7 +5923,7 @@ async def on_message(message):
                     )
                 )
                 day = 1
-                for msg in (await get_player(message.author)).messageHistory:
+                for msg in (await get_player(message.author)).message_history:
                     if not (argument.lower() in msg["content"].lower()):
                         continue
                     while msg["day"] != day:
@@ -6430,7 +6447,7 @@ async def on_message_edit(before, after):
             banshee_ability_of_player = the_ability(message_author_player.character, Banshee) if message_author_player else None
             banshee_override = banshee_ability_of_player and banshee_ability_of_player.is_screaming and not banshee_ability_of_player.is_poisoned
 
-            if message_author_player.isGhost and not traveler_called and not message_author_player.riot_nominee and not banshee_override:
+            if message_author_player.is_ghost and not traveler_called and not message_author_player.riot_nominee and not banshee_override:
                 await safe_send(global_vars.channel, "You are dead, and so cannot nominate.")
                 await after.unpin()
                 return
@@ -6442,7 +6459,7 @@ async def on_message_edit(before, after):
                 await safe_send(global_vars.channel, "Riot is active. It is not your turn to nominate.")
                 await after.unpin()
                 return
-            if not (message_author_player).canNominate and not traveler_called and not banshee_override:
+            if not (message_author_player).can_nominate and not traveler_called and not banshee_override:
                 await safe_send(global_vars.channel, "You have already nominated.")
                 await after.unpin()
                 return
@@ -6466,7 +6483,7 @@ async def on_message_edit(before, after):
 
             if len(names) == 1:
 
-                if not names[0].canBeNominated:
+                if not names[0].can_be_nominated:
                     await safe_send(
                         global_vars.channel, "{} has already been nominated.".format(names[0].display_name)
                     )
@@ -6513,27 +6530,27 @@ async def on_message_edit(before, after):
                 await after.unpin()
                 return
 
-            (message_author_player).hasSkipped = True
+            (message_author_player).has_skipped = True
             if global_vars.game is not NULL_GAME:
                 backup("current_game.pckl")
 
-            canNominate = [
+            can_nominate = [
                 player
                 for player in global_vars.game.seatingOrder
-                if player.canNominate == True
-                   and player.hasSkipped == False
+                if player.can_nominate == True
+                   and player.has_skipped == False
                    and player.alignment != STORYTELLER_ALIGNMENT
-                   and player.isGhost == False
+                   and player.is_ghost == False
             ]
-            if len(canNominate) == 1:
+            if len(can_nominate) == 1:
                 for memb in global_vars.gamemaster_role.members:
                     await safe_send(
                         memb,
                         "Just waiting on {} to nominate or skip.".format(
-                            canNominate[0].display_name
+                            can_nominate[0].display_name
                         ),
                     )
-            if len(canNominate) == 0:
+            if len(can_nominate) == 0:
                 for memb in global_vars.gamemaster_role.members:
                     await safe_send(memb, "Everyone has nominated or skipped!")
 
@@ -6546,7 +6563,7 @@ async def on_message_edit(before, after):
 
         # Unskip
         if "skip" in after.content.lower():
-            (message_author_player).hasSkipped = False
+            (message_author_player).has_skipped = False
             if global_vars.game is not NULL_GAME:
                 backup("current_game.pckl")
 
@@ -6586,3 +6603,13 @@ class HasNick(Protocol):
 
 
 T = TypeVar('T', bound=HasNick)
+
+# Can't use cleaner class style because 'from' is not a legal field name
+MessageDict = TypedDict('MessageDict',
+                        {'from': str,
+                         "to": Player,
+                         "content": str,
+                         "day": int,
+                         "time": datetime,
+                         "jump": str}
+                        )
