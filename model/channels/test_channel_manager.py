@@ -118,6 +118,8 @@ class TestChannelManager(unittest.IsolatedAsyncioTestCase):
         mock_channel = MagicMock(spec=discord.TextChannel)
         self.mock_category.create_text_channel.return_value = mock_channel
         self.channel_manager._st_role = MagicMock(spec=discord.Role)
+        self.mock_member.display_name = "test-member"
+        self.channel_manager._channel_suffix = "test-suffix"
 
         # Setup expected permissions
         expected_overwrites = {
@@ -137,6 +139,7 @@ class TestChannelManager(unittest.IsolatedAsyncioTestCase):
         self.mock_category.create_text_channel.assert_called_once()
         _, kwargs = self.mock_category.create_text_channel.call_args
         self.assertTrue('overwrites' in kwargs)
+        self.assertEqual(kwargs['name'], 'test-member-x-test-suffix')
         for key, value in expected_overwrites.items():
             self.assertTrue(key in kwargs['overwrites'])
             self.assertEqual(kwargs['overwrites'][key].read_messages, value.read_messages)

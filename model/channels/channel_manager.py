@@ -5,7 +5,6 @@ import logging
 
 from discord import Guild, CategoryChannel, Member, TextChannel, Client
 
-import config
 import global_vars
 from model.settings import GameSettings
 
@@ -37,7 +36,7 @@ class ChannelManager:
         self._info_channel = global_vars.info_channel
         self._whisper_channel = global_vars.whisper_channel
         self._town_square_channel = global_vars.channel
-        self._channel_suffix = config.CHANNEL_SUFFIX
+        self._channel_suffix = global_vars.channel_suffix
         self._st_role = global_vars.gamemaster_role
 
     async def create_channel(self, game_settings: GameSettings, player: Member) -> TextChannel:

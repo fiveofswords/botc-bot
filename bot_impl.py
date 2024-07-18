@@ -3734,6 +3734,7 @@ async def on_ready():
     global_vars.whisper_channel = client.get_channel(WHISPER_CHANNEL_ID)
     global_vars.channel = client.get_channel(TOWN_SQUARE_CHANNEL_ID)
     global_vars.out_of_play_category = client.get_channel(OUT_OF_PLAY_CATEGORY_ID)
+    global_vars.channel_suffix = CHANNEL_SUFFIX
     logger.info(logger.info(
         f"server: {global_vars.server.name}, "
         f"game_category: {global_vars.game_category.name if global_vars.game_category else None}, "
