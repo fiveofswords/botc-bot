@@ -17,6 +17,7 @@ from discord import User, Member, TextChannel
 import global_vars
 from bot_client import client, logger
 from config import *
+from model.channels import ChannelManager
 from model.settings import GlobalSettings, GameSettings
 from time_utils import parse_deadline
 
@@ -4004,40 +4005,47 @@ async def on_message(message):
                 if player is None:
                     return
 
-                if not global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
+                if global_vars.gamemaster_role not in global_vars.server.get_member(message.author.id).roles:
                     await safe_send(message.author, "You don't have permission to do that.")
                     return
 
-                botNick = global_vars.server.get_member(client.user.id).nick
-                channelName = global_vars.channel.name
-                serverName = global_vars.server.name
+                bot_nick = global_vars.server.get_member(client.user.id).nick
+                channel_name = global_vars.channel.name
+                server_name = global_vars.server.name
                 storytellers = [st.display_name for st in global_vars.gamemaster_role.members]
 
                 if len(storytellers) == 1:
-                    text = storytellers[0]
+                    sts = storytellers[0]
                 elif len(storytellers) == 2:
-                    text = storytellers[0] + " and " + storytellers[1]
+                    sts = storytellers[0] + " and " + storytellers[1]
                 else:
-                    text = (
+                    sts = (
                         ", ".join([x for x in storytellers[:-1]])
                         + ", and "
                         + storytellers[-1]
                     )
 
+                game_settings = GameSettings.load()
+                st_channel = client.get_channel(game_settings.get_st_channel(player.id))
+                if not st_channel:
+                    st_channel = await ChannelManager(client).create_channel(game_settings, player)
+                    await safe_send(message.author, f'Created the channel {st_channel.name} for {player.display_name} successfully!')
+
                 await safe_send(
                     player,
-                    "Hello, {playerNick}! {storytellerNick} welcomes you to Blood on the Clocktower on Discord! I'm {botNick}, the bot used on #{channelName} in {serverName} to run games.\n\nThis is where you'll perform your private messaging during the game. To send a pm to a player, type `@pm [name]`.\n\nFor more info, type `@help`, or ask the storyteller(s): {storytellers}.".format(
-                        botNick=botNick,
-                        channelName=channelName,
-                        serverName=serverName,
-                        storytellers=text,
-                        playerNick=player.display_name,
-                        storytellerNick=global_vars.server.get_member(
+                    "Hello, {player_nick}! {storyteller_nick} welcomes you to Blood on the Clocktower on Discord! I'm {bot_nick}, the bot used on #{channel_name} in {server_name} to run games. Your Storyteller channel for this game is #{st_channel}\n\nThis is where you'll perform your private messaging during the game. To send a pm to a player, type `@pm [name]`.\n\nFor more info, type `@help`, or ask the storyteller(s): {storytellers}.".format(
+                        bot_nick=bot_nick,
+                        channel_name=channel_name,
+                        server_name=server_name,
+                        st_channel=st_channel,
+                        storytellers=sts,
+                        player_nick=player.display_name,
+                        storyteller_nick=global_vars.server.get_member(
                             message.author.id
                         ).display_name,
                     ),
                 )
-                await safe_send(message.author, "Welcomed {} successfully!".format(player.display_name))
+                await safe_send(message.author, f'Welcomed {player.display_name} successfully!')
                 return
 
             # Starts game

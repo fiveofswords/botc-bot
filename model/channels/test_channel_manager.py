@@ -4,15 +4,20 @@ from unittest.mock import MagicMock, AsyncMock
 import discord
 
 from model.channels.channel_manager import ChannelManager
+from model.settings import GameSettings
 
 
 class TestChannelManager(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self):
         self.mock_client = MagicMock(spec=discord.Client)
+        self.channel_manager = ChannelManager(self.mock_client)
+        self.mock_member = MagicMock(spec=discord.Member)
+        self.mock_settings = MagicMock(spec=GameSettings)
         self.mock_channel = MagicMock(spec=discord.TextChannel)
         self.mock_category = MagicMock(spec=discord.CategoryChannel)
-        self.channel_manager = ChannelManager(self.mock_client)
+        self.mock_server = MagicMock(spec=discord.Guild)
+        self.mock_everyone_category = MagicMock(spec=discord.CategoryChannel)
 
     # ==============================
     # Tests for updating ghost state
@@ -92,8 +97,6 @@ class TestChannelManager(unittest.IsolatedAsyncioTestCase):
             await self.channel_manager.remove_ghost(123)
             self.assertIn("Channel with ID 123 not found.", log.output[0])
 
-
-
     # ==================================
     # Tests for move_channel_to_category
     # ==================================
@@ -133,6 +136,38 @@ class TestChannelManager(unittest.IsolatedAsyncioTestCase):
             result = await self.channel_manager.move_channel_to_category(123, 456)
             self.assertFalse(result)
             self.assertIn("An error occurred while moving channel", log.output[0])
+
+    async def test_create_channel(self):
+        self.channel_manager._out_of_play_category = self.mock_category
+        self.channel_manager._server = self.mock_server
+        self.mock_server.default_role = self.mock_everyone_category
+        self.mock_category.create_text_channel.return_value = self.mock_channel
+        self.channel_manager._st_role = MagicMock(spec=discord.Role)
+
+        # Setup expected permissions
+        expected_overwrites = {
+            self.mock_everyone_category: discord.PermissionOverwrite(read_messages=False, send_messages=False),
+            self.channel_manager._client.user: discord.PermissionOverwrite(read_messages=True,
+                                                                           send_messages=True),
+            self.channel_manager._st_role: discord.PermissionOverwrite(read_messages=True,
+                                                                       send_messages=True),
+            self.mock_member: discord.PermissionOverwrite(read_messages=True,
+                                                          send_messages=True),
+        }
+
+        # Execute the method
+        result = await self.channel_manager.create_channel(self.mock_settings, self.mock_member)
+
+        # Assertions
+        self.mock_category.create_text_channel.assert_called_once()
+        _, kwargs = self.mock_category.create_text_channel.call_args
+        self.assertTrue('overwrites' in kwargs)
+        for key, value in expected_overwrites.items():
+            self.assertTrue(key in kwargs['overwrites'])
+            self.assertEqual(kwargs['overwrites'][key].read_messages, value.read_messages)
+            self.assertEqual(kwargs['overwrites'][key].send_messages, value.send_messages)
+        self.assertIsInstance(result, discord.TextChannel)
+        self.assertEqual(result, self.mock_channel)
 
 
 if __name__ == '__main__':

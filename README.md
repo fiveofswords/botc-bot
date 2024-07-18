@@ -23,6 +23,9 @@ STORYTELLER_ROLE = "gamemaster"
 INACTIVE_ROLE = "inactive"
 OBSERVER_ROLE = "observer"
 
+# Channel Creation Metadata
+CHANNEL_SUFFIX = 'test'
+
 PREFIXES = (',', '@')
 ```
 Switch the values for your own server's IDs and names.

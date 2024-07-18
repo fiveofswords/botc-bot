@@ -19,4 +19,7 @@ STORYTELLER_ROLE = "botc-storyteller"
 INACTIVE_ROLE = "botc-inactive"
 OBSERVER_ROLE = "botc-observer"
 
+# Channel Creation Metadata
+CHANNEL_SUFFIX = 'test'
+
 PREFIXES = (',', '@')
