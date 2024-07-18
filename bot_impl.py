@@ -4037,7 +4037,8 @@ async def on_message(message):
                 st_channel = client.get_channel(game_settings.get_st_channel(player.id))
                 if not st_channel:
                     st_channel = await ChannelManager(client).create_channel(game_settings, player)
-                    await safe_send(message.author, f'Created the channel {st_channel.name} for {player.display_name} successfully!')
+                    await safe_send(message.author,
+                                    f'Successfully created the channel https://discord.com/channels/{global_vars.server.id}/{st_channel.id}!')
 
                 await safe_send(
                     player,
@@ -5132,7 +5133,7 @@ async def on_message(message):
                     Alive: {not person.is_ghost}
                     Dead Votes: {person.dead_votes}
                     Poisoned: {person.character.is_poisoned}
-                    ST Channel: {person.st_channel.name if person.st_channel else "None"}
+                    ST Channel: {f"https://discord.com/channels/{global_vars.server.id}/{person.st_channel.id}" if person.st_channel else "None"}
                     """)
                 await safe_send(message.author, "\n".join([base_info, person.character.extra_info()]))
                 return
