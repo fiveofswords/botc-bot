@@ -38,7 +38,6 @@ jobs:
         run: |
           # Create an empty token file to prevent test breakage when creating a Client object in bot_client.py
           touch token.txt
-          touch config.py
       - name: Test with pytest
         run: |
           pytest
