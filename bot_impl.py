@@ -4219,6 +4219,10 @@ async def on_message(message):
 
                 script = Script(script_list)
 
+                await safe_send(message.author, "Setting up channels for game...")
+                await ChannelManager(client).setup_channels_in_order(st_channels)
+                await safe_send(message.author, "Channels setup successfully!")
+
                 await safe_send(
                     global_vars.channel,
                     "{}, welcome to Blood on the Clocktower! Go to sleep.".format(
