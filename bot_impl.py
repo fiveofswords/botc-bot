@@ -4084,8 +4084,14 @@ async def on_message(message):
                         return
                     users.append(name)
 
-                st_channels: list[TextChannel] = [global_vars.server.get_channel(game_settings.get_st_channel(x.id)) for
+                st_channels: list[TextChannel] = [client.get_channel(game_settings.get_st_channel(x.id)) for
                                                   x in users]
+
+                players_missing_channels = [users[index] for index, channel in enumerate(st_channels) if channel is None]
+                if players_missing_channels:
+                    await safe_send(message.author,
+                                    f"Missing channels for: {', '.join([x.display_name for x in players_missing_channels])}.  Please run `@welcome` for those players to create channels for them.")
+                    return
 
                 await safe_send(message.author, "What are the corresponding roles? (also separated with line breaks)")
                 try:
