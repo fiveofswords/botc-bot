@@ -1,5 +1,13 @@
+from typing import Optional
+
 import discord
 import logging
+
+from discord import Guild, CategoryChannel, Member
+
+import config
+import global_vars
+from model.settings import GameSettings
 
 logger = logging.getLogger('discord')
 
@@ -8,9 +16,34 @@ class ChannelManager:
     """Encapsulates logic for managing Discord Channels."""
 
     _client: discord.client.Client
+    _server: Guild
+    _out_of_play_category: Optional[CategoryChannel]
+    _st_role: discord.Role
+    _channel_suffix: str
 
     def __init__(self, client: discord.client.Client):
         self._client = client
+        self._server = global_vars.server
+        self._out_of_play_category = global_vars.out_of_play_category
+        self._channel_suffix = config.CHANNEL_SUFFIX
+        self._st_role = global_vars.gamemaster_role
+
+    async def create_channel(self, game_settings:GameSettings, player: Member) -> discord.TextChannel:
+        """
+        Creates a new text for the given player, and puts it in the out of play category.
+        """
+
+        new_channel = await self._out_of_play_category.create_text_channel(
+            name=f"{player.display_name}-x-{self._channel_suffix}",
+            overwrites= {
+                self._server.default_role: discord.PermissionOverwrite(read_messages=False, send_messages=False),
+                self._st_role: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+                self._client.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+                player: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+            })
+        logger.info(f"Channel {new_channel.name} has been created.")
+        game_settings.set_st_channel(player.id, new_channel.id).save()
+        return new_channel
 
     async def set_ghost(self, channel_id: int):
         """
@@ -99,5 +132,6 @@ class ChannelManager:
             logger.info(f"Channel {channel.name} has been moved to category {new_category.name}.")
             return True
         except discord.HTTPException as e:
-            logger.warning(f"An error occurred while moving channel {channel.name} to category {new_category.name}: {e}.")
+            logger.warning(
+                f"An error occurred while moving channel {channel.name} to category {new_category.name}: {e}.")
             return False

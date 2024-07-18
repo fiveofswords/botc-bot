@@ -18,25 +18,28 @@ class GameSettings:
     # ==============================
     # ST Room Settings
     # ==============================
-    def set_st_channel(self, player_id: int, channel_id: int) -> None:
+    def set_st_channel(self, player_id: int, channel_id: int) -> GameSettings:
         """Set the channel ID for the ST room for a specific player."""
         self._settings.update_settings(player_id, {"st_channel": channel_id})
+        return self
 
     def get_st_channel(self, player_id: int) -> int:
         """Get the channel ID for the ST room for a specific player."""
         return self._settings.get_settings(player_id, "st_channel")
 
-    def clear_st_channel(self, player_id: int) -> None:
+    def clear_st_channel(self, player_id: int) -> GameSettings:
         """Clear the channel ID for the ST room for a specific player."""
         self._settings.clear_setting(player_id, "st_channel")
+        return self
 
     # ==============================
     # Serialization/Deserialization
     # ==============================
 
-    def save(self) -> None:
+    def save(self) -> GameSettings:
         """Save settings to a JSON file."""
         self._settings.save()
+        return self
 
     @classmethod
     def load(cls) -> GameSettings:

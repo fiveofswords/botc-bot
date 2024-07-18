@@ -19,5 +19,8 @@ TRAVELER_ROLE = 'Traveller (Teensyville)'
 OBSERVER_ROLE = 'Observer (Teensyville)'
 INACTIVE_ROLE = 'Inactive'
 
+# Channel Creation Metadata
+CHANNEL_SUFFIX = 'teensy'
+
 # Prefixes
 PREFIXES = ('@', ',')
