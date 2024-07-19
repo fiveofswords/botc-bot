@@ -3411,7 +3411,9 @@ async def generate_possibilities(text, people):
     possibilities = []
     for person in people:
         if (
-            person.nick is not None and text.lower() in person.nick.lower()
+                person.nick is not None and text.lower() in person.nick.lower()
+        ) or (
+                person.global_name is not None and text.lower() in person.global_name.lower()
         ) or text.lower() in person.name.lower():
             possibilities.append(person)
     return possibilities
