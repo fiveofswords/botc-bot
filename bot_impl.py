@@ -912,6 +912,7 @@ class Player:
     can_nominate: bool
     can_be_nominated: bool
     has_skipped: bool
+    has_checked_in: bool
     message_history: list[MessageDict]
     riot_nominee: bool
     last_active: float
@@ -939,6 +940,7 @@ class Player:
         self.can_nominate = True
         self.can_be_nominated = True
         self.has_skipped = False
+        self.has_checked_in = False
         self.message_history = []
         self.riot_nominee = False
         self.last_active = datetime.now().timestamp()
@@ -968,6 +970,7 @@ class Player:
         self.can_be_nominated = True
         self.is_active = self.is_inactive
         self.has_skipped = self.is_inactive
+        self.has_checked_in = self.is_inactive
         self.riot_nominee = False
 
     async def kill(self, suppress=False, force=False):
@@ -1164,20 +1167,21 @@ class Player:
         await self.user.add_roles(global_vars.inactive_role)
         self.has_skipped = True
         self.is_active = True
+        self.has_checked_in = True
 
         if global_vars.game.isDay:
 
-            notActive = [
+            not_active = [
                 player
                 for player in global_vars.game.seatingOrder
                 if player.is_active == False and player.alignment != STORYTELLER_ALIGNMENT
             ]
-            if len(notActive) == 1:
+            if len(not_active) == 1:
                 for memb in global_vars.gamemaster_role.members:
                     await safe_send(
-                        memb, "Just waiting on {} to speak.".format(notActive[0].display_name)
+                        memb, "Just waiting on {} to speak.".format(not_active[0].display_name)
                     )
-            if len(notActive) == 0:
+            if len(not_active) == 0:
                 for memb in global_vars.gamemaster_role.members:
                     await safe_send(memb, "Everyone has spoken!")
 
@@ -1201,10 +1205,14 @@ class Player:
                 for memb in global_vars.gamemaster_role.members:
                     await safe_send(memb, "Everyone has nominated or skipped!")
 
+        if not global_vars.game.isDay:
+            await check_and_print_if_one_or_zero_to_check_in()
+
     async def undo_inactive(self):
         self.is_inactive = False
         await self.user.remove_roles(global_vars.inactive_role)
         self.has_skipped = False
+        self.has_checked_in = False
 
     def update_last_active(self):
         self.last_active = datetime.now().timestamp()
@@ -3547,7 +3555,7 @@ async def yes_no(user, text):
         )
 
 
-async def get_player(user):
+async def get_player(user) -> Optional[Player]:
     # returns the Player object corresponding to user
     if global_vars.game is NULL_GAME:
         return
@@ -3557,6 +3565,24 @@ async def get_player(user):
             return person
 
     return None
+
+
+async def active_in_st_chat(user):
+    # Makes user active
+
+    person: Player = await get_player(user)
+
+    if not person:
+        return
+
+    # updates last active timestamp when posting in ST chat.
+    person.update_last_active()
+
+    if person.has_checked_in or global_vars.game.isDay:
+        return
+
+    person.has_checked_in = True
+    await check_and_print_if_one_or_zero_to_check_in()
 
 
 async def make_active(user):
@@ -3794,7 +3820,7 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-    # Update activity
+    # Update activity from town square message
     if message.channel == global_vars.channel:
         if global_vars.game is not NULL_GAME:
             await make_active(message.author)
@@ -3853,6 +3879,13 @@ async def on_message(message):
                 if global_vars.game is not NULL_GAME:
                     backup("current_game.pckl")
                 return
+
+    # Update activity from a player's Storyteller channel
+    if global_vars.game is not NULL_GAME:
+        if message.channel.id == GameSettings.load().get_st_channel(message.author.id):
+            await active_in_st_chat(message.author)
+            backup("current_game.pckl")
+            return
 
     # Responding to dms
     if message.guild is None:
@@ -4657,6 +4690,54 @@ async def on_message(message):
                     backup("current_game.pckl")
                 return
 
+            # Marks as checked in
+            elif command == "checkin":
+
+                if global_vars.game is NULL_GAME:
+                    await safe_send(message.author, "There's no game right now.")
+                    return
+
+                if global_vars.gamemaster_role not in global_vars.server.get_member(message.author.id).roles:
+                    await safe_send(message.author, "You don't have permission to mark a player cheacked in.")
+                    return
+
+                person = await select_player(
+                    message.author, argument, global_vars.game.seatingOrder
+                )
+                if person is None:
+                    return
+
+                person.has_checked_in = True
+                if global_vars.game is not NULL_GAME:
+                    backup("current_game.pckl")
+
+                await check_and_print_if_one_or_zero_to_check_in()
+                return
+
+            # Marks as not checked in
+            elif command == "undocheckin":
+
+                if global_vars.game is NULL_GAME:
+                    await safe_send(message.author, "There's no game right now.")
+                    return
+
+                if global_vars.gamemaster_role not in global_vars.server.get_member(message.author.id).roles:
+                    await safe_send(message.author, "You don't have permission to make players active.")
+                    return
+
+                person = await select_player(
+                    message.author, argument, global_vars.game.seatingOrder
+                )
+                if person is None:
+                    return
+
+                person.has_checked_in = False
+                if global_vars.game is not NULL_GAME:
+                    backup("current_game.pckl")
+
+                await check_and_print_if_one_or_zero_to_check_in()
+                return
+
             # Adds traveler
             elif command == "addtraveler" or command == "addtraveller":
 
@@ -5134,6 +5215,8 @@ async def on_message(message):
                     Alive: {not person.is_ghost}
                     Dead Votes: {person.dead_votes}
                     Poisoned: {person.character.is_poisoned}
+                    Last Active {person.last_active}
+                    Has Checked In {person.has_checked_in}
                     ST Channel: {f"https://discord.com/channels/{global_vars.server.id}/{person.st_channel.id}" if person.st_channel else "None"}
                     """)
                 await safe_send(message.author, "\n".join([base_info, person.character.extra_info()]))
@@ -5230,6 +5313,40 @@ async def on_message(message):
                 message_text = "These players have not spoken:"
                 for player in notActive:
                     message_text += "\n{}".format(player.display_name)
+
+                await safe_send(message.author, message_text)
+                return
+
+            # Checks who can nominate
+            elif command == "tocheckin":
+
+                if global_vars.game is NULL_GAME:
+                    await safe_send(message.author, "There's no game right now.")
+                    return
+
+                if not global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
+                    await safe_send(message.author, "You don't have permission to view that information.")
+                    return
+
+                if global_vars.game.isDay:
+                    await safe_send(message.author, "It's day right now.")
+                    return
+
+                to_check_in = [
+                    player
+                    for player in global_vars.game.seatingOrder
+                    if player.can_nominate == True
+                       and player.has_skipped == False
+                       and player.alignment != STORYTELLER_ALIGNMENT
+                       and player.is_ghost == False
+                ]
+                if not to_check_in:
+                    await safe_send(message.author, "Everyone has checked in!")
+                    return
+
+                message_text = "These players have not checked in:"
+                for player in to_check_in:
+                    message_text += "\n{}".format(player.nick)
 
                 await safe_send(message.author, message_text)
                 return
@@ -6295,6 +6412,16 @@ async def on_message(message):
                             inline=False,
                         )
                         embed.add_field(
+                            name="checkin <<player>>",
+                            value="Marks a player as checked in for tonight.  Resets each day.",
+                            inline=False,
+                        )
+                        embed.add_field(
+                            name="undocheckin <<player>>",
+                            value="Marks a player as not checked in for tonight.",
+                            inline=False,
+                        )
+                        embed.add_field(
                             name="addtraveler <<player>> or addtraveller <<player>>",
                             value="adds player as a traveler",
                             inline=False,
@@ -6395,6 +6522,11 @@ async def on_message(message):
                     inline=False,
                 )
                 embed.add_field(
+                    name="tocheckin",
+                    value="lists players who are yet to check in",
+                    inline=False,
+                )
+                embed.add_field(
                     name="Bot Questions?", value="Discuss or provide feedback at https://github.com/fiveofswords/botc-bot", inline=False
                 )
                 # this is a rare place that should use .send -- it is sending an embed and safe_send is not set up to split if needed
@@ -6404,6 +6536,22 @@ async def on_message(message):
             # Command unrecognized
             else:
                 await safe_send(message.author, "Command {} not recognized. For a list of commands, type @help.".format(command))
+
+
+async def check_and_print_if_one_or_zero_to_check_in():
+    not_checked_in = [
+        player
+        for player in global_vars.game.seatingOrder
+        if not player.has_checked_in and player.alignment != STORYTELLER_ALIGNMENT
+    ]
+    if len(not_checked_in) == 1:
+        for memb in global_vars.gamemaster_role.members:
+            await safe_send(
+                memb, f"Just waiting on {not_checked_in[0].nick} to check in."
+            )
+    if len(not_checked_in) == 0:
+        for memb in global_vars.gamemaster_role.members:
+            await safe_send(memb, "Everyone has checked in!")
 
 
 def to_whisper_mode(argument):
@@ -6643,7 +6791,7 @@ T = TypeVar('T', bound=HasNick)
 
 # Can't use cleaner class style because 'from' is not a legal field name
 MessageDict = TypedDict('MessageDict',
-                        {'from': str,
+                        {'from': Player,
                          "to": Player,
                          "content": str,
                          "day": int,
