@@ -903,7 +903,8 @@ class Player:
         self.alignment = alignment
         self.user = user
         self.name = user.name
-        self.nick = user.nick if user.nick else user.name
+        self.set_nick_from_user(user)
+        self.global_name = user.global_name
         self.position = position
         self.isGhost = False
         self.deadVotes = 0
@@ -919,6 +920,9 @@ class Player:
             self.isInactive = True
         else:
             self.isInactive = False
+
+    def set_nick_from_user(self, user):
+        self.nick = user.nick if user.nick else user.global_name if user.global_name else user.name
 
     def __getstate__(self):
         state = self.__dict__.copy()
@@ -6539,9 +6543,10 @@ async def on_member_update(before, after):
         return
 
     if global_vars.game is not NULL_GAME:
-        if await get_player(after):
-            if before.nick != after.nick:
-                (await get_player(after)).nick = after.nick
+        the_player_changed = await get_player(after)
+        if the_player_changed:
+            if before.nick != after.nick or before.global_name != after.global_name:
+                the_player_changed.set_nick_from_user(after)
                 await safe_send(after, "Your nickname has been updated.")
                 backup("current_game.pckl")
 
