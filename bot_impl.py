@@ -107,6 +107,7 @@ class Game:
             person.position = index
 
         await self.seatingOrderMessage.edit(content=messageText)
+        await reorder_channels([x.st_channel for x in self.seatingOrder])
 
     async def add_traveler(self, person):
         self.seatingOrder.insert(person.position, person)
@@ -3555,6 +3556,14 @@ async def yes_no(user, text):
         )
 
 
+async def reorder_channels(st_channels: list[TextChannel]):
+    for st in global_vars.gamemaster_role.members:
+        await safe_send(st, "Setting up channels for game...")
+    await ChannelManager(client).setup_channels_in_order(st_channels)
+    for st in global_vars.gamemaster_role.members:
+        await safe_send(st, "Channels setup successfully!")
+
+
 async def get_player(user) -> Optional[Player]:
     # returns the Player object corresponding to user
     if global_vars.game is NULL_GAME:
@@ -4254,9 +4263,7 @@ async def on_message(message):
 
                 script = Script(script_list)
 
-                await safe_send(message.author, "Setting up channels for game...")
-                await ChannelManager(client).setup_channels_in_order(st_channels)
-                await safe_send(message.author, "Channels setup successfully!")
+                await reorder_channels(st_channels)
 
                 await safe_send(
                     global_vars.channel,
