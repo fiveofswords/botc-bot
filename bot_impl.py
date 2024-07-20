@@ -6533,6 +6533,7 @@ async def on_member_update(before, after):
         player = await get_player(after)
         if player and player.display_name != after.display_name:
             player.display_name = after.display_name
+            await global_vars.game.reseat(global_vars.game.seatingOrder)
             await safe_send(after, "Your nickname has been updated.")
             backup("current_game.pckl")
 
