@@ -6530,11 +6530,11 @@ async def on_member_update(before, after):
         return
 
     if global_vars.game is not NULL_GAME:
-        if await get_player(after):
-            if before.display_name != after.display_name:
-                (await get_player(after)).display_name = after.display_name
-                await safe_send(after, "Your nickname has been updated.")
-                backup("current_game.pckl")
+        player = await get_player(after)
+        if player and player.display_name != after.display_name:
+            player.display_name = after.display_name
+            await safe_send(after, "Your nickname has been updated.")
+            backup("current_game.pckl")
 
         if global_vars.gamemaster_role in after.roles and not global_vars.gamemaster_role in before.roles:
             global_vars.game.storytellers.append(Player(Storyteller, STORYTELLER_ALIGNMENT, after))
