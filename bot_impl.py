@@ -4179,29 +4179,20 @@ async def on_message(message):
                 seatingOrderMessage = await safe_send(global_vars.channel, messageText)
                 await seatingOrderMessage.pin()
 
-                n = len([x for x in characters if not issubclass(x, Traveler)])
-                if n == 5:
+                num_full_players = len([x for x in characters if not issubclass(x, Traveler)])
+                distribution: tuple[int, int, int, int] = (-1, -1, -1, -1)
+                if num_full_players == 5:
                     distribution = (3, 0, 1, 1)
-                elif n == 6:
+                elif num_full_players == 6:
                     distribution = (3, 1, 1, 1)
-                elif n <= 15:
-                    o = int((n - 1) % 3)
-                    m = int(math.floor((n - 1) / 3) - 1)
-                    distribution = (n - (o + m + 1), o, m, 1)
-                else:
-                    distribution = ("Unknown", "Unknown", "Unknown", "Unknown")
+                elif 7 <= num_full_players <= 15:
+                    outsiders = int((num_full_players - 1) % 3)
+                    minions = int(math.floor((num_full_players - 1) / 3) - 1)
+                    distribution = (num_full_players - (outsiders + minions + 1), outsiders, minions, 1)
 
                 msg = await safe_send(
                     global_vars.channel,
-                    "There are {} non-Traveler players. The default distribution is {} Townsfolk, {} Outsider{}, {} Minion{}, and {} Demon.".format(
-                        n,
-                        distribution[0],
-                        distribution[1],
-                        "s" if distribution[1] != 1 else "",
-                        distribution[2],
-                        "s" if distribution[2] != 1 else "",
-                        distribution[3],
-                    ),
+                    f"There are {num_full_players} non-Traveler players. The default distribution is {distribution[0]} Townsfolk, {distribution[1]} Outsider{'s' if distribution[1] != 1 else ''}, {distribution[2]} Minion{'s' if distribution[2] != 1 else ''}, and {distribution[3]} Demon."
                 )
                 await msg.pin()
 
