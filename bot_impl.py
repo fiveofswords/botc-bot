@@ -5120,7 +5120,7 @@ async def on_message(message):
                     return
 
                 base_info = inspect.cleandoc(f"""
-                    Player: {person.nick}
+                    Player: {person.display_name}
                     Character: {person.character.role_name}
                     Alignment: {person.alignment}
                     Alive: {not person.is_ghost}
