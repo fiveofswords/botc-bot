@@ -1,3 +1,4 @@
+import re
 from typing import Optional
 
 import discord
@@ -43,9 +44,10 @@ class ChannelManager:
         """
         Creates a new text for the given player, and puts it in the out of play category.
         """
-
+        # Remove any text in parentheses from the display name
+        cleaned_display_name = re.sub(r"\(.*?\)", "", player.display_name).strip()
         new_channel = await self._out_of_play_category.create_text_channel(
-            name=f"{player.display_name}-x-{self._channel_suffix}",
+            name=f"👤{cleaned_display_name}-x-{self._channel_suffix}",
             overwrites={
                 self._server.default_role: discord.PermissionOverwrite(read_messages=False, send_messages=False),
                 self._st_role: discord.PermissionOverwrite(read_messages=True, send_messages=True),
