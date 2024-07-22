@@ -990,6 +990,7 @@ class Player:
             )
             await announcement.pin()
         await self.user.add_roles(global_vars.ghost_role, global_vars.dead_vote_role)
+        await ChannelManager(client).set_ghost(self.st_channel.id)
         await global_vars.game.reseat(global_vars.game.seatingOrder)
         return dies
 
@@ -1107,6 +1108,7 @@ class Player:
         await announcement.pin()
         self.character.refresh()
         await self.user.remove_roles(global_vars.ghost_role, global_vars.dead_vote_role)
+        await ChannelManager(client).remove_ghost(self.st_channel.id)
         await global_vars.game.reseat(global_vars.game.seatingOrder)
 
     async def change_character(self, character):
@@ -4240,6 +4242,7 @@ async def on_message(message):
                     seating_order.append(
                         Player(characters[x], alignments[x], users[x], st_channels[x], position=x)
                     )
+                    await ChannelManager(client).remove_ghost(st_channels[x].id)
 
                 msg = await safe_send(
                     message.author,
