@@ -165,6 +165,32 @@ class TestChannelManager(unittest.IsolatedAsyncioTestCase):
         for index, channel in enumerate(expected_in_play_channels):
             channel.edit.assert_called_once_with(category=self.in_play_category, position=index)
 
+    async def test_setup_channels_in_order_skips_in_place_channels(self):
+        # Setup:
+        # Put the hands channel in the correct position already
+        self.hands_channel.category = self.in_play_category
+        self.hands_channel.position = 0
+        # Create mock channels already in their correct positions
+        in_play_st_channels = [
+            MagicMock(spec=discord.TextChannel, name=f'in_play_{i}', category=self.in_play_category, position=i + 4)
+            for i in range(5)
+        ]
+
+        # Execute: Attempt to reorder channels, expecting no changes for already correctly placed channels
+        await self.channel_manager.setup_channels_in_order(in_play_st_channels)
+
+        # Verify: Assert that edit is not called on channels already in the correct position
+        self.hands_channel.edit.assert_not_called()
+        for channel in in_play_st_channels:
+            channel.edit.assert_not_called()
+
+        # Verify: Assert that edit is called on channels not in the list to ensure they are moved correctly
+        self.observer_channel.edit.assert_called_once_with(category=self.in_play_category, position=1)
+        self.info_channel.edit.assert_called_once_with(category=self.in_play_category, position=2)
+        self.whisper_channel.edit.assert_called_once_with(category=self.in_play_category, position=3)
+        self.town_square_channel.edit.assert_called_once_with(category=self.in_play_category,
+                                                              position=len(in_play_st_channels) + 4)
+
 
 if __name__ == '__main__':
     unittest.main()

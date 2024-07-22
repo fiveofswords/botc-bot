@@ -129,5 +129,6 @@ class ChannelManager:
 
         # Move remaining channels in play in order
         for index, channel in enumerate(ordered_channels):
-            await channel.edit(category=self._in_play_category, position=index)
-            logger.info(f"{channel.name} has been moved to position {index} of {self._in_play_category.name}.")
+            if channel.category != self._in_play_category or channel.position != index:
+                await channel.edit(category=self._in_play_category, position=index)
+                logger.info(f"{channel.name} has been moved to position {index} of {self._in_play_category.name}.")
