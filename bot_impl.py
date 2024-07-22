@@ -5075,6 +5075,25 @@ async def on_message(message):
                                str(person.deadVotes), str(person.character.is_poisoned)))
                 await safe_send(message.author, "\n".join([base_info, person.character.extra_info()]))
                 return
+            # Views relevant information about a player
+            elif command == "votehistory":
+                if global_vars.game is NULL_GAME:
+                    await safe_send(message.author, "There's no game right now.")
+                    return
+
+                if global_vars.gamemaster_role not in global_vars.server.get_member(message.author.id).roles:
+                    await safe_send(message.author, "You don't have permission to view player information.")
+                    return
+
+                for index, day in enumerate(global_vars.game.days):
+                    votes_for_day = f"Day {index + 1}\n"
+                    for vote in day.votes:  # type: Vote
+                        nominator_name = vote.nominator.display_name if vote.nominator else "the storytellers"
+                        nominee_name = vote.nominee.display_name if vote.nominee else "the storytellers"
+                        voters = ", ".join([voter.display_name for voter in vote.voted])
+                        votes_for_day += f"{nominator_name} -> {nominee_name} ({vote.votes}): {voters}\n"
+                    await safe_send(message.author, f"```\n{votes_for_day}\n```")
+                return
             elif command == "setatheist":
                 if global_vars.game is NULL_GAME:
                     await safe_send(message.author, "There's no game right now.")
@@ -6170,6 +6189,11 @@ async def on_message(message):
                         embed.add_field(
                             name="history <<player>>",
                             value="views all of player's messages",
+                            inline=False,
+                        )
+                        embed.add_field(
+                            name="votehistory",
+                            value="views all nominations and votes for those nominations",
                             inline=False,
                         )
                         embed.add_field(
