@@ -4242,7 +4242,6 @@ async def on_message(message):
                     seating_order.append(
                         Player(characters[x], alignments[x], users[x], st_channels[x], position=x)
                     )
-                    await ChannelManager(client).remove_ghost(st_channels[x].id)
 
                 msg = await safe_send(
                     message.author,
@@ -4266,6 +4265,9 @@ async def on_message(message):
 
                 script = Script(script_list)
 
+                # Setup ST channels
+                tasks = [ChannelManager(client).remove_ghost(st_channel.id) for st_channel in st_channels]
+                await asyncio.gather(*tasks)
                 await reorder_channels(st_channels)
 
                 await safe_send(
@@ -5345,10 +5347,7 @@ async def on_message(message):
                 to_check_in = [
                     player
                     for player in global_vars.game.seatingOrder
-                    if player.can_nominate == True
-                       and player.has_skipped == False
-                       and player.alignment != STORYTELLER_ALIGNMENT
-                       and player.is_ghost == False
+                    if player.has_checked_in == False
                 ]
                 if not to_check_in:
                     await safe_send(message.author, "Everyone has checked in!")
