@@ -33,7 +33,7 @@ To build the docker image, run the following command in the root directory of th
 ```docker build -t botc .```
 
 When the image is built, you can run the bot using the following command.
-Replace `${BOT_NAME}` with the name of the bot you want to run, and `bot_configs/${BOT_NAME}.py` with the path to the bot's configuration file.
+Set the BOT_NAME variable or replace `${BOT_NAME}` with the name of the bot you want to run, and `bot_configs/${BOT_NAME}.py` with the path to the bot's configuration file.
 
 ```docker run -v $(dirname $(pwd))/preferences.json:/preferences.json -v $(pwd):/app -v $(pwd)/bot_configs/${BOT_NAME}.py:/app/config.py -d --name ${BOT_NAME} botc```
 
