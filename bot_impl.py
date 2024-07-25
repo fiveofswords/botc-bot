@@ -3080,6 +3080,14 @@ class Ogre(Outsider):
         self.role_name = "Ogre"
 
 
+class Zealot(Outsider):
+    # The zealot
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Zealot"
+
+
 class Marionette(Minion):
     # The marionette
 
