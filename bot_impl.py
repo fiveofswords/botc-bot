@@ -5247,8 +5247,7 @@ async def on_message(message):
                     await safe_send(message.author, "You don't have permission to view player information.")
                     return
 
-                last_active = {player: player.last_active for player in
-                               global_vars.game.seatingOrder}
+                last_active = sorted(global_vars.game.seatingOrder, key=lambda p: p.last_active)
                 message_text = "Last active time for these players:"
                 for player in last_active:
                     last_active_str = str(int(player.last_active))
