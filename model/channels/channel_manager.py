@@ -44,8 +44,8 @@ class ChannelManager:
         """
         Creates a new text for the given player, and puts it in the out of play category.
         """
-        # Remove any text in parentheses from the display name
-        cleaned_display_name = re.sub(r"\(.*?\)", "", player.display_name).strip()
+        cleaned_display_name = self._cleanup_display_name(player)
+        # Create the new channel with the player's name
         new_channel = await self._out_of_play_category.create_text_channel(
             name=f"👤{cleaned_display_name}-x-{self._channel_suffix}",
             overwrites={
@@ -57,6 +57,18 @@ class ChannelManager:
         logger.info(f"Channel {new_channel.name} has been created.")
         game_settings.set_st_channel(player.id, new_channel.id).save()
         return new_channel
+
+    @staticmethod
+    def _cleanup_display_name(player):
+        # Remove any text in parentheses
+        cleaned_display_name = re.sub(r'\(.*?\)', '', player.display_name)
+        # Replace spaces and hyphens with underscores
+        cleaned_display_name = re.sub(r'[\s-]', '_', cleaned_display_name)
+        # Remove leading and trailing whitespace
+        cleaned_display_name = cleaned_display_name.strip()
+        # Remove trailing underscores
+        cleaned_display_name = cleaned_display_name.rstrip('_')
+        return cleaned_display_name
 
     async def set_ghost(self, channel_id: int):
         """
