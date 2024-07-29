@@ -5355,7 +5355,7 @@ async def on_message(message):
 
                 message_text = "These players have not checked in:"
                 for player in to_check_in:
-                    message_text += "\n{}".format(player.nick)
+                    message_text += "\n{}".format(player.display_name)
 
                 await safe_send(message.author, message_text)
                 return
@@ -6556,7 +6556,7 @@ async def check_and_print_if_one_or_zero_to_check_in():
     if len(not_checked_in) == 1:
         for memb in global_vars.gamemaster_role.members:
             await safe_send(
-                memb, f"Just waiting on {not_checked_in[0].nick} to check in."
+                memb, f"Just waiting on {not_checked_in[0].display_name} to check in."
             )
     if len(not_checked_in) == 0:
         for memb in global_vars.gamemaster_role.members:
