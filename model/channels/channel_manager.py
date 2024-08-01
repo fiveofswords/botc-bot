@@ -137,10 +137,10 @@ class ChannelManager:
         # Move unused channels out of play
         for channel in to_move_out:
             await channel.move(category=self._out_of_play_category, end=True)
-            logger.info(f"Channel {channel.name} has been moved to Out of Play category.")
+            logger.debug(f"Channel {channel.name} has been moved to Out of Play category.")
 
         # Move remaining channels in play in order
         for index, channel in enumerate(ordered_channels):
             if channel.category != self._in_play_category or channel.position != index:
                 await channel.edit(category=self._in_play_category, position=index)
-                logger.info(f"{channel.name} has been moved to position {index} of {self._in_play_category.name}.")
+                logger.debug(f"{channel.name} has been moved to position {index} of {self._in_play_category.name}.")

@@ -3781,7 +3781,7 @@ async def on_ready():
     global_vars.channel = client.get_channel(TOWN_SQUARE_CHANNEL_ID)
     global_vars.out_of_play_category = client.get_channel(OUT_OF_PLAY_CATEGORY_ID)
     global_vars.channel_suffix = CHANNEL_SUFFIX
-    logger.info(logger.info(
+    logger.info(
         f"server: {global_vars.server.name}, "
         f"game_category: {global_vars.game_category.name if global_vars.game_category else None}, "
         f"hands_channel: {global_vars.hands_channel.name if global_vars.hands_channel else None}, "
@@ -3790,7 +3790,7 @@ async def on_ready():
         f"whisper_channel: {global_vars.whisper_channel.name if global_vars.whisper_channel else None}, "
         f"townsquare_channel: {global_vars.channel.name}, "
         f"out_of_play_category: {global_vars.out_of_play_category.name if global_vars.out_of_play_category else None}, "
-    ))
+    )
 
     for role in global_vars.server.roles:
         if role.name == PLAYER_ROLE:
