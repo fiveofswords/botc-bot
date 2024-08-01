@@ -107,7 +107,8 @@ class Game:
             person.position = index
 
         await self.seatingOrderMessage.edit(content=messageText)
-        await reorder_channels([x.st_channel for x in self.seatingOrder])
+        #  fixme: reorder_channels is doing more work than needed. until that is fixed, don't reorder on reseat.
+        # await reorder_channels([x.st_channel for x in self.seatingOrder])
 
     async def add_traveler(self, person):
         self.seatingOrder.insert(person.position, person)
