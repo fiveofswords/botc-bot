@@ -20,6 +20,7 @@ info_channel: Optional[TextChannel] = None
 whisper_channel: Optional[TextChannel] = None
 channel: Optional[TextChannel] = None
 out_of_play_category: Optional[CategoryChannel] = None
+channel_suffix: Optional[str] = None
 
 # Roles
 player_role: Optional[Role] = None

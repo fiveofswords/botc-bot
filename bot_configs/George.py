@@ -19,5 +19,8 @@ TRAVELER_ROLE = 'Traveller 3 (Clocktower)'
 OBSERVER_ROLE = 'Observer 3 (Clocktower)'
 INACTIVE_ROLE = 'Inactive'
 
+# Channel Creation Metadata
+CHANNEL_SUFFIX = 'g3'
+
 # Prefixes
 PREFIXES = ('@', ',')

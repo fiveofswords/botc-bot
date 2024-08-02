@@ -1,5 +1,13 @@
+import re
+from typing import Optional
+
 import discord
 import logging
+
+from discord import Guild, CategoryChannel, Member, TextChannel, Client
+
+import global_vars
+from model.settings import GameSettings
 
 logger = logging.getLogger('discord')
 
@@ -7,10 +15,60 @@ logger = logging.getLogger('discord')
 class ChannelManager:
     """Encapsulates logic for managing Discord Channels."""
 
-    _client: discord.client.Client
+    _client: Client
+    _server: Guild
+    _in_play_category: Optional[CategoryChannel]
+    _out_of_play_category: Optional[CategoryChannel]
+    _hands_channel: TextChannel
+    _observer_channel: TextChannel
+    _info_channel: TextChannel
+    _whisper_channel: TextChannel
+    _town_square_channel: TextChannel
+    _st_role: discord.Role
+    _channel_suffix: str
 
-    def __init__(self, client: discord.client.Client):
+    def __init__(self, client: Client):
         self._client = client
+        self._server = global_vars.server
+        self._in_play_category = global_vars.game_category
+        self._out_of_play_category = global_vars.out_of_play_category
+        self._hands_channel = global_vars.hands_channel
+        self._observer_channel = global_vars.observer_channel
+        self._info_channel = global_vars.info_channel
+        self._whisper_channel = global_vars.whisper_channel
+        self._town_square_channel = global_vars.channel
+        self._channel_suffix = global_vars.channel_suffix
+        self._st_role = global_vars.gamemaster_role
+
+    async def create_channel(self, game_settings: GameSettings, player: Member) -> TextChannel:
+        """
+        Creates a new text for the given player, and puts it in the out of play category.
+        """
+        cleaned_display_name = self._cleanup_display_name(player)
+        # Create the new channel with the player's name
+        new_channel = await self._out_of_play_category.create_text_channel(
+            name=f"👤{cleaned_display_name}-x-{self._channel_suffix}",
+            overwrites={
+                self._server.default_role: discord.PermissionOverwrite(read_messages=False, send_messages=False),
+                self._st_role: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+                self._client.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+                player: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+            })
+        logger.info(f"Channel {new_channel.name} has been created.")
+        game_settings.set_st_channel(player.id, new_channel.id).save()
+        return new_channel
+
+    @staticmethod
+    def _cleanup_display_name(player):
+        # Remove any text in parentheses
+        cleaned_display_name = re.sub(r'\(.*?\)', '', player.display_name)
+        # Replace spaces and hyphens with underscores
+        cleaned_display_name = re.sub(r'[\s-]', '_', cleaned_display_name)
+        # Remove leading and trailing whitespace
+        cleaned_display_name = cleaned_display_name.strip()
+        # Remove trailing underscores
+        cleaned_display_name = cleaned_display_name.rstrip('_')
+        return cleaned_display_name
 
     async def set_ghost(self, channel_id: int):
         """
@@ -68,36 +126,21 @@ class ChannelManager:
             if new_name:
                 await channel.edit(name=new_name)
 
-    async def move_channel_to_category(self, channel_id: int, category_id: int) -> bool:
-        """
-        Moves a channel to a specified category.
+    async def setup_channels_in_order(self, ordered_player_channels: list[TextChannel]):
+        ordered_channels: list[TextChannel] = [self._hands_channel, self._observer_channel,
+                                               self._info_channel, self._whisper_channel] + ordered_player_channels + [
+                                                  self._town_square_channel]
 
-        Parameters:
-        - channel_id: The ID of the channel to move.
-        - category_id: The ID of the category to move the channel into.
-        """
-        # Retrieve the channel and category objects using their IDs
-        channel: discord.TextChannel = self._client.get_channel(channel_id)
-        new_category: discord.CategoryChannel = self._client.get_channel(category_id)
+        to_move_out: list[TextChannel] = [channel for channel in self._in_play_category.channels if
+                                          channel not in ordered_channels]
 
-        # Check if both the channel and category exist
-        if channel is None or new_category is None:
-            logger.info(f"Either channel with ID {channel_id} or category with ID {category_id} was not found.")
-            return False
+        # Move unused channels out of play
+        for channel in to_move_out:
+            await channel.move(category=self._out_of_play_category, end=True)
+            logger.debug(f"Channel {channel.name} has been moved to Out of Play category.")
 
-        if not isinstance(channel, discord.TextChannel):
-            logger.info(f"Channel with ID {channel_id} is not a text channel.")
-            return False
-
-        if not isinstance(new_category, discord.CategoryChannel):
-            logger.info(f"Category with ID {category_id} is not a category channel.")
-            return False
-
-        # Move the channel to the category
-        try:
-            await channel.edit(category=new_category)
-            logger.info(f"Channel {channel.name} has been moved to category {new_category.name}.")
-            return True
-        except discord.HTTPException as e:
-            logger.warning(f"An error occurred while moving channel {channel.name} to category {new_category.name}: {e}.")
-            return False
+        # Move remaining channels in play in order
+        for index, channel in enumerate(ordered_channels):
+            if channel.category != self._in_play_category or channel.position != index:
+                await channel.edit(category=self._in_play_category, position=index)
+                logger.debug(f"{channel.name} has been moved to position {index} of {self._in_play_category.name}.")
