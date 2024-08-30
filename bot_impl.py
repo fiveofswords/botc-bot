@@ -2369,6 +2369,14 @@ class Kazali(Demon):
         self.role_name = "Kazali"
 
 
+class LordOfTyphus(Demon):
+    # The lord of typhus
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Lord of Typhus"
+
+
 class NoDashii(Demon):
     # The no dashii
 
