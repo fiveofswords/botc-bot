@@ -58,9 +58,10 @@ class Game:
                 await msg.unpin()
 
         # announcement
+        winner = winner.lower()
         await safe_send(
             global_vars.channel,
-            f"{global_vars.player_role.mention}, {'The game is over.' if winner.lower() == 'tie' else f'{winner.lower()} has won.'} Good game!",
+            f"{global_vars.player_role.mention}, {'The game is over.' if winner == 'tie' else f'{winner} has won.'} Good game!",
         )
 
         """
@@ -4331,14 +4332,16 @@ async def on_message(message):
                     await safe_send(message.author, "You don't have permission to end the game.")
                     return
 
-                if argument.lower() != "good" and argument.lower() != "evil" and argument != "tie":
+                argument = argument.lower()
+
+                if argument != "good" and argument != "evil" and argument != "tie":
                     await safe_send(message.author, "The winner must be 'good' or 'evil' or 'tie' exactly.")
                     return
 
                 for memb in global_vars.game.storytellers:
                     await safe_send(
                         memb.user,
-                        f"{message.author.display_name} has ended the game! {'Good won!' if argument.lower() == 'good' else 'Evil won!' if argument.lower() == 'evil' else ''}  Please wait for the bot to finish.",
+                        f"{message.author.display_name} has ended the game! {'Good won!' if argument == 'good' else 'Evil won!' if argument == 'evil' else ''}  Please wait for the bot to finish.",
                     )
 
                 await global_vars.game.end(argument.lower())
