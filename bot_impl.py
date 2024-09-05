@@ -506,10 +506,11 @@ class Vote:
         toCall = self.order[self.position]
         player_banshee_ability = the_ability(toCall.character, Banshee)
         player_is_active_banshee = player_banshee_ability and player_banshee_ability.is_screaming
+        voudon_is_active = next((x for x in global_vars.game.seatingOrder if isinstance(x.character, Voudon) and not x.is_ghost), None)
         for person in global_vars.game.seatingOrder:
             if isinstance(person.character, VoteModifier):
                 person.character.on_vote_call(toCall)
-        if toCall.is_ghost and toCall.dead_votes < 1 and not player_is_active_banshee:
+        if toCall.is_ghost and toCall.dead_votes < 1 and not player_is_active_banshee and not voudon_is_active:
             await self.vote(0)
             return
         if toCall.user.id in self.presetVotes:
@@ -558,14 +559,9 @@ class Vote:
 
         # see if a Voudon is in play
         voudon_in_play = next((x for x in global_vars.game.seatingOrder if isinstance(x.character, Voudon) and not x.is_ghost), None)
-        if(voudon_in_play):
-            # only dead or voudon may vote
-            if not voter.is_ghost and voter != voudon_in_play:
-                vt = 0
-
         player_is_active_banshee = potential_banshee and voter.character.is_screaming
         # Check dead votes
-        if vt == 1 and voter.is_ghost and voter.dead_votes < 1 and not (player_is_active_banshee and not potential_banshee.is_poisoned):
+        if vt == 1 and voter.is_ghost and voter.dead_votes < 1 and not (player_is_active_banshee and not potential_banshee.is_poisoned) and not voudon_in_play:
             if not operator:
                 await safe_send(voter.user, "You do not have any dead votes. Entering a no vote.")
                 await self.vote(0)
@@ -3895,6 +3891,9 @@ async def on_message(message):
                 vote = global_vars.game.days[-1].votes[-1]
 
                 voting_player = (await get_player(message.author))
+                if not voting_player:
+                    await safe_send(global_vars.channel, "You are not a player in the game.")
+                    return
                 if (
                     vote.order[vote.position].user
                     != voting_player.user
