@@ -5256,7 +5256,7 @@ async def on_message(message):
                     Alive: {not person.is_ghost}
                     Dead Votes: {person.dead_votes}
                     Poisoned: {person.character.is_poisoned}
-                    Last Active {person.last_active}
+                    Last Active <t:{int(person.last_active)}:R> at <t:{int(person.last_active)}:t>
                     Has Checked In {person.has_checked_in}
                     ST Channel: {f"https://discord.com/channels/{global_vars.server.id}/{person.st_channel.id}" if person.st_channel else "None"}
                     """)
