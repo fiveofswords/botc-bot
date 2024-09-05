@@ -2724,9 +2724,17 @@ class Amnesiac(Townsfolk, AbilityModifier):
             self.abilities = [role(self.parent)]
 
     def extra_info(self):
+        base_info = super().extra_info()
         if self.player_with_votes and self.vote_mod != 1:
-            return "{} votes times {}".format(self.player_with_votes.display_name, self.vote_mod)
-        return super().extra_info()
+            # add to base_info
+            base_info = base_info + "\n{} votes times {}".format(self.player_with_votes.display_name, self.vote_mod)
+        for ability in self.abilities:
+            info = ability.extra_info()
+            base_info += "\nHas Ability: {}".format(ability.role_name)
+            if info:
+                base_info = base_info + "\n{}".format(info)
+        # remove preceeding or trailing whitespace
+        return base_info.strip()
 
     def modify_vote_values(self, order, values, majority):
         if self.player_with_votes and not self.is_poisoned and not self.parent.is_ghost:
