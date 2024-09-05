@@ -506,7 +506,7 @@ class Vote:
         toCall = self.order[self.position]
         player_banshee_ability = the_ability(toCall.character, Banshee)
         player_is_active_banshee = player_banshee_ability and player_banshee_ability.is_screaming
-        voudon_is_active = next((x for x in global_vars.game.seatingOrder if isinstance(x.character, Voudon) and not x.is_ghost), None)
+        voudon_is_active = in_play_voudon()
         for person in global_vars.game.seatingOrder:
             if isinstance(person.character, VoteModifier):
                 person.character.on_vote_call(toCall)
@@ -558,7 +558,7 @@ class Vote:
         potential_banshee = the_ability(voter.character, Banshee)
 
         # see if a Voudon is in play
-        voudon_in_play = next((x for x in global_vars.game.seatingOrder if isinstance(x.character, Voudon) and not x.is_ghost), None)
+        voudon_in_play = in_play_voudon()
         player_is_active_banshee = potential_banshee and voter.character.is_screaming
         # Check dead votes
         if vt == 1 and voter.is_ghost and voter.dead_votes < 1 and not (player_is_active_banshee and not potential_banshee.is_poisoned) and not voudon_in_play:
@@ -3902,7 +3902,7 @@ async def on_message(message):
                     return
 
                 vt = int(argument == "yes" or argument == "y")
-                voudon_in_play = next((x for x in global_vars.game.seatingOrder if x.character.role_name == "Voudon" and not x.is_ghost),None)
+                voudon_in_play = in_play_voudon()
                 if vt > 0 and voudon_in_play and voting_player != voudon_in_play and not voting_player.is_ghost:
                     await safe_send(global_vars.channel, "Voudon is in play. Only the Voudon and dead may vote.")
                     return
@@ -5599,7 +5599,7 @@ async def on_message(message):
                     await safe_send(message.author, "{} is not a valid vote. Use 'yes', 'y', 'no', or 'n'.".format(argument))
                     return
 
-                voudon_in_play = next((player for player in global_vars.game.seatingOrder if player.character.role_name == "Voudon" and not player.is_ghost), None)
+                voudon_in_play = in_play_voudon()
 
                 vote = global_vars.game.days[-1].votes[-1]
 
@@ -5686,7 +5686,7 @@ async def on_message(message):
                     return
 
                 vote = global_vars.game.days[-1].votes[-1]
-                voudon_in_play = next((player for player in global_vars.game.seatingOrder if player.character.role_name == "Voudon" and not player.is_ghost), None)
+                voudon_in_play = in_play_voudon()
 
                 if global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
                     msg = await safe_send(message.author, "Whose vote is this?")
@@ -5725,7 +5725,7 @@ async def on_message(message):
                         yes_entered = argument == "yes" or argument == "y"
                         vt = int(yes_entered) * (2 if banshee_override else 1)
                     if voudon_in_play and person != voudon_in_play and not person.is_ghost and vt > 0:
-                        await safe_send(message.author, "Voudon is in play. Only the Voudon and dead may vote. Consider killing this player before voting yes.")
+                        await safe_send(message.author, "Voudon is in play. Only the Voudon and dead may vote. Consider killing this player before prevoting yes.")
                         return
 
                     await vote.preset_vote(person, vt, operator=message.author)
@@ -6582,6 +6582,10 @@ async def on_message(message):
             # Command unrecognized
             else:
                 await safe_send(message.author, "Command {} not recognized. For a list of commands, type @help.".format(command))
+
+
+def in_play_voudon():
+    return next((x for x in global_vars.game.seatingOrder if the_ability(x.character, Voudon) and not x.is_ghost), None)
 
 
 async def check_and_print_if_one_or_zero_to_check_in():
