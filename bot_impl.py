@@ -57,6 +57,10 @@ class Game:
             if msg.created_at >= self.seatingOrderMessage.created_at:
                 await msg.unpin()
 
+        if global_vars.whisper_channel:
+            for msg in await global_vars.whisper_channel.pins():
+                await msg.unpin()
+
         # announcement
         winner = winner.lower()
         await safe_send(
@@ -153,6 +157,11 @@ class Game:
         )
         self.days.append(Day())
         self.isDay = True
+
+        if global_vars.whisper_channel:
+            message = await safe_send(global_vars.whisper_channel, f"Start of day {len(self.days)}")
+            await message.pin()
+
         await update_presence(client)
 
 
