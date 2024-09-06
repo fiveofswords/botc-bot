@@ -2733,7 +2733,6 @@ class Amnesiac(Townsfolk, AbilityModifier):
             base_info += "\nHas Ability: {}".format(ability.role_name)
             if info:
                 base_info = base_info + "\n{}".format(info)
-        # remove preceeding or trailing whitespace
         return base_info.strip()
 
     def modify_vote_values(self, order, values, majority):
