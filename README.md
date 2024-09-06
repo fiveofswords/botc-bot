@@ -41,3 +41,7 @@ Set the BOT_NAME variable or replace `${BOT_NAME}` with the name of the bot you 
 ```docker run -v $(dirname $(pwd))/preferences.json:/preferences.json -v $(pwd):/app -v $(pwd)/bot_configs/${BOT_NAME}.py:/app/config.py -d --name ${BOT_NAME} botc```
 
 Mounting volumes via relative path is not supported in docker except for the current directory. If you want to mount a volume from a different directory, you need to provide the full path, which $(pwd) gets at.
+
+
+To enter the shell for one of the bots:
+```docker exec -it ${BOT_NAME} /bin/bash```
