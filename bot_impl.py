@@ -5658,7 +5658,7 @@ async def on_message(message):
 
                 vt = int(argument == "yes" or argument == "y")
 
-                if voudon_in_play and voting_player != voudon_in_play and not voting_player.is_ghost and int(argument == "yes" or argument == "y") > 0:
+                if voudon_in_play and voting_player != voudon_in_play and not voting_player.is_ghost and vt > 0:
                     await safe_send(message.author, "Voudon is in play. Only the Voudon and dead may vote.")
                     return
 
