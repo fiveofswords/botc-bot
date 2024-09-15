@@ -44,6 +44,7 @@ class Game:
             for person in global_vars.gamemaster_role.members
         ] if not skip_storytellers else []
         self.show_tally = False
+        self.has_automated_life_and_death = False
 
     async def end(self, winner):
         # Ends the game
@@ -991,9 +992,10 @@ class Player:
 
     async def kill(self, suppress=False, force=False):
         dies = True
-        on_death_characters = sorted([person.character for person in global_vars.game.seatingOrder if isinstance(person.character, DeathModifier)], key=lambda c: c.on_death_priority())
-        for player_character in on_death_characters:
-            dies = player_character.on_death(self, dies)
+        if global_vars.game.has_automated_life_and_death:
+            on_death_characters = sorted([person.character for person in global_vars.game.seatingOrder if isinstance(person.character, DeathModifier)], key=lambda c: c.on_death_priority())
+            for player_character in on_death_characters:
+                dies = player_character.on_death(self, dies)
 
         if not dies and not force:
             return dies
@@ -1747,6 +1749,9 @@ class Virgin(Townsfolk, NominationModifier):
         self.beenNominated = False
 
     async def on_nomination(self, nominee, nominator, proceed):
+        if not global_vars.game.has_automated_life_and_death:
+            return proceed
+
         # Returns bool -- whether the nomination proceeds
         # fixme: in debugging, nominee is equal to self.parent rather than self, fix this after kill is corrected to execute
         if nominee == self:
@@ -2201,6 +2206,8 @@ class Assassin(Minion, DayStartModifier, DeathModifier):
         return "Assassinated: {}".format(self.target and self.target.display_name)
 
     async def on_day_start(self, origin, kills):
+        if not global_vars.game.has_automated_life_and_death:
+            return True
         if self.parent.is_ghost or self.target or len(global_vars.game.days) < 1:
             return True
         else:
@@ -2280,6 +2287,9 @@ class Witch(Minion, NominationModifier, DayStartModifier):
         self.witched = None
 
     async def on_day_start(self, origin, kills):
+        if not global_vars.game.has_automated_life_and_death:
+            return True
+
         # todo: consider minions killed by vigormortis as active
         if self.parent.is_ghost == True or self.parent in kills:
             self.witched = None
@@ -2304,6 +2314,9 @@ class Witch(Minion, NominationModifier, DayStartModifier):
         return True
 
     async def on_nomination(self, nominee, nominator, proceed):
+        if not global_vars.game.has_automated_life_and_death:
+            return proceed
+
         if (
             self.witched
             and self.witched == nominator
@@ -3082,6 +3095,9 @@ class Golem(Outsider, NominationModifier):
         self.hasNominated = False
 
     async def on_nomination(self, nominee, nominator, proceed):
+        if not global_vars.game.has_automated_life_and_death:
+            return proceed
+
         # fixme: golem instantly kills a recluse when it should be ST decision
         if nominator == self.parent:
             if (
@@ -3271,6 +3287,8 @@ class Lleech(Demon, DeathModifier, DayStartModifier):
         self.hosted = None
 
     async def on_day_start(self, origin, kills):
+        if not global_vars.game.has_automated_life_and_death:
+            return True
         if self.hosted or self.parent.is_ghost:
             return True
 
@@ -3339,6 +3357,8 @@ class Riot(Demon, NominationModifier):
         self.role_name = "Riot"
 
     async def on_nomination(self, nominee, nominator, proceed):
+        if not global_vars.game.has_automated_life_and_death:
+            return proceed
         if self.is_poisoned or self.parent.is_ghost or not nominee:
             return proceed
 
@@ -5304,6 +5324,18 @@ async def on_message(message):
                 for memb in global_vars.gamemaster_role.members:
                     await safe_send(memb, "Atheist game is set to {} by {}".format(global_vars.game.script.isAtheist, message.author.display_name))
                 pass
+            elif command == "automatekills":
+                if global_vars.game is NULL_GAME:
+                    await safe_send(message.author, "There's no game right now.")
+                    return
+                if not global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
+                    await safe_send(message.author, "You don't have permission to configure the game.")
+                    return
+                global_vars.game.has_automated_life_and_death = argument.lower() == "true" or argument.lower() == "t"
+                for memb in global_vars.gamemaster_role.members:
+                    await safe_send(memb, f"Automated life and death is set to {global_vars.game.has_automated_life_and_death} by {message.author.display_name}")
+
+                pass
             # Views the grimoire
             elif command == "grimoire":
                 if global_vars.game is NULL_GAME:
@@ -6213,6 +6245,11 @@ async def on_message(message):
                             inline=False,
                         )
                         embed.add_field(
+                            name="help configure",
+                            value="Prints commands which configures how the bot works.",
+                            inline=False,
+                        )
+                        embed.add_field(
                             name="help player",
                             value="Prints the player help dialogue.",
                             inline=False,
@@ -6336,9 +6373,6 @@ async def on_message(message):
                             name="closenoms", value="closes nominations", inline=False
                         )
                         embed.add_field(
-                            name="whispermode", value="modifies whisper mode to 'all', 'neighbors', or 'storytellers'", inline=False
-                        )
-                        embed.add_field(
                             name="close",
                             value="closes pms and nominations",
                             inline=False,
@@ -6415,6 +6449,33 @@ async def on_message(message):
                             inline=False,
                         )
                         # this is a rare place that should use .send -- it is sending an embed and safe_send is not set up to split if needed
+                        await message.author.send(embed=embed)
+                        return
+                    elif argument == "configure":
+                        embed = discord.Embed(
+                            title="Configuration",
+                            description="Commands which configure how the bot works.",
+                        )
+                        embed.add_field(
+                            name="whispermode <<all/neighbors/storytellers>>", value="sets whisper mode", inline=False
+                        )
+                        embed.add_field(
+                            name="enabletally", value="enables display of whisper counts", inline=False
+                        )
+                        embed.add_field(
+                            name="disabletally", value="disables display of whisper counts", inline=False
+                        )
+                        embed.add_field(
+                            name="setatheist <<true/false>>",
+                            value="sets whether the atheist is on the script - this allows the storyteller to be nominated",
+                            inline=False,
+                        )
+                        embed.add_field(
+                            name="automatekills <<true/false>>",
+                            value="sets whether deaths are automated for certain characters (Riot, Golem, etc.)."
+                            "\nThis is not recommended for most games, as more work is needed from the Storytellers",
+                            inline=False,
+                        )
                         await message.author.send(embed=embed)
                         return
                     elif argument == "info":
