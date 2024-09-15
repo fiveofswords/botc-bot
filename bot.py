@@ -13,17 +13,17 @@ class BotApp:
     def run():
         print("Starting bot...")
         print("discord version is " + discord.__version__)
-        while True:
+        active = True
+        while active:
             try:
                 client.run(token)
-                print("end")
-                time.sleep(5)
+                print("ending bot...")
+                print("ignore errors on bot end. the libraries are not perfect")
+                active = False
             except Exception as e:
                 logging.exception("Ignoring exception")
                 print(str(e))
-            finally:
-                client.close()
-                print("Restarting bot...")
+                print("Restarting the bot")
 
 
 if __name__ == "__main__":
