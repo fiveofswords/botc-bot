@@ -8,7 +8,7 @@ OBSERVER_CHANNEL_ID = 1247044248956833852  # Observer Channel
 INFO_CHANNEL_ID = 1256675498570809405  # Info Channel
 WHISPER_CHANNEL_ID = 1251899834361712721  # Channel for player whispers
 TOWN_SQUARE_CHANNEL_ID = 1164312583088640030  # Town Square
-OUT_OF_PLAY_CATEGORY_ID = 1248056079745810473  # Category for out of play player channels
+OUT_OF_PLAY_CATEGORY_ID = 1285043484180480042  # Category for out of play player channels
 
 # Role Names
 STORYTELLER_ROLE = 'Storyteller 3'
