@@ -3259,6 +3259,18 @@ class Harpy(Minion):
         self.role_name = "Harpy"
 
 
+# techically this should be an ability modifier on the demon in play, but having the additional ability be provided by the boffin is cleaner implementation
+class Boffin(Minion, AbilityModifier):
+    # The boffin
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Boffin"
+
+    def extra_info(self):
+        return "\n".join([("Boffin'd: {}\n{}".format(x.role_name, x.extra_info())) for x in self.abilities]).strip()
+
+
 class AlHadikhia(Demon):
     # the al-hadikhia
 
