@@ -2588,6 +2588,13 @@ class Gangster(Traveler):
         super().__init__(parent)
         self.role_name = "Gangster"
 
+class Gnome(Traveler):
+    # the gnome
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Gnome"
+
 
 class Bureaucrat(Traveler, DayStartModifier, VoteBeginningModifier):
     # the bureaucrat
