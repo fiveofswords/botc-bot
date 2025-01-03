@@ -3277,6 +3277,20 @@ class Boffin(Minion, AbilityModifier):
     def extra_info(self):
         return "\n".join([("Boffin'd: {}\n{}".format(x.role_name, x.extra_info())) for x in self.abilities]).strip()
 
+class Xaan(Minion):
+    # The Xaan
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Xaan"
+
+class Wizard(Minion):
+    # The Wizard
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Wizard"
+
 
 class AlHadikhia(Demon):
     # the al-hadikhia
