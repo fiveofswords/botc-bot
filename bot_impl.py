@@ -6563,6 +6563,11 @@ async def on_message(message):
                             description="Commands with miscellaneous uses, primarily for troubleshooting and seating.",
                         )
                         embed.add_field(
+                            name="notactive",
+                            value="lists players who are yet to speak",
+                            inline=False,
+                        )
+                        embed.add_field(
                             name="makeinactive <<player>>",
                             value="marks player as inactive. must be done in all games player is participating in",
                             inline=False,
@@ -6667,11 +6672,6 @@ async def on_message(message):
                     inline=False,
                 )
                 embed.add_field(name="clear", value="returns whitespace", inline=False)
-                embed.add_field(
-                    name="notactive",
-                    value="lists players who are yet to speak",
-                    inline=False,
-                )
                 embed.add_field(
                     name="cannominate",
                     value="lists players who are yet to nominate or skip",
