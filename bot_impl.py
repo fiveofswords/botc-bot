@@ -5841,7 +5841,7 @@ async def on_message(message):
                 return
 
             # Cancels a preset vote
-            elif command == "cancelpreset":
+            elif command == "cancelpreset" or command == "cancelprevote":
 
                 if global_vars.game is NULL_GAME:
                     await safe_send(message.author, "There's no game right now.")
@@ -6652,8 +6652,8 @@ async def on_message(message):
                     inline=False,
                 )
                 embed.add_field(
-                    name="cancelpreset",
-                    value="cancels an existing preset",
+                    name="cancelprevote",
+                    value="cancels an existing prevote",
                     inline=False,
                 )
                 embed.add_field(
