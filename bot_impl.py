@@ -6228,9 +6228,14 @@ async def on_message(message):
                     return
 
                 global_settings: GlobalSettings = GlobalSettings.load()
-                global_settings.set_alias(message.author.id, argument[0], argument[1])
+                alias_term = argument[0]
+                command_term = argument[1]
+                if "makealias" == alias_term:
+                    await safe_send(message.author, "Cannot alias the makealias command.")
+                    return
+                global_settings.set_alias(message.author.id, alias_term, command_term)
                 global_settings.save()
-                await safe_send(message.author, "Successfully created alias {} for command {}.".format(argument[0], argument[1]))
+                await safe_send(message.author, "Successfully created alias {} for command {}.".format(alias_term, command_term))
                 return
 
             # Help dialogue
