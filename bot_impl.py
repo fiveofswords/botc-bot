@@ -4803,13 +4803,16 @@ async def on_message(message):
                     await safe_send(message.author, "You don't have permission to mark a player cheacked in.")
                     return
 
-                person = await select_player(
-                    message.author, argument, global_vars.game.seatingOrder
-                )
-                if person is None:
+                people = [
+                    await select_player(message.author, person, global_vars.game.seatingOrder)
+                    for person in argument.split(" ")
+                ]
+                if None in people:
                     return
+                for person in people:
+                    person.has_checked_in = True
 
-                person.has_checked_in = True
+                await safe_send(message.author, "Successfully marked as checked in: {}".format(", ".join([person.display_name for person in people])))
                 if global_vars.game is not NULL_GAME:
                     backup("current_game.pckl")
 
@@ -4827,13 +4830,18 @@ async def on_message(message):
                     await safe_send(message.author, "You don't have permission to make players active.")
                     return
 
-                person = await select_player(
-                    message.author, argument, global_vars.game.seatingOrder
-                )
-                if person is None:
+                people = [
+                    await select_player(message.author, person, global_vars.game.seatingOrder)
+                    for person in argument.split(" ")
+                ]
+                if None in people:
                     return
 
-                person.has_checked_in = False
+                for person in people:
+                    person.has_checked_in = False
+
+                await safe_send(message.author, "Successfully marked as not checked in: {}".format(", ".join([person.display_name for person in people])))
+
                 if global_vars.game is not NULL_GAME:
                     backup("current_game.pckl")
 
