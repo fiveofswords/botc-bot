@@ -6586,13 +6586,13 @@ async def on_message(message):
                             inline=False,
                         )
                         embed.add_field(
-                            name="checkin <<player>>",
-                            value="Marks a player as checked in for tonight.  Resets each day.",
+                            name="checkin <<players>>",
+                            value="Marks players as checked in for tonight.  Resets each day.",
                             inline=False,
                         )
                         embed.add_field(
-                            name="undocheckin <<player>>",
-                            value="Marks a player as not checked in for tonight.",
+                            name="undocheckin <<players>>",
+                            value="Marks players as not checked in for tonight.",
                             inline=False,
                         )
                         embed.add_field(
