@@ -496,9 +496,13 @@ class Vote:
         self.presetVotes = {}
         self.values = {person: (0, 1) for person in self.order}
         self.majority = 0.0
-        for person in self.order:
-            if not person.is_ghost:
-                self.majority += 0.5
+        voudon_in_play = in_play_voudon()
+        if(not voudon_in_play):
+            for person in self.order:
+                if not person.is_ghost:
+                    self.majority += 0.5
+        else:
+            self.majority = 1.0
         for person in global_vars.game.seatingOrder:
             if isinstance(person.character, VoteBeginningModifier):
                 (
