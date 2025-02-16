@@ -229,6 +229,7 @@ class Day:
         global_vars.game.whisper_mode = WhisperMode.NEIGHBORS
         await self.close_noms()
         # todo: if organ grinder ability is active, then this first message should not be output.
+
         if not nominee:
             self.votes.append(Vote(nominee, nominator))
             if self.aboutToDie is not None:
@@ -237,17 +238,8 @@ class Day:
                     "{}, the storytellers have been nominated by {}. {} to tie, {} to execute.".format(
                         global_vars.player_role.mention,
                         nominator.display_name if nominator else "the storytellers",
-                        str(
-                            int(
-                                math.ceil(
-                                    max(
-                                        self.aboutToDie[1].votes,
-                                        self.votes[-1].majority,
-                                    )
-                                )
-                            )
-                        ),
-                        str(int(math.ceil(self.aboutToDie[1].votes + 1))),
+                        str(int(self.aboutToDie[1].votes)),
+                        str(int(math.ceil((max(self.aboutToDie[1].votes + 1, self.votes[-1].majority))))),
                     ),
                 )
             else:
@@ -311,17 +303,8 @@ class Day:
                         if not nominee.user in global_vars.gamemaster_role.members
                         else "the storytellers",
                         nominator.display_name if nominator else "the storytellers",
-                        str(
-                            int(
-                                math.ceil(
-                                    max(
-                                        self.aboutToDie[1].votes,
-                                        self.votes[-1].majority,
-                                    )
-                                )
-                            )
-                        ),
-                        str(int(math.ceil(self.aboutToDie[1].votes + 1))),
+                        str(int(self.aboutToDie[1].votes)),
+                        str(int(math.ceil((max(self.aboutToDie[1].votes + 1, self.votes[-1].majority))))),
                     ),
                 )
             else:
@@ -499,13 +482,12 @@ class Vote:
         self.presetVotes = {}
         self.values = {person: (0, 1) for person in self.order}
         self.majority = 0.0
-        voudon_in_play = in_play_voudon()
-        if(not voudon_in_play):
-            for person in self.order:
-                if not person.is_ghost:
-                    self.majority += 0.5
-        else:
+        if in_play_voudon():
             self.majority = 1.0
+        else:
+            self.majority = sum(
+                [0.5 for person in self.order if not person.is_ghost])
+
         for person in global_vars.game.seatingOrder:
             if isinstance(person.character, VoteBeginningModifier):
                 (
@@ -627,19 +609,20 @@ class Vote:
     async def end_vote(self):
         # When the vote is over
         tie = False
-        aboutToDie = global_vars.game.days[-1].aboutToDie
+        about_to_die = global_vars.game.days[-1].aboutToDie
         if self.votes >= self.majority:
-            if aboutToDie is None:
+            if about_to_die is None:
                 dies = True
-            elif self.votes > aboutToDie[1].votes:
+            elif self.votes > about_to_die[1].votes:
                 dies = True
-            elif self.votes == aboutToDie[1].votes:
+            elif self.votes == about_to_die[1].votes:
                 dies = False
                 tie = True
             else:
                 dies = False
         else:
             dies = False
+        # fixme: Voudon math - if a player is about to die with less than half the votes, and then Voudon is exiled
         for person in global_vars.game.seatingOrder:
             if isinstance(person.character, VoteModifier):
                 dies, tie = person.character.on_vote_conclusion(dies, tie)
@@ -657,10 +640,10 @@ class Vote:
         else:
             text = (", ".join([x.display_name for x in the_voters[:-1]]) + ", and " + the_voters[-1].display_name)
         if dies:
-            if aboutToDie is not None and aboutToDie[0] is not None:
+            if about_to_die is not None and about_to_die[0] is not None:
                 msg = await global_vars.channel.fetch_message(
                     global_vars.game.days[-1].voteEndMessages[
-                        global_vars.game.days[-1].votes.index(aboutToDie[1])
+                        global_vars.game.days[-1].votes.index(about_to_die[1])
                     ]
                 )
                 await msg.edit(
@@ -677,10 +660,10 @@ class Vote:
                 ),
             )
         elif tie:
-            if aboutToDie is not None:
+            if about_to_die is not None:
                 msg = await global_vars.channel.fetch_message(
                     global_vars.game.days[-1].voteEndMessages[
-                        global_vars.game.days[-1].votes.index(aboutToDie[1])
+                        global_vars.game.days[-1].votes.index(about_to_die[1])
                     ]
                 )
                 await msg.edit(
