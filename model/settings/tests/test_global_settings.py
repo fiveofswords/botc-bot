@@ -12,8 +12,7 @@ class TestGlobalSettings:
             _BaseSettings(global_settings._SETTINGS_FILENAME,
                           {1: {'aliases': {'TestAlias': 'AliasedCommand'}, 'defaultvote': [True, 30]}}))
 
-    @staticmethod
-    def teardown_method():
+    def teardown_method(self):
         # Delete the preferences.json file after each test
         if os.path.exists(global_settings._SETTINGS_FILENAME):
             os.remove(global_settings._SETTINGS_FILENAME)

@@ -1,8 +1,8 @@
+import os
+
 from model.settings import game_settings
 from model.settings._base_settings import _BaseSettings
 from model.settings.game_settings import GameSettings
-
-import os
 
 
 class TestGameSettings:
