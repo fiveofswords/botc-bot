@@ -2061,7 +2061,7 @@ async def on_message(message):
                     await safe_send(message.author, "Role not found: {}.".format(role))
                     return
 
-                await person.change_character(role(person))
+                await person.change_character(role)
                 await safe_send(message.author, "Role change successful!")
                 if global_vars.game is not NULL_GAME:
                     backup("current_game.pckl")
