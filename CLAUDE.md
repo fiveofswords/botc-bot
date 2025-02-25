@@ -1,5 +1,17 @@
 # BOTC-Bot Development Guide
 
+## Environment Setup
+```bash
+# Always use the project's virtual environment
+# The venv directory is in the project root
+/Users/dlorant/IdeaProjects/botc-bot/venv/bin/python -m <command>
+
+# For convenience, you can activate the virtual environment
+source /Users/dlorant/IdeaProjects/botc-bot/venv/bin/activate
+# Then you can simply use python without the full path
+python -m <command>
+```
+
 ## Test Commands
 ```bash
 # Run all tests
@@ -17,6 +29,24 @@ python -m pytest time_utils/tests/test_time_utils.py::TestParseDeadline::test_un
 # Run with verbose output
 python -m pytest -v
 ```
+
+## Project Organization
+
+### Directories
+- `model/` - Core data models and game entities
+  - `model/player.py` - Player class definition
+  - `model/characters/` - Character classes and abilities
+  - `model/settings/` - Game and global settings
+  - `model/channels/` - Channel management
+- `utils/` - Utility functions and helpers
+- `time_utils/` - Time-related utilities
+- `tests/` - Test directories within each module
+
+### Character Structure
+- All character classes are in `model/characters/`
+- Base classes are in `model/characters/base.py`
+- Specific character implementations are in `model/characters/specific.py`
+- Character registry for str-to-class conversion is in `model/characters/registry.py`
 
 ## Code Style Guidelines
 
