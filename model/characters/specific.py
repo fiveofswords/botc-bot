@@ -7,11 +7,12 @@ import itertools
 
 import global_vars
 from bot_client import client
+from utils.character_utils import has_ability
 from utils.message_utils import safe_send
 from .base import (
-    AbilityModifier, DayStartModifier, DeathModifier, Demon, Minion,
-    NominationModifier, Outsider, Townsfolk, Traveler,
-    VoteBeginningModifier, has_ability
+    Townsfolk, Outsider, Minion, Demon, Traveler,
+    DayStartModifier, NominationModifier,
+    VoteBeginningModifier, DeathModifier, AbilityModifier
 )
 
 
