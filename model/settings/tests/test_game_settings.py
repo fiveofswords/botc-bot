@@ -3,21 +3,19 @@ import os
 from model.settings import game_settings
 from model.settings._base_settings import _BaseSettings
 from model.settings.game_settings import GameSettings
-
+TEST_SETTINGS_FILENAME = 'test_settings.json'
 
 class TestGameSettings:
 
     def setup_method(self):
-        # Create a temporary preferences.json file for testing
-        game_settings._SETTINGS_FILENAME = 'test_settings.json'
         # Set up a GameSettings instance with some predefined settings
         self.game_settings = GameSettings(
-            _BaseSettings(game_settings._SETTINGS_FILENAME, {1: {"st_channel": 12345}}))
+            _BaseSettings(TEST_SETTINGS_FILENAME, {1: {"st_channel": 12345}}))
 
     def teardown_method(self):
         # Delete the preferences.json file after each test
-        if os.path.exists(game_settings._SETTINGS_FILENAME):
-            os.remove(game_settings._SETTINGS_FILENAME)
+        if os.path.exists(TEST_SETTINGS_FILENAME):
+            os.remove(TEST_SETTINGS_FILENAME)
 
     def test_get_st_channel(self):
         assert self.game_settings.get_st_channel(1) == 12345
@@ -41,5 +39,5 @@ class TestGameSettings:
     def test_save_and_load(self):
         # Test saving and loading settings
         self.game_settings.save()
-        loaded_settings = GameSettings.load()
+        loaded_settings = GameSettings.load(TEST_SETTINGS_FILENAME)
         assert self.game_settings == loaded_settings

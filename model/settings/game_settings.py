@@ -42,6 +42,6 @@ class GameSettings:
         return self
 
     @classmethod
-    def load(cls) -> GameSettings:
+    def load(cls, filename: str = _SETTINGS_FILENAME) -> GameSettings:
         """Load settings from a JSON file and return a new GameSettings object."""
-        return cls(_BaseSettings.load(_SETTINGS_FILENAME))
+        return cls(_BaseSettings.load(filename))
