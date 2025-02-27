@@ -15,6 +15,7 @@ from .base import (
     has_ability
 )
 
+
 # Basic Character Classes
 
 class Chef(Townsfolk):
@@ -1607,23 +1608,23 @@ class OrganGrinder(Minion, NominationModifier):
                 this_day.votes[-2].announcements[0])
             for person in global_vars.game.seatingOrder:
                 for msg in person.message_history:
-                    if msg["from"] == person:
+                    if msg["from_player"] == person:
                         if has_had_multiple_votes:
                             if msg["time"] >= last_vote_message.created_at:
-                                if (person, msg["to"]) in message_tally:
-                                    message_tally[(person, msg["to"])] += 1
-                                elif (msg["to"], person) in message_tally:
-                                    message_tally[(msg["to"], person)] += 1
+                                if (person, msg["to_player"]) in message_tally:
+                                    message_tally[(person, msg["to_player"])] += 1
+                                elif (msg["to_player"], person) in message_tally:
+                                    message_tally[(msg["to_player"], person)] += 1
                                 else:
-                                    message_tally[(person, msg["to"])] = 1
+                                    message_tally[(person, msg["to_player"])] = 1
                         else:
                             if msg["day"] == len(global_vars.game.days):
-                                if (person, msg["to"]) in message_tally:
-                                    message_tally[(person, msg["to"])] += 1
-                                elif (msg["to"], person) in message_tally:
-                                    message_tally[(msg["to"], person)] += 1
+                                if (person, msg["to_player"]) in message_tally:
+                                    message_tally[(person, msg["to_player"])] += 1
+                                elif (msg["to_player"], person) in message_tally:
+                                    message_tally[(msg["to_player"], person)] += 1
                                 else:
-                                    message_tally[(person, msg["to"])] = 1
+                                    message_tally[(person, msg["to_player"])] = 1
             sorted_tally = sorted(message_tally.items(), key=lambda x: -x[1])
             messageText = "**Message Tally:**"
             for pair in sorted_tally:
@@ -1791,14 +1792,14 @@ class Riot(Demon, NominationModifier):
             }
             for person in global_vars.game.seatingOrder:
                 for msg in person.message_history:
-                    if msg["from"] == person:
+                    if msg["from_player"] == person:
                         if msg["day"] == len(global_vars.game.days):
-                            if (person, msg["to"]) in message_tally:
-                                message_tally[(person, msg["to"])] += 1
-                            elif (msg["to"], person) in message_tally:
-                                message_tally[(msg["to"], person)] += 1
+                            if (person, msg["to_player"]) in message_tally:
+                                message_tally[(person, msg["to_player"])] += 1
+                            elif (msg["to_player"], person) in message_tally:
+                                message_tally[(msg["to_player"], person)] += 1
                             else:
-                                message_tally[(person, msg["to"])] = 1
+                                message_tally[(person, msg["to_player"])] = 1
             sorted_tally = sorted(message_tally.items(), key=lambda x: -x[1])
             messageText = "**Message Tally:**"
             for pair in sorted_tally:
