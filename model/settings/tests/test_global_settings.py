@@ -3,21 +3,21 @@ import os
 from model.settings import GlobalSettings, global_settings
 from model.settings._base_settings import _BaseSettings
 
+TEST_PREFERENCES_FILENAME = 'test_preferences.json'
+
 
 class TestGlobalSettings:
 
     def setup_method(self):
-        # Create a temporary preferences.json file for testing
-        global_settings._SETTINGS_FILENAME = 'test_preferences.json'
         # Set up a GameSettings instance with some predefined settings
         self.global_settings = GlobalSettings(
-            _BaseSettings(global_settings._SETTINGS_FILENAME,
+            _BaseSettings(TEST_PREFERENCES_FILENAME,
                           {1: {'aliases': {'TestAlias': 'AliasedCommand'}, 'defaultvote': [True, 30]}}))
 
     def teardown_method(self):
         # Delete the preferences.json file after each test
-        if os.path.exists(global_settings._SETTINGS_FILENAME):
-            os.remove(global_settings._SETTINGS_FILENAME)
+        if os.path.exists(TEST_PREFERENCES_FILENAME):
+            os.remove(TEST_PREFERENCES_FILENAME)
 
     def test_get_alias(self):
         assert self.global_settings.get_alias(1, 'TestAlias') == 'AliasedCommand'
@@ -58,5 +58,5 @@ class TestGlobalSettings:
     def test_save_load(self):
         # Test saving and loading settings
         self.global_settings.save()
-        loaded_settings = GlobalSettings.load()
+        loaded_settings = GlobalSettings.load(TEST_PREFERENCES_FILENAME)
         assert self.global_settings == loaded_settings
