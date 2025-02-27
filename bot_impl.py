@@ -360,23 +360,23 @@ class Day:
 
             for person in global_vars.game.seatingOrder:
                 for msg in person.message_history:
-                    if msg["from"] == person:
+                    if msg["from_player"] == person:
                         if has_had_multiple_votes:
                             if msg["time"] >= last_vote_message.created_at:
-                                if (person, msg["to"]) in message_tally:
-                                    message_tally[(person, msg["to"])] += 1
-                                elif (msg["to"], person) in message_tally:
-                                    message_tally[(msg["to"], person)] += 1
+                                if (person, msg["to_player"]) in message_tally:
+                                    message_tally[(person, msg["to_player"])] += 1
+                                elif (msg["to_player"], person) in message_tally:
+                                    message_tally[(msg["to_player"], person)] += 1
                                 else:
-                                    message_tally[(person, msg["to"])] = 1
+                                    message_tally[(person, msg["to_player"])] = 1
                         else:
                             if msg["day"] == len(global_vars.game.days):
-                                if (person, msg["to"]) in message_tally:
-                                    message_tally[(person, msg["to"])] += 1
-                                elif (msg["to"], person) in message_tally:
-                                    message_tally[(msg["to"], person)] += 1
+                                if (person, msg["to_player"]) in message_tally:
+                                    message_tally[(person, msg["to_player"])] += 1
+                                elif (msg["to_player"], person) in message_tally:
+                                    message_tally[(msg["to_player"], person)] += 1
                                 else:
-                                    message_tally[(person, msg["to"])] = 1
+                                    message_tally[(person, msg["to_player"])] = 1
             sorted_tally = sorted(message_tally.items(), key=lambda x: -x[1])
             messageText = "**Message Tally:**"
             for pair in sorted_tally:
@@ -437,23 +437,23 @@ class Day:
                 )
                 for person in global_vars.game.seatingOrder:
                     for msg in person.message_history:
-                        if msg["from"] == person:
+                        if msg["from_player"] == person:
                             if has_had_multiple_votes:
                                 if msg["time"] >= last_vote_message.created_at:
-                                    if (person, msg["to"]) in message_tally:
-                                        message_tally[(person, msg["to"])] += 1
-                                    elif (msg["to"], person) in message_tally:
-                                        message_tally[(msg["to"], person)] += 1
+                                    if (person, msg["to_player"]) in message_tally:
+                                        message_tally[(person, msg["to_player"])] += 1
+                                    elif (msg["to_player"], person) in message_tally:
+                                        message_tally[(msg["to_player"], person)] += 1
                                     else:
-                                        message_tally[(person, msg["to"])] = 1
+                                        message_tally[(person, msg["to_player"])] = 1
                             else:
                                 if msg["day"] == len(global_vars.game.days):
-                                    if (person, msg["to"]) in message_tally:
-                                        message_tally[(person, msg["to"])] += 1
-                                    elif (msg["to"], person) in message_tally:
-                                        message_tally[(msg["to"], person)] += 1
+                                    if (person, msg["to_player"]) in message_tally:
+                                        message_tally[(person, msg["to_player"])] += 1
+                                    elif (msg["to_player"], person) in message_tally:
+                                        message_tally[(msg["to_player"], person)] += 1
                                     else:
-                                        message_tally[(person, msg["to"])] = 1
+                                        message_tally[(person, msg["to_player"])] = 1
                 sorted_tally = sorted(message_tally.items(), key=lambda x: -x[1])
                 messageText = "**Message Tally:**"
                 for pair in sorted_tally:
@@ -2653,14 +2653,14 @@ async def on_message(message):
                 }
                 for person in global_vars.game.seatingOrder:
                     for msg in person.message_history:
-                        if msg["from"] == person:
+                        if msg["from_player"] == person:
                             if msg["time"] >= origin_msg.created_at:
-                                if (person, msg["to"]) in message_tally:
-                                    message_tally[(person, msg["to"])] += 1
-                                elif (msg["to"], person) in message_tally:
-                                    message_tally[(msg["to"], person)] += 1
+                                if (person, msg["to_player"]) in message_tally:
+                                    message_tally[(person, msg["to_player"])] += 1
+                                elif (msg["to_player"], person) in message_tally:
+                                    message_tally[(msg["to_player"], person)] += 1
                                 else:
-                                    message_tally[(person, msg["to"])] = 1
+                                    message_tally[(person, msg["to_player"])] = 1
                 sorted_tally = sorted(message_tally.items(), key=lambda x: -x[1])
                 message_text = "Message Tally:"
                 for pair in sorted_tally:
@@ -2702,16 +2702,16 @@ async def on_message(message):
                         await safe_send(message.author, message_text)
                         counts = OrderedDict([(player, 0) for player in global_vars.game.seatingOrder])
                         day = msg["day"]
-                    if msg["from"] == person:
-                        if (msg["to"] in counts):
-                            counts[msg["to"]] += 1
+                    if msg["from_player"] == person:
+                        if (msg["to_player"] in counts):
+                            counts[msg["to_player"]] += 1
                         else:
                             if "Storytellers" in counts:
                                 counts["Storytellers"] += 1
                             else:
                                 counts["Storytellers"] = 1
                     else:
-                        counts[msg["from"]] += 1
+                        counts[msg["from_player"]] += 1
 
                 message_text = "Day {}\n".format(day)
                 for player, count in counts.items():
@@ -3512,8 +3512,8 @@ async def on_message(message):
                                 message_text = "**Day {}:**".format(str(day))
                             message_text += (
                                 "\nFrom: {} | To: {} | Time: {}\n**{}**".format(
-                                    msg["from"].display_name,
-                                    msg["to"].display_name,
+                                    msg["from_player"].display_name,
+                                    msg["to_player"].display_name,
                                     msg["time"].strftime("%m/%d, %H:%M:%S"),
                                     msg["content"],
                                 )
@@ -3540,8 +3540,8 @@ async def on_message(message):
                     day = 1
                     for msg in person1.message_history:
                         if not (
-                            (msg["from"] == person1 and msg["to"] == person2)
-                            or (msg["to"] == person1 and msg["from"] == person2)
+                            (msg["from_player"] == person1 and msg["to_player"] == person2)
+                            or (msg["to_player"] == person1 and msg["from_player"] == person2)
                         ):
                             continue
                         if len(message_text) > 1500:
@@ -3553,8 +3553,8 @@ async def on_message(message):
                             day += 1
                             message_text = "**Day {}:**".format(str(day))
                         message_text += "\nFrom: {} | To: {} | Time: {}\n**{}**".format(
-                            msg["from"].display_name,
-                            msg["to"].display_name,
+                            msg["from_player"].display_name,
+                            msg["to_player"].display_name,
                             msg["time"].strftime("%m/%d, %H:%M:%S"),
                             msg["content"],
                         )
@@ -3579,7 +3579,7 @@ async def on_message(message):
                 )
                 day = 1
                 for msg in (await get_player(message.author)).message_history:
-                    if not msg["from"] == person and not msg["to"] == person:
+                    if not msg["from_player"] == person and not msg["to_player"] == person:
                         continue
                     if len(message_text) > 1500:
                         await safe_send(message.author, message_text)
@@ -3590,8 +3590,8 @@ async def on_message(message):
                         day += 1
                         message_text = "\n\n**Day {}:**".format(str(day))
                     message_text += "\nFrom: {} | To: {} | Time: {}\n**{}**".format(
-                        msg["from"].display_name,
-                        msg["to"].display_name,
+                        msg["from_player"].display_name,
+                        msg["to_player"].display_name,
                         msg["time"].strftime("%m/%d, %H:%M:%S"),
                         msg["content"],
                     )
@@ -3612,7 +3612,7 @@ async def on_message(message):
                     people = []
                     for person in global_vars.game.seatingOrder:
                         for msg in person.message_history:
-                            if not msg["from"] in people and not msg["to"] in people:
+                            if not msg["from_player"] in people and not msg["to_player"] in people:
                                 history.append(msg)
                         people.append(person)
 
@@ -3630,8 +3630,8 @@ async def on_message(message):
                             day += 1
                             message_text = "**Day {}:**".format(str(day))
                         message_text += "\nFrom: {} | To: {} | Time: {}\n**{}**".format(
-                            msg["from"].display_name,
-                            msg["to"].display_name,
+                            msg["from_player"].display_name,
+                            msg["to_player"].display_name,
                             msg["time"].strftime("%m/%d, %H:%M:%S"),
                             msg["content"],
                         )
@@ -3657,8 +3657,8 @@ async def on_message(message):
                         day += 1
                         message_text = "**Day {}:**".format(str(day))
                     message_text += "\nFrom: {} | To: {} | Time: {}\n**{}**".format(
-                        msg["from"].display_name,
-                        msg["to"].display_name,
+                        msg["from_player"].display_name,
+                        msg["to_player"].display_name,
                         msg["time"].strftime("%m/%d, %H:%M:%S"),
                         msg["content"],
                     )
