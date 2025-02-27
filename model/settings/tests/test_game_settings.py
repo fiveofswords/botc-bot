@@ -8,6 +8,8 @@ from model.settings.game_settings import GameSettings
 class TestGameSettings:
 
     def setup_method(self):
+        # Create a temporary preferences.json file for testing
+        game_settings._SETTINGS_FILENAME = 'test_settings.json'
         # Set up a GameSettings instance with some predefined settings
         self.game_settings = GameSettings(
             _BaseSettings(game_settings._SETTINGS_FILENAME, {1: {"st_channel": 12345}}))

@@ -7,6 +7,8 @@ from model.settings._base_settings import _BaseSettings
 class TestGlobalSettings:
 
     def setup_method(self):
+        # Create a temporary preferences.json file for testing
+        global_settings._SETTINGS_FILENAME = 'test_preferences.json'
         # Set up a GameSettings instance with some predefined settings
         self.global_settings = GlobalSettings(
             _BaseSettings(global_settings._SETTINGS_FILENAME,
