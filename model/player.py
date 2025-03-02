@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime
-from typing import Optional, Dict, Any, TypedDict
+from typing import Any, Dict, Optional, TypedDict
 
 import discord
 from discord import Member, TextChannel

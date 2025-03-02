@@ -9,11 +9,11 @@ import global_vars
 from bot_client import client
 from utils.message_utils import safe_send
 from .base import (
-    Townsfolk, Outsider, Minion, Demon, Traveler,
-    DayStartModifier, NominationModifier,
-    VoteBeginningModifier, DeathModifier, AbilityModifier,
-    has_ability
+    AbilityModifier, DayStartModifier, DeathModifier, Demon, Minion,
+    NominationModifier, Outsider, Townsfolk, Traveler,
+    VoteBeginningModifier, has_ability
 )
+
 
 # Basic Character Classes
 

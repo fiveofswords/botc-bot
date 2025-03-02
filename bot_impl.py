@@ -6,22 +6,24 @@ import itertools
 import math
 import os
 from collections import OrderedDict
-from typing import Optional, TypeVar, Protocol, Sequence
+from typing import Optional, Protocol, Sequence, TypeVar
 
 import dill
 import discord
-from discord import User, Member, TextChannel
+from discord import Member, TextChannel, User
 
 import global_vars
 from bot_client import client, logger
 from config import *
 from model.channels import ChannelManager
-from model.characters import Character, AbilityModifier, Amnesiac, DayStartModifier, Minion, Demon, Outsider, Townsfolk, \
-    DayEndModifier, Voudon, NomsCalledModifier, NominationModifier, SeatingOrderModifier, Traveler, \
-    VoteBeginningModifier, VoteModifier
-from model.characters import Storyteller, the_ability, Banshee
-from model.player import Player, STORYTELLER_ALIGNMENT
-from model.settings import GlobalSettings, GameSettings
+from model.characters import (
+    AbilityModifier, Amnesiac, Banshee, Character, DayEndModifier, DayStartModifier,
+    Demon, Minion, NominationModifier, NomsCalledModifier, Outsider,
+    SeatingOrderModifier, Storyteller, Townsfolk, Traveler, VoteBeginningModifier,
+    VoteModifier, Voudon, the_ability
+)
+from model.player import STORYTELLER_ALIGNMENT, Player
+from model.settings import GameSettings, GlobalSettings
 from time_utils import parse_deadline
 from utils.message_utils import safe_send
 from utils.player_utils import check_and_print_if_one_or_zero_to_check_in
@@ -1608,14 +1610,14 @@ async def on_message(message):
                     )
 
                 game_settings = GameSettings.load()
-                st_channel = client.get_channel(game_settings.get_st_channel(player.id))
+                st_channel = client.get_channel(game_settings.get_st_channel(player.user.id))
                 if not st_channel:
                     st_channel = await ChannelManager(client).create_channel(game_settings, player)
                     await safe_send(message.author,
                                     f'Successfully created the channel https://discord.com/channels/{global_vars.server.id}/{st_channel.id}!')
 
                 await safe_send(
-                    player,
+                    player.user,
                     "Hello, {player_nick}! {storyteller_nick} welcomes you to Blood on the Clocktower on Discord! I'm {bot_nick}, the bot used on #{channel_name} in {server_name} to run games. Your Storyteller channel for this game is #{st_channel}\n\nThis is where you'll perform your private messaging during the game. To send a pm to a player, type `@pm [name]`.\n\nFor more info, type `@help`, or ask the storyteller(s): {storytellers}.".format(
                         bot_nick=bot_nick,
                         channel_name=channel_name,
@@ -4165,15 +4167,29 @@ async def check_and_print_if_one_or_zero_to_check_in():
 
 
 def to_whisper_mode(argument):
-    new_mode = WhisperMode.ALL
-    if WhisperMode.ALL.casefold() == argument.casefold():
-        new_mode = WhisperMode.ALL
-    elif WhisperMode.NEIGHBORS.casefold() == argument.casefold():
-        new_mode = WhisperMode.NEIGHBORS
-    elif WhisperMode.STORYTELLERS.casefold() == argument.casefold():
-        new_mode = WhisperMode.STORYTELLERS
-    else:
-        new_mode = None
+    """Convert a string argument to a WhisperMode enum value.
+    
+    Args:
+        argument: String input representing a whisper mode
+        
+    Returns:
+        WhisperMode enum value or None if not valid
+    """
+    if argument is None:
+        return None
+
+    new_mode = None
+    try:
+        if WhisperMode.ALL.casefold() == argument.casefold():
+            new_mode = WhisperMode.ALL
+        elif WhisperMode.NEIGHBORS.casefold() == argument.casefold():
+            new_mode = WhisperMode.NEIGHBORS
+        elif WhisperMode.STORYTELLERS.casefold() == argument.casefold():
+            new_mode = WhisperMode.STORYTELLERS
+    except AttributeError:
+        # Handle cases where argument doesn't have casefold()
+        return None
+        
     return new_mode
 
 
