@@ -47,12 +47,12 @@ class TestCharacterRegistry:
         # Test a representative character from each alignment type
         import inspect
         from model.characters import specific
-        
+
         for name, cls in inspect.getmembers(specific, inspect.isclass):
             # Check if it inherits from Character and is not a base alignment class
             from model.characters import Character, Townsfolk, Outsider, Minion, Demon, Traveler
             base_classes = (Character, Townsfolk, Outsider, Minion, Demon, Traveler)
-            
+
             if issubclass(cls, Character) and cls not in base_classes:
                 assert name in CHARACTER_REGISTRY
                 assert CHARACTER_REGISTRY[name] == cls

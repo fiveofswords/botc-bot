@@ -1,6 +1,6 @@
 import os
 
-from model.settings import GlobalSettings, global_settings
+from model.settings import GlobalSettings
 from model.settings._base_settings import _BaseSettings
 
 TEST_PREFERENCES_FILENAME = 'test_preferences.json'

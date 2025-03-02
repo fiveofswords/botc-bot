@@ -38,6 +38,10 @@ jobs:
         run: |
           # Create an empty token file to prevent test breakage when creating a Client object in bot_client.py
           touch token.txt
+      - name: Copy config.py file
+        run: |
+          # Copy over one of the bot_configs to prevent test breakage when creating a Client object in bot_client.py
+          cp bot_configs/George.py config.py
       - name: Test with pytest
         run: |
           pytest
