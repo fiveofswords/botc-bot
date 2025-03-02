@@ -12,8 +12,12 @@ import pytest_asyncio
 
 import discord
 import global_vars
-from bot_impl import on_message, on_message_edit, on_member_update, Game, Script, Vote, Day, NULL_GAME
+from bot_impl import on_message, on_message_edit, on_member_update
 from model.characters import Character, Storyteller
+from model.game.day import Day
+from model.game.game import Game, NULL_GAME
+from model.game.script import Script
+from model.game.vote import Vote
 from model.player import Player
 from model.player import STORYTELLER_ALIGNMENT
 
@@ -298,8 +302,8 @@ async def setup_test_game(mock_discord_setup):
     with patch('bot_impl.update_presence'):
         # Create game object with patched methods
         game = Game(
-            seatingOrder=[alice_player, bob_player, charlie_player],
-            seatingOrderMessage=seating_message,
+            seating_order=[alice_player, bob_player, charlie_player],
+            seating_order_message=seating_message,
             script=Script([])
         )
 

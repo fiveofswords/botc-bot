@@ -7,12 +7,26 @@ using actual Discord servers or API calls.
 """
 
 import datetime
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock
 
 import discord
 import pytest_asyncio
 
 import global_vars
+from bot_client import client as real_client
+
+
+class MockClient:
+    """Mock Discord client for testing."""
+
+    def __init__(self):
+        self.ws = MagicMock()
+        self.ws.change_presence = AsyncMock()
+        self.change_presence = AsyncMock()
+        self.wait_for = AsyncMock()
+        self.user = MagicMock()
+        self.user.id = 999
+        self.user.name = "Test Bot"
 
 
 class MockRole:
@@ -153,6 +167,10 @@ class MockGuild:
 @pytest_asyncio.fixture
 async def mock_discord_setup():
     """Set up mock Discord environment for testing."""
+    # Create a mock client and patch the real client
+    mock_client = MockClient()
+    original_client = real_client
+    
     # Create roles
     player_role = MockRole(100, "Player")
     traveler_role = MockRole(101, "Traveler")
@@ -220,6 +238,7 @@ async def mock_discord_setup():
     # Return objects for tests to use
     return {
         'guild': guild,
+        'client': mock_client,
         'roles': {
             'player': player_role,
             'traveler': traveler_role,

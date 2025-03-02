@@ -55,38 +55,9 @@ def disable_file_operations():
 # Game Management Commands
 ###############################
 
-@pytest.mark.asyncio
-async def test_endgame_command(mock_discord_setup, setup_test_game):
-    """Test the Game.end method directly."""
-    # Set up global variables for this test
-    global_vars.game = setup_test_game['game']
-    global_vars.server = mock_discord_setup['guild']
-    global_vars.channel = mock_discord_setup['channels']['town_square']
-    global_vars.player_role = mock_discord_setup['roles']['player']
-
-    # Get storyteller from fixture
-    storyteller = setup_test_game['players']['storyteller']
-
-    # For each player, provide a mock user that can be used with wipe_roles
-    for player in setup_test_game['game'].seatingOrder:
-        player.wipe_roles = AsyncMock()
-
-    # Mock out methods that would interact with Discord
-    with patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send, \
-            patch('bot_impl.remove_backup') as mock_remove_backup, \
-            patch('bot_impl.update_presence') as mock_update_presence:
-        # Mock pins() for channel
-        mock_pins = AsyncMock(return_value=[setup_test_game['game'].seatingOrderMessage])
-        global_vars.channel.pins = mock_pins
-
-        # Call the end method directly
-        await setup_test_game['game'].end("good")
-
-        # Verify announcement was made
-        mock_safe_send.assert_any_call(
-            global_vars.channel,
-            f"{global_vars.player_role.mention}, good has won. Good game!"
-        )
+# test_endgame_command was removed - functionality is covered by integration tests in 
+# test_storyteller_commands.py::test_storyteller_endgame_command and
+# test_bot_integration.py::test_on_message_endgame_command
 
 
 @pytest.mark.asyncio

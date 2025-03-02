@@ -65,45 +65,69 @@ async def test_vote_initialization(mock_discord_setup, setup_test_game):
 
 
 @pytest.mark.asyncio
-async def test_vote_call_next(mock_discord_setup, setup_test_game):
+async def test_vote_call_next():
     """Test the call_next method of Vote."""
-    # Import common patches
+    # Import from model directly
+    from model.game.vote import Vote
 
-    # Use mock_safe_send from the fixtures
-    with patch('bot_impl.safe_send') as mock_safe_send:
-        with patch('model.settings.global_settings.GlobalSettings.get_default_vote', return_value=None):
-            # Set up global variables
-            global_vars.channel = mock_discord_setup['channels']['town_square']
-            global_vars.gamemaster_role = mock_discord_setup['roles']['gamemaster']
+    # Create mock channel
+    mock_channel = MagicMock()
 
-            # Use the storyteller member from fixtures
-            storyteller = mock_discord_setup['members']['storyteller']
-            global_vars.gamemaster_role.members = [storyteller]
+    # Create mock user 
+    mock_user = MagicMock()
+    mock_user.id = 123456
+    mock_user.mention = "@bob"
 
-            # Get players from the fixture
-            alice = setup_test_game['players']['alice']
-            bob = setup_test_game['players']['bob']
-            charlie = setup_test_game['players']['charlie']
+    # Create mock nominee
+    mock_nominee = MagicMock()
+    mock_nominee.display_name = "Alice"
 
-            # Use setup_test_vote to create a vote with the specified order
-            vote = setup_test_vote(setup_test_game['game'], alice, bob, [bob, charlie, alice])
-            vote.position = 0  # Start with Bob
+    # Create mock voter
+    mock_voter = MagicMock()
+    mock_voter.user = mock_user
+    mock_voter.is_ghost = False
+    mock_voter.dead_votes = 0
+    mock_voter.display_name = "Bob"
 
+    # Create mock gamemaster and role
+    mock_gm = MagicMock()
+    mock_gm_role = MagicMock()
+    mock_gm_role.members = [mock_gm]
+
+    # Create mock game with days
+    mock_day = MagicMock()
+    mock_vote = MagicMock()
+    mock_day.votes = [mock_vote]
+    mock_game = MagicMock()
+    mock_game.seatingOrder = [mock_nominee, mock_voter]
+    mock_game.days = [mock_day]
+
+    # Set up the function under test with the mock objects
+    with patch('global_vars.game', mock_game), \
+            patch('global_vars.channel', mock_channel), \
+            patch('global_vars.gamemaster_role', mock_gm_role), \
+            patch('utils.character_utils.the_ability', return_value=None), \
+            patch('model.game.vote.in_play_voudon', return_value=False), \
+            patch('model.settings.global_settings.GlobalSettings.get_default_vote', return_value=None):
+        # Create a real vote object
+        vote = Vote(mock_nominee, MagicMock())
+
+        # Mock its vote method to avoid going through voting logic
+        vote.vote = AsyncMock()
+
+        # Set up the vote order and position
+        vote.order = [mock_voter]
+        vote.position = 0
+
+        # Mock safe_send for verification
+        with patch('model.game.vote.safe_send', new_callable=AsyncMock) as mock_safe_send:
             # Call the method under test
             await vote.call_next()
 
-            # Verify message was sent to correct player
-            mock_safe_send.assert_any_call(
-                global_vars.channel,
-                f"{bob.user.mention}, your vote on {alice.display_name}."
-            )
-
-            # Verify storyteller was notified (checking substring since full message contains timestamps)
-            storyteller_calls = [
-                call for call in mock_safe_send.call_args_list
-                if call[0][0] == storyteller and bob.display_name in call[0][1]
-            ]
-            assert len(storyteller_calls) > 0, "No notification to storyteller found"
+            # Verify safe_send calls
+            assert mock_safe_send.call_count == 2
+            mock_safe_send.assert_any_call(mock_channel, f"{mock_user.mention}, your vote on Alice.")
+            mock_safe_send.assert_any_call(mock_gm, "Bob's vote. They have no default.")
 
 
 @pytest.mark.asyncio

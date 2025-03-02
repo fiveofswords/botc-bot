@@ -123,34 +123,52 @@ async def test_load_missing_file():
 @pytest.mark.asyncio
 async def test_remove_backup():
     """Test the remove_backup function."""
-    # Setup
+    # Setup mock game with attributes
     mock_game = MagicMock()
-    # Use a side_effect with a list to return the attributes we want
-    dir_mock = MagicMock(side_effect=lambda: ["seatingOrder", "seatingOrderMessage", "script"])
-    mock_game.__dir__ = dir_mock
-    # Set mock attributes so getattr works
     mock_game.seatingOrder = []
     mock_game.seatingOrderMessage = MagicMock()
     mock_game.script = MagicMock()
 
-    # Mock global variables
+    # Use a side_effect with a list to return the attributes we want
+    dir_mock = MagicMock(return_value=["seatingOrder", "seatingOrderMessage", "script"])
+    mock_game.__dir__ = dir_mock
+
+    # Mock callable check to always return False for our attributes
+    def mock_callable(obj):
+        if obj in [mock_game.seatingOrder, mock_game.seatingOrderMessage, mock_game.script]:
+            return False
+        return callable(obj)
+
+    # Store original game and set our mock
     original_game = global_vars.game
     global_vars.game = mock_game
 
-    # Mock file operations
-    with patch('os.remove') as mock_remove:
-        # Call the function under test
-        remove_backup("test_backup.pckl")
+    # Multiple exists checks will happen - first for the main file, then for each attribute file
+    exists_side_effect = {
+        "test_backup.pckl": True,
+        "seatingOrder_test_backup.pckl": True,
+        "seatingOrderMessage_test_backup.pckl": True,
+        "script_test_backup.pckl": True
+    }
 
-        # Verify os.remove is called for each file
-        mock_remove.assert_any_call("test_backup.pckl")
+    # Mock os.path.exists to return True for all files
+    with patch('os.path.exists', side_effect=lambda path: exists_side_effect.get(path, False)) as mock_exists:
+        with patch('os.remove') as mock_remove:
+            with patch('builtins.callable', side_effect=mock_callable):
+                # Call the function under test
+                remove_backup("test_backup.pckl")
 
-        # Check that at least one attribute file was removed
-        attribute_calls = [
-            call for call in mock_remove.call_args_list
-            if any(attr in call[0][0] for attr in ["seatingOrder", "seatingOrderMessage", "script"])
-        ]
-        assert len(attribute_calls) > 0, "No attribute files were removed"
+                # Verify os.path.exists was called for the main file and all attribute files
+                mock_exists.assert_any_call("test_backup.pckl")
 
-    # Restore global variable
+                # Verify os.remove was called for the main file and all existing attribute files
+                mock_remove.assert_any_call("test_backup.pckl")
+                mock_remove.assert_any_call("seatingOrder_test_backup.pckl")
+                mock_remove.assert_any_call("seatingOrderMessage_test_backup.pckl")
+                mock_remove.assert_any_call("script_test_backup.pckl")
+
+                # Verify correct number of calls based on our mock attributes
+                assert mock_remove.call_count == 4  # 1 for main file + 3 attributes
+
+    # Restore original game
     global_vars.game = original_game

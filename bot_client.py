@@ -1,10 +1,9 @@
 from __future__ import annotations
 
+import logging
 import os
 
 import discord
-import logging
-
 
 _member_cache: discord.MemberCacheFlags
 client: discord.Client
@@ -18,7 +17,6 @@ handler.setFormatter(
     logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s")
 )
 logger.addHandler(handler)
-
 
 try:
     _member_cache = discord.MemberCacheFlags(
@@ -48,7 +46,4 @@ client = discord.Client(
 # Read API Token
 with open(os.path.dirname(os.path.realpath(__file__)) + "/token.txt") as tokenfile:
     token = tokenfile.readline().strip()
-
-
-
 

@@ -2,8 +2,9 @@
 Utility functions for player management.
 """
 
+from typing import List, Optional
+
 import discord
-from typing import Optional, List
 
 import global_vars
 from model.player import Player
