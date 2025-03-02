@@ -6,7 +6,8 @@ from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 
-from bot_impl import to_whisper_mode, WhisperMode, chose_whisper_candidates
+from bot_impl import to_whisper_mode, chose_whisper_candidates
+from model.game import WhisperMode
 
 
 def test_to_whisper_mode():
@@ -203,7 +204,8 @@ async def test_chose_whisper_candidates_edge_case_circular(mock_get_player):
 async def test_whisper_mode_transitions():
     """Test that whisper mode changes correctly during game phase transitions."""
     # Import game classes
-    from bot_impl import Game, Day, Vote, WhisperMode
+    from bot_impl import Game, Vote
+    from model.game import Day
     import global_vars
 
     # Create a mock game

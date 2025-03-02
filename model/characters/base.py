@@ -427,36 +427,3 @@ class Storyteller(SeatingOrderModifier):
     def seating_order_message(self, seatingOrder):
         """Returns a string to add to the seating order message."""
         return f" - {self.role_name}"
-
-
-def has_ability(player_character, clazz):
-    """Check if a character has a specific ability.
-    
-    Args:
-        player_character: The character to check
-        clazz: The ability class to check for
-        
-    Returns:
-        bool: Whether the character has the ability
-    """
-    return the_ability(player_character, clazz) is not None
-
-
-def the_ability(player_character, clazz):
-    """Get the specified ability from a character.
-    
-    Args:
-        player_character: The character to check
-        clazz: The ability class to check for
-        
-    Returns:
-        The ability instance if found, otherwise None
-    """
-    if isinstance(player_character, clazz):
-        return player_character
-    if isinstance(player_character, AbilityModifier):
-        matching = [the_ability(c, clazz) for c in player_character.abilities]
-        # get the first one
-        first = next((x for x in matching if x is not None), None)
-        return first
-    return None

@@ -439,7 +439,7 @@ async def test_changing_whisper_mode(mock_discord_setup, setup_test_game):
     storyteller = setup_test_game['players']['storyteller']
 
     # Create a command message from storyteller to change whisper mode
-    from bot_impl import WhisperMode
+    from model.game.whisper_mode import WhisperMode
 
     # Test setting each whisper mode via storyteller command
     modes = [WhisperMode.ALL, WhisperMode.NEIGHBORS, WhisperMode.STORYTELLERS]

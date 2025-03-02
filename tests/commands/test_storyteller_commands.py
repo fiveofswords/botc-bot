@@ -57,7 +57,7 @@ async def test_storyteller_startday_command(mock_discord_setup, setup_test_game)
     setup_test_game['game'].start_day = original_start_day
 
     # For completeness, test with an actual Day object
-    from bot_impl import Day
+    from model.game.day import Day
 
     # Create a day object
     day = Day()
