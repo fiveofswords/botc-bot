@@ -9,3 +9,4 @@ testing.py
 __pycache__
 *.iml
 .idea
+/.coverage

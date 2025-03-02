@@ -2,14 +2,11 @@
 
 ## Environment Setup
 ```bash
-# Always use the project's virtual environment
-# The venv directory is in the project root
-/Users/dlorant/IdeaProjects/botc-bot/venv/bin/python -m <command>
+# Activate the virtual environment
+source venv/bin/activate
 
-# For convenience, you can activate the virtual environment
-source /Users/dlorant/IdeaProjects/botc-bot/venv/bin/activate
-# Then you can simply use python without the full path
-python -m <command>
+# Install requirements
+pip install -r requirements.txt
 ```
 
 ## Test Commands
@@ -17,63 +14,63 @@ python -m <command>
 # Run all tests
 python -m pytest
 
+# Run tests with coverage
+python -m pytest --cov=. --cov-report=term
+
 # Run specific test file
-python -m pytest time_utils/tests/test_time_utils.py
+python -m pytest tests/time_utils/test_time_utils.py
 
-# Run specific test class
-python -m pytest time_utils/tests/test_time_utils.py::TestParseDeadline
+# Run specific test class or method
+python -m pytest tests/time_utils/test_time_utils.py::TestParseDeadline
+python -m pytest tests/time_utils/test_time_utils.py::TestParseDeadline::test_unix_timestamp
 
-# Run specific test method
-python -m pytest time_utils/tests/test_time_utils.py::TestParseDeadline::test_unix_timestamp
-
-# Run with verbose output
+# Run with verbose output or show stdout/stderr
 python -m pytest -v
+python -m pytest -s
 ```
 
-## Project Organization
+## Project Structure
 
-### Directories
-- `model/` - Core data models and game entities
-  - `model/player.py` - Player class definition
-  - `model/characters/` - Character classes and abilities
-  - `model/settings/` - Game and global settings
-  - `model/channels/` - Channel management
+- `model/` - Core game entities (player, characters, settings, channels)
 - `utils/` - Utility functions and helpers
 - `time_utils/` - Time-related utilities
-- `tests/` - Test directories within each module
+- `tests/` - Test directory with subdirectories by module
 
-### Character Structure
-- All character classes are in `model/characters/`
-- Base classes are in `model/characters/base.py`
-- Specific character implementations are in `model/characters/specific.py`
-- Character registry for str-to-class conversion is in `model/characters/registry.py`
+### Character System
+
+- Base classes: `model/characters/base.py`
+- Specific implementations: `model/characters/specific.py`
+- Character registry: `model/characters/registry.py`
 
 ## Code Style Guidelines
 
 ### Imports
 - Group imports: standard library, third-party, local/project
-- Sort imports alphabetically within groups
-- Use absolute imports rather than relative
-- Avoid wildcard imports (`from module import *`)
+- Sort alphabetically within groups
+- Use absolute imports instead of relative
+- Avoid wildcard imports
 
 ### Type Hints
-- Use type annotations for function parameters and return values
-- Import annotations from `typing` module (Optional, List, Dict, etc.)
-- Consider using a type checker like mypy
 
-### Naming Conventions
+- Use annotations for parameters and return values
+- Import from typing module (Optional, List, Dict, etc.)
+- Place TypedDict definitions at module level
+
+### Naming and Formatting
 - Classes: PascalCase
-- Functions/variables/methods: snake_case
+- Functions/variables: snake_case
 - Constants: UPPER_SNAKE_CASE
-- Private attributes/methods: prefix with underscore (_method_name)
+- Private attributes: prefix with underscore (_var_name)
+- Line length: 100 characters maximum
 
 ### Error Handling
 - Use specific exceptions rather than generic ones
 - Log exceptions with appropriate context
-- Document expected exceptions in docstrings
 - Avoid bare except clauses
+- Document expected exceptions in docstrings
 
 ### Documentation
-- Use descriptive docstrings (Google or NumPy style)
-- Document parameters, return values, and raised exceptions
+
+- Use Google-style docstrings
+- Document parameters, return values, and exceptions
 - Include examples for complex functions
