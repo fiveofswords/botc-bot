@@ -13,7 +13,6 @@ import discord
 import pytest_asyncio
 
 import global_vars
-from bot_client import client as real_client
 
 
 class MockClient:
@@ -169,8 +168,7 @@ async def mock_discord_setup():
     """Set up mock Discord environment for testing."""
     # Create a mock client and patch the real client
     mock_client = MockClient()
-    original_client = real_client
-    
+
     # Create roles
     player_role = MockRole(100, "Player")
     traveler_role = MockRole(101, "Traveler")
