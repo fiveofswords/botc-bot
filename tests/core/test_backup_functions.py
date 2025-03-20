@@ -129,12 +129,13 @@ def test_remove_backup():
     # Use a side_effect with a list to return the attributes we want
     dir_mock = MagicMock(return_value=["seatingOrder", "seatingOrderMessage", "script"])
     mock_game.__dir__ = dir_mock
+    orig_callable = callable
 
     # Mock callable check to always return False for our attributes
     def mock_callable(obj):
         if obj in [mock_game.seatingOrder, mock_game.seatingOrderMessage, mock_game.script]:
             return False
-        return callable(obj)
+        return orig_callable(obj)
 
     # Store original game and set our mock
     original_game = global_vars.game
