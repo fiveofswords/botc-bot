@@ -11,8 +11,7 @@ from bot_impl import backup, load, remove_backup, Game, Script
 from tests.test_bot_integration import mock_discord_setup
 
 
-@pytest.mark.asyncio
-async def test_backup():
+def test_backup():
     """Test the backup function."""
     # Setup mocks
     mock_game = MagicMock()
@@ -43,8 +42,7 @@ async def test_backup():
     global_vars.game = original_game
 
 
-@pytest.mark.asyncio
-async def test_backup_null_game():
+def test_backup_null_game():
     """Test the backup function with NULL_GAME."""
     # Mock global variables
     original_game = global_vars.game
@@ -120,8 +118,7 @@ async def test_load_missing_file():
                 assert game is None
 
 
-@pytest.mark.asyncio
-async def test_remove_backup():
+def test_remove_backup():
     """Test the remove_backup function."""
     # Setup mock game with attributes
     mock_game = MagicMock()
