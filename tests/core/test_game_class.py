@@ -7,10 +7,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-import bot_impl
 import global_vars
-from bot_impl import Game, Player, Script, Day
+from bot_impl import Game, Player, Script
 from model.characters import Character
+from model.game import Day
 from tests.test_bot_integration import mock_discord_setup, setup_test_game, MockChannel
 
 
@@ -68,68 +68,9 @@ async def test_game_initialization(mock_discord_setup):
         assert game.has_automated_life_and_death is False
 
 
-@pytest.mark.asyncio
-async def test_game_end(mock_discord_setup, setup_test_game):
-    """Test the Game.end method thoroughly."""
-    # Set up mocks
-    with patch('bot_impl.safe_send') as mock_safe_send:
-        # Configure safe_send
-        mock_safe_send.return_value = AsyncMock()
-
-        # Create mock for channel pins and unpin
-        mock_pins = AsyncMock(return_value=[MagicMock()])
-        mock_pins.return_value[0].created_at = datetime.datetime.now()
-        mock_pins.return_value[0].unpin = AsyncMock()
-
-        # Create mock for seating order message with created_at attribute
-        mock_message = MagicMock()
-        mock_message.created_at = datetime.datetime.now() - datetime.timedelta(hours=1)  # Earlier than pins
-
-        # Set up global variables
-        global_vars.channel = mock_discord_setup['channels']['town_square']
-        global_vars.channel.pins = mock_pins
-        global_vars.player_role = mock_discord_setup['roles']['player']
-
-        # Set whisper channel manually since it may not exist in the fixture
-        whisper_channel = MockChannel(999, "whispers")
-        whisper_channel.pins = mock_pins
-        global_vars.whisper_channel = whisper_channel
-
-        # Set up game
-        game = setup_test_game['game']
-        game.seatingOrderMessage = mock_message
-
-        # Mock player wipe_roles methods
-        for player in game.seatingOrder:
-            player.wipe_roles = AsyncMock()
-
-        # Mock backup-related functions
-        with patch('bot_impl.remove_backup') as mock_remove_backup, \
-                patch('bot_impl.update_presence') as mock_update_presence:
-
-            # Call the method under test - game end with "good" win
-            await game.end("good")
-
-            # Verify wipe_roles was called for all players
-            for player in game.seatingOrder:
-                player.wipe_roles.assert_called_once()
-
-            # Verify pins were unpinned
-            mock_pins.return_value[0].unpin.assert_called()
-
-            # Verify message was sent with correct win condition
-            safe_send_calls = [call for call in mock_safe_send.call_args_list if "has won" in call[0][1]]
-            assert len(safe_send_calls) > 0
-            assert "good has won" in safe_send_calls[0][0][1]
-
-            # Verify backup file was removed
-            mock_remove_backup.assert_called_once_with("current_game.pckl")
-
-            # Verify game was reset
-            assert global_vars.game == bot_impl.NULL_GAME
-
-            # Verify update_presence was called
-            mock_update_presence.assert_called_once()
+# test_game_end was removed - functionality is covered by integration tests in 
+# test_storyteller_commands.py::test_storyteller_endgame_command and
+# test_bot_integration.py::test_on_message_endgame_command
 
 
 @pytest.mark.asyncio

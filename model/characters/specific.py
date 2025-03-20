@@ -7,13 +7,14 @@ import itertools
 
 import global_vars
 from bot_client import client
+from utils.character_utils import has_ability
 from utils.message_utils import safe_send
 from .base import (
-    Townsfolk, Outsider, Minion, Demon, Traveler,
-    DayStartModifier, NominationModifier,
-    VoteBeginningModifier, DeathModifier, AbilityModifier,
-    has_ability
+    AbilityModifier, DayStartModifier, DeathModifier, Demon, Minion,
+    NominationModifier, Outsider, Townsfolk, Traveler,
+    VoteBeginningModifier
 )
+
 
 # Basic Character Classes
 
@@ -895,7 +896,7 @@ class Matron(Traveler, DayStartModifier):
         if self.parent.is_ghost or self.parent in kills:
             return True
         # If matron is alive, then only allow neighbor whispers
-        from bot_impl import WhisperMode
+        from model.game import WhisperMode
         global_vars.game.whisper_mode = WhisperMode.NEIGHBORS
         return True
 
@@ -1816,7 +1817,7 @@ class Riot(Demon, NominationModifier):
         # handle the soldier jinx - If Riot nominates the Soldier, the Soldier does not die
         soldier_jinx = nominator and nominee and not nominee.character.is_poisoned and has_ability(nominator.character, Riot) and has_ability(nominee.character, Soldier)
         golem_jinx = nominator and nominee and not nominator.character.is_poisoned and not nominator.is_ghost and has_ability(nominee.character, Riot) and has_ability(nominator.character, Golem)
-        if not (nominator):
+        if not nominator:
             if this_day.st_riot_kill_override:
                 this_day.st_riot_kill_override = False
                 await nominee.kill()
