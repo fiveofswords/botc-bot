@@ -7,7 +7,7 @@ from typing import List, Optional
 import discord
 
 import global_vars
-from model.player import Player
+from model.player import Player, STORYTELLER_ALIGNMENT
 from utils.message_utils import safe_send
 
 
@@ -159,7 +159,7 @@ async def check_and_print_if_one_or_zero_to_check_in() -> None:
     not_checked_in = [
         player
         for player in global_vars.game.seatingOrder
-        if not player.has_checked_in and player.alignment != "neutral"
+        if not player.has_checked_in and player.alignment != STORYTELLER_ALIGNMENT
     ]
     
     if len(not_checked_in) == 1:

@@ -9,6 +9,7 @@ import discord
 import pytest
 
 from bot_impl import generate_possibilities, select_player, choices, yes_no, get_player
+from model.player import STORYTELLER_ALIGNMENT
 from utils.player_utils import (is_player, find_player_by_nick, who_by_id,
                                 who_by_character, who, get_neighbors,
                                 check_and_print_if_one_or_zero_to_check_in)
@@ -687,7 +688,7 @@ class TestCheckAndPrintIfOneOrZeroToCheckIn:
 
         player3 = Mock()  # Storyteller (neutral) should be ignored
         player3.has_checked_in = False
-        player3.alignment = "neutral"
+        player3.alignment = STORYTELLER_ALIGNMENT
 
         mock_game = Mock()
         mock_game.seatingOrder = [player1, player2, player3]

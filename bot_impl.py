@@ -60,7 +60,7 @@ def str_to_class(role: str) -> type[Character]:
     return registry_str_to_class(role)
 
 
-async def generate_possibilities(text: str, people: Sequence[T]) -> list[T]:
+async def generate_possibilities(text: str, people: Sequence[Player]) -> list[Player]:
     # Generates possible users with name or nickname matching text
 
     possibilities = []
@@ -112,7 +112,7 @@ async def choices(user: User, possibilities: list[Player], text: str) -> Optiona
         return await select_player(user, choice.content, possibilities)
 
 
-async def select_player(user: User, text: str, possibilities: Sequence[T]) -> Optional[T]:
+async def select_player(user: User, text: str, possibilities: Sequence[Player]) -> Optional[Player]:
     # Finds a player from players matching a string
 
     new_possibilities = await generate_possibilities(text, possibilities)
@@ -3214,23 +3214,6 @@ async def on_message(message):
 
 # in_play_voudon has been moved to model/characters/specific.py
 
-
-async def check_and_print_if_one_or_zero_to_check_in():
-    not_checked_in = [
-        player
-        for player in global_vars.game.seatingOrder
-        if not player.has_checked_in and player.alignment != STORYTELLER_ALIGNMENT
-    ]
-    if len(not_checked_in) == 1:
-        for memb in global_vars.gamemaster_role.members:
-            await safe_send(
-                memb, f"Just waiting on {not_checked_in[0].display_name} to check in."
-            )
-    if len(not_checked_in) == 0:
-        for memb in global_vars.gamemaster_role.members:
-            await safe_send(memb, "Everyone has checked in!")
-
-
 from model.game.vote import is_storyteller
 
 
@@ -3422,13 +3405,3 @@ async def on_member_update(before, after):
             for st in global_vars.game.storytellers:
                 if st.user.id == after.id:
                     global_vars.game.storytellers.remove(st)
-
-
-#######################
-# TypeVar Magic
-#######################
-class HasNick(Protocol):
-    nick: Optional[str]
-
-
-T = TypeVar('T', bound=HasNick)
