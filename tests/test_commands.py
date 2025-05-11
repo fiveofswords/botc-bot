@@ -55,7 +55,7 @@ def disable_file_operations():
 # Game Management Commands
 ###############################
 
-# test_endgame_command was removed - functionality is covered by integration tests in 
+# test_endgame_command was removed - functionality is covered by integration tests in
 # test_storyteller_commands.py::test_storyteller_endgame_command and
 # test_bot_integration.py::test_on_message_endgame_command
 
@@ -178,8 +178,8 @@ async def test_kill_command(mock_discord_setup, setup_test_game):
 
     # Mock select_player to return alice, and manually implement on_message handling
     with patch('bot_impl.select_player', return_value=alice), \
-            patch.object(alice, 'kill', new_callable=AsyncMock) as mock_kill, \
-            patch('bot_impl.backup') as mock_backup:
+        patch.object(alice, 'kill', new_callable=AsyncMock) as mock_kill, \
+        patch('bot_impl.backup') as mock_backup:
         # Instead of using run_command_storyteller, directly call the kill method
         # This avoids the complexity of the on_message handler
         await alice.kill(force=True)

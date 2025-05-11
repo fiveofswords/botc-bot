@@ -217,6 +217,38 @@ class TestPlayer:
         # Verify result
         assert result
 
+    @mock.patch('model.player.ChannelManager')
+    @mock.patch('utils.message_utils.safe_send')
+    @pytest.mark.asyncio
+    async def test_kill_with_no_st_channel(self, mock_safe_send, mock_channel_manager):
+        """Test player kill."""
+        # Set up mocks
+        self._setup_message_mocks(mock_safe_send, mock_channel_manager)
+        self.player.st_channel = None
+
+        # Call kill method
+        result = await self.player.kill()
+
+        # Verify player state changed
+        assert self.player.is_ghost
+        assert self.player.dead_votes == 1
+
+        # Verify roles and permissions updated
+        self._verify_kill_role_changes()
+
+        # Verify messages sent
+        mock_safe_send.assert_called_once()
+        mock_safe_send.return_value.pin.assert_called_once()
+
+        # Verify channel permissions updated
+        mock_channel_manager.return_value.set_ghost.assert_not_called()
+
+        # Verify game state updated
+        self.mock_global_vars.game.reseat.assert_called_once()
+
+        # Verify result
+        assert result
+
     @mock.patch('utils.message_utils.safe_send')
     @pytest.mark.asyncio
     async def test_kill_with_on_death_prevention(self, mock_safe_send):

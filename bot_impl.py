@@ -738,8 +738,7 @@ async def on_message(message):
 
                 players_missing_channels = [users[index] for index, channel in enumerate(st_channels) if channel is None]
                 if players_missing_channels:
-                    await safe_send(message.author,
-                                    f"Missing channels for: {', '.join([x.display_name for x in players_missing_channels])}.  Please run `@welcome` for those players to create channels for them.")
+                    await warn_missing_player_channels(message.author, players_missing_channels)
                     return
 
                 await safe_send(message.author, "What are the corresponding roles? (also separated with line breaks)")
@@ -1372,6 +1371,9 @@ async def on_message(message):
                     return
 
                 st_channel = global_vars.server.get_channel(GameSettings.load().get_st_channel(person.id))
+                if not st_channel:
+                    await warn_missing_player_channels(message.author, [person])
+                    return
 
                 msg = await safe_send(message.author, "What role?")
                 try:
@@ -3210,6 +3212,14 @@ async def on_message(message):
             # Command unrecognized
             else:
                 await safe_send(message.author, "Command {} not recognized. For a list of commands, type @help.".format(command))
+
+
+async def warn_missing_player_channels(channel_to_send, players_missing_channels):
+    plural = players_missing_channels > 1
+    chan = "channels" if plural else "a channel"
+    playz = "those players" if plural else "that player"
+    await safe_send(channel_to_send,
+                    f"Missing {chan} for: {', '.join([x.display_name for x in players_missing_channels])}.  Please run `@welcome` for {playz} to create {chan} for them.")
 
 
 # in_play_voudon has been moved to model/characters/specific.py
