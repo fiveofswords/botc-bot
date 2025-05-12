@@ -140,7 +140,6 @@ class Player:
                     user,
                     f"{self.user.mention} has died, but the ST channel could not be updated to reflect that."
                 )
-        print(global_vars.game.reseat)
         await global_vars.game.reseat(global_vars.game.seatingOrder)
 
         return dies
