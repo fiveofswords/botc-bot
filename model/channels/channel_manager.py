@@ -130,17 +130,60 @@ class ChannelManager:
         ordered_channels: list[TextChannel] = [self._hands_channel, self._observer_channel,
                                                self._info_channel, self._whisper_channel] + ordered_player_channels + [
                                                   self._town_square_channel]
-
+        ordered_channels_set = set(ordered_channels)
         to_move_out: list[TextChannel] = [channel for channel in self._in_play_category.channels if
-                                          channel not in ordered_channels]
+                                          channel not in ordered_channels_set]
+        to_move_in: list[TextChannel] = [channel for channel in ordered_channels if
+                                         channel.category != self._in_play_category]
+
+        for channel in to_move_in:
+            if channel.category != self._in_play_category:
+                await channel.move(category=self._in_play_category, end=True)
+                logger.debug(f"Channel {channel.name} has been moved to In Play category.")
+            else:
+                logger.debug(f"Channel {channel.name} is already in the correct category.")
 
         # Move unused channels out of play
         for channel in to_move_out:
             await channel.move(category=self._out_of_play_category, end=True)
             logger.debug(f"Channel {channel.name} has been moved to Out of Play category.")
 
-        # Move remaining channels in play in order
-        for index, channel in enumerate(ordered_channels):
-            if channel.category != self._in_play_category or channel.position != index:
-                await channel.edit(category=self._in_play_category, position=index)
-                logger.debug(f"{channel.name} has been moved to position {index} of {self._in_play_category.name}.")
+
+        num_needing_changed = None
+        attempt_num = 1
+        while (attempt_num < 5):
+            # ordered_channels = [
+            #     self._client.get_channel(channel.id)
+            #     for channel in ordered_channels
+            # ]
+            #
+            sorted_positions = sorted([c.position for c in ordered_channels])
+            current_index = {p: i for i, p in enumerate(sorted_positions)}
+            current_position_for_index = {i: p for i, p in enumerate(sorted_positions)}
+            position_for_index = {i: c.position for i, c in enumerate(ordered_channels)}
+            # {0: 0, 1: 3, 2: 7, 3: 6, 4: 2, 5: 9, 6: 4}
+
+            # Find the channel with the largest distance from its desired position
+            distance_desired_and_channel = [
+                (abs(current_index[c.position] - index), index, c)
+                for index, c in enumerate(ordered_channels)
+                if current_index[c.position] != index
+            ]
+
+            new_num_needing_changed = len(distance_desired_and_channel)
+            if(new_num_needing_changed == num_needing_changed):
+                attempt_num += 1
+            else:
+                attempt_num = 1
+            if not distance_desired_and_channel:
+                break  # All channels are in the correct position
+
+            # Move the most out-of-place channel
+            _, idx, channel = max(distance_desired_and_channel)
+            await channel.edit(position=current_position_for_index[idx]+1)
+            logger.debug(f"{channel.name} has been moved to position {idx} of {self._in_play_category.name}.")
+        else:
+            logger.warning("Channel positions could not be set correctly after 5 attempts.")
+            return False
+        return True
+#

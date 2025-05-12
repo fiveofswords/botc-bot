@@ -91,7 +91,9 @@ async def test_reseat_method(mock_discord_setup, setup_test_game):
     new_order[0].is_ghost = True
 
     # Test reseat with new order
-    await game.reseat(new_order)
+    with patch('channel_utils.reorder_channels') as mock_reorder:
+        await game.reseat(new_order)
+        assert mock_reorder.called
 
     # Check positions were updated correctly
     for i, player in enumerate(new_order):
