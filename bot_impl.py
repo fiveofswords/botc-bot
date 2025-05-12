@@ -3215,7 +3215,7 @@ async def on_message(message):
 
 
 async def warn_missing_player_channels(channel_to_send, players_missing_channels):
-    plural = players_missing_channels > 1
+    plural = len(players_missing_channels) > 1
     chan = "channels" if plural else "a channel"
     playz = "those players" if plural else "that player"
     await safe_send(channel_to_send,
