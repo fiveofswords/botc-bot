@@ -25,7 +25,7 @@ from model.game.whisper_mode import to_whisper_mode, chose_whisper_candidates
 from model.player import Player, STORYTELLER_ALIGNMENT
 from model.settings import GlobalSettings, GameSettings
 from time_utils import parse_deadline
-from utils.channel_utils import reorder_channels
+from model.channels.channel_utils import reorder_channels
 from utils.character_utils import the_ability
 from utils.message_utils import safe_send
 from utils.player_utils import check_and_print_if_one_or_zero_to_check_in

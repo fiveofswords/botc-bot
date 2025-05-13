@@ -5,7 +5,7 @@ from model.game.whisper_mode import WhisperMode
 from model.player import Player, STORYTELLER_ALIGNMENT
 from utils.game_utils import update_presence, remove_backup
 from utils.message_utils import safe_send
-from utils.channel_utils import reorder_channels
+from model.channels.channel_utils import reorder_channels
 
 class Game:
     """Represents a game of Blood on the Clocktower.
@@ -117,7 +117,6 @@ class Game:
             person.position = index
 
         await self.seatingOrderMessage.edit(content=message_text)
-        #  fixme: reorder_channels is doing more work than needed. until that is fixed, don't reorder on reseat.
         await reorder_channels([x.st_channel for x in self.seatingOrder])
 
     async def add_traveler(self, person):

@@ -4,7 +4,7 @@ from discord import TextChannel
 
 import global_vars
 from utils.message_utils import safe_send
-from model.channels import ChannelManager
+from . import ChannelManager
 from bot_client import client
 
 
