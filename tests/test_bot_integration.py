@@ -1844,7 +1844,7 @@ async def test_on_message_direct_utility_commands(mock_discord_setup, setup_test
         # The first argument should be the storyteller
         assert mock_safe_send.call_args[0][0] == mock_discord_setup['members']['storyteller']
         # The second argument should contain a bunch of whitespace
-        assert "\u200B\n" in mock_safe_send.call_args[0][1]
+        assert "\u200b\n" in mock_safe_send.call_args[0][1]
 
 
 @pytest.mark.asyncio

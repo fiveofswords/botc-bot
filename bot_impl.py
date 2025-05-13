@@ -25,6 +25,7 @@ from model.game.whisper_mode import to_whisper_mode, chose_whisper_candidates
 from model.player import Player, STORYTELLER_ALIGNMENT
 from model.settings import GlobalSettings, GameSettings
 from time_utils import parse_deadline
+from model.channels.channel_utils import reorder_channels
 from utils.character_utils import the_ability
 from utils.message_utils import safe_send
 from utils.player_utils import check_and_print_if_one_or_zero_to_check_in
@@ -162,14 +163,6 @@ async def yes_no(user, text):
         return await safe_send(
             user, "Your answer must be 'yes,' 'y,' 'no,' or 'n' exactly. Try again."
         )
-
-
-async def reorder_channels(st_channels: list[TextChannel]):
-    for st in global_vars.gamemaster_role.members:
-        await safe_send(st, "Setting up channels for game...")
-    await ChannelManager(client).setup_channels_in_order(st_channels)
-    for st in global_vars.gamemaster_role.members:
-        await safe_send(st, "Channels setup successfully!")
 
 
 async def get_player(user) -> Optional[Player]:
@@ -323,28 +316,6 @@ async def aexec(code):
 
     # Get `__ex` from local variables, call it and return the result
     return await locals()["__ex"]()
-
-
-async def safe_send(target: discord.abc.Messageable, msg: str):
-    """Messages target, with protection from message length errors.
-
-    Returns the first message.
-    """
-
-    try:
-        # This is the only place that should send the message raw. all other message sendings should use this function
-        return await target.send(msg)
-
-    except discord.HTTPException as e:
-        if e.code == 50035:
-
-            n = len(msg) // 2
-            out = await safe_send(target, msg[:n])
-            await safe_send(target, msg[n:])
-            return out
-
-        else:
-            raise (e)
 
 
 # NULL_GAME is imported from model.game
@@ -1911,7 +1882,7 @@ async def on_message(message):
 
             # Clears history
             elif command == "clear":
-                await safe_send(message.author, "{}Clearing\n{}".format("\u200B\n" * 25, "\u200B\n" * 25))
+                await safe_send(message.author, "{}Clearing\n{}".format("\u200b\n" * 25, "\u200b\n" * 25))
                 return
 
             # Checks active players
