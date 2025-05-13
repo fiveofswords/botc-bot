@@ -181,7 +181,9 @@ class ChannelManager:
 
             # Move the most out-of-place channel
             _, idx, channel = max(distance_desired_and_channel)
-            await channel.edit(position=current_position_for_index[idx]+1)
+
+            # discord channels are 1 indexed
+            await channel.edit(position=current_position_for_index[idx] + 1)
             logger.debug(f"{channel.name} has been moved to position {idx} of {self._in_play_category.name}.")
         else:
             logger.warning("Channel positions could not be set correctly after 5 attempts.")
