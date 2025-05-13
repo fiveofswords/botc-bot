@@ -157,11 +157,10 @@ class ChannelManager:
             #     for channel in ordered_channels
             # ]
             #
+            # positions can have gaps, so sorting and getting indexes for repositioning
             sorted_positions = sorted([c.position for c in ordered_channels])
             current_index = {p: i for i, p in enumerate(sorted_positions)}
             current_position_for_index = {i: p for i, p in enumerate(sorted_positions)}
-            position_for_index = {i: c.position for i, c in enumerate(ordered_channels)}
-            # {0: 0, 1: 3, 2: 7, 3: 6, 4: 2, 5: 9, 6: 4}
 
             # Find the channel with the largest distance from its desired position
             distance_desired_and_channel = [
@@ -170,8 +169,11 @@ class ChannelManager:
                 if current_index[c.position] != index
             ]
 
+            # keeps track of if the number of channels needing to be changed hasn't changed
+            # if it hasn't changed, and there's still channels in the wrong position,
+            # then stop after 5 attempts
             new_num_needing_changed = len(distance_desired_and_channel)
-            if(new_num_needing_changed == num_needing_changed):
+            if new_num_needing_changed == num_needing_changed:
                 attempt_num += 1
             else:
                 num_needing_changed = new_num_needing_changed
