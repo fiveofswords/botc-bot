@@ -750,4 +750,4 @@ async def test_clear_command(mock_discord_setup):
                 mock_discord_setup['members']['alice'],
                 mock_safe_send.call_args[0][1]
             )
-            assert "\u200B\n" in mock_safe_send.call_args[0][1]  # Contains whitespace
+            assert "\u200b\n" in mock_safe_send.call_args[0][1]  # Contains whitespace

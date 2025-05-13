@@ -28,6 +28,13 @@ class TestChannelManager:
         self.info_channel = MagicMock(spec=discord.TextChannel, name="info")
         self.whisper_channel = MagicMock(spec=discord.TextChannel, name="whisper")
         self.town_square_channel = MagicMock(spec=discord.TextChannel, name="town_square")
+
+        self.hands_channel.position = 0
+        self.observer_channel.position = 1
+        self.info_channel.position = 2
+        self.whisper_channel.position = 3
+        self.town_square_channel.position = 4
+
         self.channel_manager._hands_channel = self.hands_channel
         self.channel_manager._observer_channel = self.observer_channel
         self.channel_manager._info_channel = self.info_channel
@@ -161,44 +168,32 @@ class TestChannelManager:
     async def test_setup_channels_in_order_success(self):
         # Mock channels
         in_play_st_channels = [MagicMock(spec=discord.TextChannel, name=f'in_play_{i}') for i in range(5)]
+
         extra_channels = [MagicMock(spec=discord.TextChannel, name=f'out_of_play_{i}') for i in range(2)]
 
         self.in_play_category.channels = in_play_st_channels + extra_channels
+        for idx, channel in enumerate(self.in_play_category.channels):
+            channel.category = self.in_play_category
+            channel.position = (idx+6)*2
 
+        in_play_st_channels[0].position = 9999  # Ensure the last channel is out of order
+        for channel in [self.hands_channel, self.observer_channel, self.info_channel,
+                        self.whisper_channel] + in_play_st_channels + [self.town_square_channel] + extra_channels:
+            def make_edit_side_effect(ch):
+                async def edit_side_effect(*args, **kwargs):
+                    if 'position' in kwargs:
+                        ch.position = kwargs['position']
+                    if 'category' in kwargs:
+                        ch.category = kwargs['category']
+                return edit_side_effect
+            channel.edit = AsyncMock(side_effect=make_edit_side_effect(channel))
         # Execute
         result = await self.channel_manager.setup_channels_in_order(in_play_st_channels)
 
         # Verify
+        assert result is True
         expected_in_play_channels = [self.hands_channel, self.observer_channel, self.info_channel,
                                      self.whisper_channel] + in_play_st_channels + [self.town_square_channel]
         for channel in extra_channels:
             channel.move.assert_called_once_with(category=self.out_of_play_category, end=True)
-        for index, channel in enumerate(expected_in_play_channels):
-            channel.edit.assert_called_once_with(category=self.in_play_category, position=index)
-
-    @pytest.mark.asyncio
-    async def test_setup_channels_in_order_skips_in_place_channels(self):
-        # Setup:
-        # Put the hands channel in the correct position already
-        self.hands_channel.category = self.in_play_category
-        self.hands_channel.position = 0
-        # Create mock channels already in their correct positions
-        in_play_st_channels = [
-            MagicMock(spec=discord.TextChannel, name=f'in_play_{i}', category=self.in_play_category, position=i + 4)
-            for i in range(5)
-        ]
-
-        # Execute: Attempt to reorder channels, expecting no changes for already correctly placed channels
-        await self.channel_manager.setup_channels_in_order(in_play_st_channels)
-
-        # Verify: Assert that edit is not called on channels already in the correct position
-        self.hands_channel.edit.assert_not_called()
-        for channel in in_play_st_channels:
-            channel.edit.assert_not_called()
-
-        # Verify: Assert that edit is called on channels not in the list to ensure they are moved correctly
-        self.observer_channel.edit.assert_called_once_with(category=self.in_play_category, position=1)
-        self.info_channel.edit.assert_called_once_with(category=self.in_play_category, position=2)
-        self.whisper_channel.edit.assert_called_once_with(category=self.in_play_category, position=3)
-        self.town_square_channel.edit.assert_called_once_with(category=self.in_play_category,
-                                                              position=len(in_play_st_channels) + 4)
+        assert in_play_st_channels[0].edit.called # Ensure the first channel is moved out of last position

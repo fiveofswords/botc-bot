@@ -1882,7 +1882,7 @@ async def on_message(message):
 
             # Clears history
             elif command == "clear":
-                await safe_send(message.author, "{}Clearing\n{}".format("\u200B\n" * 25, "\u200B\n" * 25))
+                await safe_send(message.author, "{}Clearing\n{}".format("\u200b\n" * 25, "\u200b\n" * 25))
                 return
 
             # Checks active players

@@ -13,7 +13,6 @@ from model.characters import Character
 from model.game import Day
 from tests.test_bot_integration import mock_discord_setup, setup_test_game, MockChannel
 
-
 # Mock interfaces for testing since we can't create multiple inheritance with them
 class MockSeatingOrderModifier:
     def seating_order_message(self, seating_order):
@@ -85,13 +84,13 @@ async def test_reseat_method(mock_discord_setup, setup_test_game):
     game.seatingOrderMessage = mock_message
 
     # Create a new seating order by shuffling the current one
-    original_order = game.seatingOrder.copy()
     new_order = game.seatingOrder.copy()
+
     # Make one player a ghost to test special formatting
     new_order[0].is_ghost = True
 
     # Test reseat with new order
-    with patch('channel_utils.reorder_channels') as mock_reorder:
+    with patch('model.game.game.reorder_channels', new_callable=AsyncMock) as mock_reorder:
         await game.reseat(new_order)
         assert mock_reorder.called
 

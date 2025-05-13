@@ -151,7 +151,7 @@ class ChannelManager:
 
         num_needing_changed = None
         attempt_num = 1
-        while (attempt_num < 5):
+        while attempt_num < 5:
             # ordered_channels = [
             #     self._client.get_channel(channel.id)
             #     for channel in ordered_channels
@@ -174,6 +174,7 @@ class ChannelManager:
             if(new_num_needing_changed == num_needing_changed):
                 attempt_num += 1
             else:
+                num_needing_changed = new_num_needing_changed
                 attempt_num = 1
             if not distance_desired_and_channel:
                 break  # All channels are in the correct position
