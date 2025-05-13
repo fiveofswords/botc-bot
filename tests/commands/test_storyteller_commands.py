@@ -327,7 +327,7 @@ async def test_storyteller_revive_command(mock_discord_setup, setup_test_game):
             # Execute the revive command
             mock_send = await run_command_storyteller(
                 command="revive",
-                args="",
+                args="alice",
                 st_player=storyteller,
                 channel=storyteller.user.dm_channel,
                 command_function=on_message

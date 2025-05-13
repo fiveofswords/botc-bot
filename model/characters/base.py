@@ -389,7 +389,7 @@ class Traveler(SeatingOrderModifier):
         if die:
             die = await person.kill(suppress=True)
             if die:
-                announcement = await safe_send(channel, f"{person.user.mention} has been exiled.")
+                announcement = await safe_send(channel, f"{person.user.mention} has been exiled, and dies.")
                 await announcement.pin()
             else:
                 if person.is_ghost:

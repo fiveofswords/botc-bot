@@ -131,7 +131,15 @@ class Player:
             await announcement.pin()
 
         await self.user.add_roles(global_vars.ghost_role, global_vars.dead_vote_role)
-        await ChannelManager(client).set_ghost(self.st_channel.id)
+        if self.st_channel:
+            await ChannelManager(client).set_ghost(self.st_channel.id)
+        else:
+        #     inform storytellers that the player is dead, but that the st channel has not been updated to reflect that
+            for user in global_vars.gamemaster_role.members:
+                await safe_send(
+                    user,
+                    f"{self.user.mention} has died, but the ST channel could not be updated to reflect that."
+                )
         await global_vars.game.reseat(global_vars.game.seatingOrder)
 
         return dies
@@ -257,7 +265,15 @@ class Player:
 
         self.character.refresh()
         await self.user.remove_roles(global_vars.ghost_role, global_vars.dead_vote_role)
-        await ChannelManager(client).remove_ghost(self.st_channel.id)
+        if self.st_channel:
+            await ChannelManager(client).remove_ghost(self.st_channel.id)
+        else:
+            # Inform storytellers that the player is dead, but that the st channel has not been updated to reflect that
+            for user in global_vars.gamemaster_role.members:
+                await safe_send(
+                    user,
+                    f"{self.user.mention} has come back to life, but the ST channel could not be updated to reflect that."
+                )
         await global_vars.game.reseat(global_vars.game.seatingOrder)
 
     async def change_character(self, character_class: type) -> None:
