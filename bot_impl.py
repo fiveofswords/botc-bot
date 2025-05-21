@@ -1636,6 +1636,8 @@ async def on_message(message):
                         ).unpin()
                     except discord.errors.NotFound:
                         print("Missing message: ", str(previous_deadline))
+                    except discord.errors.DiscordServerError:
+                        print("Discord server error: ", str(previous_deadline))
                 announcement = await safe_send(
                     global_vars.channel,
                     "{}, nominations are open. The deadline is <t:{}:R> at <t:{}:t> unless someone nominates or everyone skips.".format(

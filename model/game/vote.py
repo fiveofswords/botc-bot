@@ -298,6 +298,8 @@ class Vote:
                 await (await global_vars.channel.fetch_message(msg)).unpin()
             except discord.errors.NotFound:
                 print("Missing message: ", str(msg))
+            except discord.errors.DiscordServerError:
+                print("Discord server error: ", str(msg))
 
         self.done = True
 
@@ -306,7 +308,7 @@ class Vote:
 
     async def preset_vote(self, person, vt, operator=None):
         """Preset a vote.
-        
+
         Args:
             person: The player to preset
             vt: The vote value
@@ -331,7 +333,7 @@ class Vote:
 
     async def cancel_preset(self, person):
         """Cancel a preset vote.
-        
+
         Args:
             person: The player to cancel the preset for
         """
@@ -350,9 +352,7 @@ class Vote:
                 await (await global_vars.channel.fetch_message(msg)).unpin()
             except discord.errors.NotFound:
                 pass
-
         self.done = True
-
         global_vars.game.days[-1].votes.remove(self)
 
 
