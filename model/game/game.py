@@ -1,3 +1,5 @@
+import discord.errors
+
 import global_vars
 from bot_client import client
 from model.characters import Storyteller, SeatingOrderModifier, DayStartModifier
@@ -55,13 +57,18 @@ class Game:
             await person.wipe_roles()
 
         # unpin messages
-        for msg in await global_vars.channel.pins():
-            if msg.created_at >= self.seatingOrderMessage.created_at:
-                await msg.unpin()
+        try:
+            for msg in await global_vars.channel.pins():
+                if msg.created_at >= self.seatingOrderMessage.created_at:
+                    await msg.unpin()
 
-        if global_vars.whisper_channel:
-            for msg in await global_vars.whisper_channel.pins():
-                await msg.unpin()
+            if global_vars.whisper_channel:
+                for msg in await global_vars.whisper_channel.pins():
+                    await msg.unpin()
+        except discord.errors.NotFound:
+            pass
+        except discord.errors.DiscordServerError:
+            pass
 
         # announcement
         winner = winner.lower()

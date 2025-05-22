@@ -263,18 +263,24 @@ class Day:
                 await (await global_vars.channel.fetch_message(msg)).unpin()
             except discord.errors.NotFound:
                 print("Missing message: ", str(msg))
+            except discord.errors.DiscordServerError:
+                print("Discord server error: ", str(msg))
 
         for msg in self.deadlineMessages:
             try:
                 await (await global_vars.channel.fetch_message(msg)).unpin()
             except discord.errors.NotFound:
                 print("Missing message: ", str(msg))
+            except discord.errors.DiscordServerError:
+                print("Discord server error: ", str(msg))
 
         for msg in self.skipMessages:
             try:
                 await (await global_vars.channel.fetch_message(msg)).unpin()
             except discord.errors.NotFound:
                 print("Missing message: ", str(msg))
+            except discord.errors.DiscordServerError:
+                print("Discord server error: ", str(msg))
 
         global_vars.game.isDay = False
         global_vars.game.whisper_mode = WhisperMode.ALL
