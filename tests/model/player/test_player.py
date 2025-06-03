@@ -94,6 +94,22 @@ class TestPlayer:
         assert not self.player.riot_nominee
         assert isinstance(self.player.last_active, float)
         assert not self.player.is_inactive
+        assert not self.player.hand_raised # New attribute
+
+    def test_player_hand_raised_attribute(self):
+        """Test the hand_raised attribute."""
+        # Initial state
+        assert not self.player.hand_raised, "Hand should be initially False."
+
+        # Set to True
+        self.player.hand_raised = True
+        assert self.player.hand_raised, "Hand should be True after setting."
+
+        # Reset on morning
+        async def call_morning(): # Need an async wrapper for pytest
+            await self.player.morning()
+        asyncio.run(call_morning())
+        assert not self.player.hand_raised, "Hand should be False after morning()."
 
     def test_getstate(self):
         """Test serialization for pickling."""

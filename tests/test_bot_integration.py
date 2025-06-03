@@ -3033,3 +3033,73 @@ async def test_on_ready(mock_discord_setup):
     assert global_vars.info_channel == mock_discord_setup['channels']['info']
     assert global_vars.whisper_channel == mock_discord_setup['channels']['whisper']
     assert global_vars.out_of_play_category == mock_discord_setup['channels']['out_of_play']
+
+
+@pytest.mark.asyncio
+async def test_on_message_startgame_hand_raised_display(mock_discord_setup):
+    """Test that startgame command displays hand_raised status correctly."""
+    storyteller_dm_channel = mock_discord_setup['members']['storyteller'].dm_channel
+
+    # Mock client.wait_for to provide responses for startgame prompts
+    mock_order_message = MockMessage(content="Alice\nBob\nCharlie", author=mock_discord_setup['members']['storyteller'], channel=storyteller_dm_channel)
+    mock_roles_message = MockMessage(content="Washerwoman\nInvestigator\nSpy", author=mock_discord_setup['members']['storyteller'], channel=storyteller_dm_channel)
+    mock_script_message = MockMessage(content='[{"id":"washerwoman"},{"id":"investigator"},{"id":"spy"}]', author=mock_discord_setup['members']['storyteller'], channel=storyteller_dm_channel)
+
+    with patch('bot_impl.client.wait_for') as mock_wait_for, \
+         patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send, \
+         patch('model.player.Player.__init__') as mock_player_init, \
+         patch('bot_impl.backup') as mock_backup, \
+         patch('bot_impl.update_presence'), \
+         patch('model.channels.channel_utils.reorder_channels'), \
+         patch('model.channels.ChannelManager.remove_ghost'):
+
+        mock_wait_for.side_effect = [
+            mock_order_message,  # Seating order
+            mock_roles_message,  # Roles
+            mock_script_message  # Script
+        ]
+
+        # To check hand_raised, we need to modify a Player object *after* it's created by startgame,
+        # but *before* the seating order message is generated.
+        # We'll patch Player.__init__ to grab the created players, then modify one.
+        created_players = []
+        original_player_init = Player.__init__
+        def side_effect_player_init(self, character_class, alignment, user, st_channel, position):
+            original_player_init(self, character_class, alignment, user, st_channel, position)
+            # IMPORTANT: Set hand_raised based on a known player for assertion
+            if user.name == "Alice":
+                self.hand_raised = True
+            else:
+                self.hand_raised = False # Ensure others are False
+            created_players.append(self)
+        mock_player_init.side_effect = side_effect_player_init
+
+        # Simulate the @startgame command
+        startgame_msg = MockMessage(
+            content="@startgame",
+            author=mock_discord_setup['members']['storyteller'],
+            channel=storyteller_dm_channel, # DM channel
+            guild=None
+        )
+        await on_message(startgame_msg)
+
+        # Find the call to safe_send that contains the seating order
+        seating_order_message_content = None
+        for call in mock_safe_send.call_args_list:
+            args, _ = call
+            if len(args) > 1 and isinstance(args[1], str) and "**Seating Order:**" in args[1]:
+                seating_order_message_content = args[1]
+                break
+
+        assert seating_order_message_content is not None, "Seating order message was not sent."
+        assert "Alice ✋" in seating_order_message_content, "Alice should have a hand emoji."
+        assert "Bob" in seating_order_message_content and "Bob ✋" not in seating_order_message_content, "Bob should not have a hand emoji."
+        assert "Charlie" in seating_order_message_content and "Charlie ✋" not in seating_order_message_content, "Charlie should not have a hand emoji."
+
+        # Ensure Player.__init__ was actually called
+        assert mock_player_init.called
+        assert len(created_players) == 3 # Alice, Bob, Charlie
+
+        # Clean up the patch if it's not a context manager based patch
+        # For direct patching of Player.__init__, it's good practice to restore.
+        Player.__init__ = original_player_init

@@ -844,7 +844,10 @@ async def on_message(message):
 
                 message_text = "**Seating Order:**"
                 for person in seating_order:
-                    message_text += "\n{}".format(person.display_name)
+                    display_name_with_hand = person.display_name
+                    if person.hand_raised:
+                        display_name_with_hand += " ✋"
+                    message_text += "\n{}".format(display_name_with_hand)
                     if isinstance(person.character, SeatingOrderModifier):
                         message_text += person.character.seating_order_message(
                             seating_order
@@ -2304,6 +2307,24 @@ async def on_message(message):
                         await safe_send(message.author, "Successfully preset to {}!".format(argument))
                     if global_vars.game is not NULL_GAME:
                         backup("current_game.pckl")
+
+                    # Ask to raise hand if a player prevoted yes for themselves
+                    if person.user == message.author and vt > 0:
+                        try:
+                            hand_up_prompt = await safe_send(message.author, "You have pre-voted yes. Would you like to put your hand up as well? (yes/no)")
+                            hand_up_choice = await client.wait_for(
+                                "message",
+                                check=(lambda x: x.author == message.author and x.channel == hand_up_prompt.channel),
+                                timeout=60.0, # Give them a minute to respond
+                            )
+                            if hand_up_choice.content.lower() in ["yes", "y"]:
+                                person.hand_raised = True
+                                await safe_send(message.author, "Thank you for inputting your prevote. Your hand is raised.")
+                                backup("current_game.pckl")
+                        except asyncio.TimeoutError:
+                            pass # Timeout, do nothing
+                        except Exception as e:
+                            logger.error(f"Error during hand up prompt after prevote: {e}")
                     return
 
                 the_player = await get_player(message.author)
@@ -2326,6 +2347,24 @@ async def on_message(message):
                 await safe_send(message.author, "Successfully preset! For more nuanced presets, contact the storytellers.")
                 if global_vars.game is not NULL_GAME:
                     backup("current_game.pckl")
+
+                # Ask to raise hand if player prevoted yes for themselves
+                if vt > 0: # vt > 0 means a 'yes' vote (1 or 2 for Banshee)
+                    try:
+                        hand_up_prompt = await safe_send(message.author, "You have pre-voted yes. Would you like to put your hand up as well? (yes/no)")
+                        hand_up_choice = await client.wait_for(
+                            "message",
+                            check=(lambda x: x.author == message.author and x.channel == hand_up_prompt.channel),
+                            timeout=60.0, # Give them a minute to respond
+                        )
+                        if hand_up_choice.content.lower() in ["yes", "y"]:
+                            the_player.hand_raised = True
+                            await safe_send(message.author, "Thank you for inputting your prevote. Your hand is raised.")
+                            backup("current_game.pckl")
+                    except asyncio.TimeoutError:
+                        pass # Timeout, do nothing
+                    except Exception as e:
+                        logger.error(f"Error during hand up prompt after prevote: {e}")
                 return
 
             # Cancels a preset vote
@@ -2724,6 +2763,64 @@ async def on_message(message):
                 global_settings.set_alias(message.author.id, alias_term, command_term)
                 global_settings.save()
                 await safe_send(message.author, "Successfully created alias {} for command {}.".format(alias_term, command_term))
+                return
+
+            # Hand up
+            elif command == "handup" or command == "handdown":
+                player = await get_player(message.author)
+                if not player:
+                    await safe_send(message.author, "You are not a player in the game.")
+                    return
+
+                if global_vars.game is NULL_GAME:
+                    await safe_send(message.author, "There's no game right now.")
+                    return
+
+                if not global_vars.game.isDay:
+                    await safe_send(message.author, "It's not day right now.")
+                    return
+
+                if not global_vars.game.days[-1].isNoms:
+                    await safe_send(message.author, "Nominations aren't open right now.")
+                    return
+
+                if command == "handdown":
+                    player.hand_raised = False
+                    await safe_send(message.author, "Your hand is lowered.")
+                    # If there's an active vote, cancel preset vote
+                    if global_vars.game.days[-1].votes and not global_vars.game.days[-1].votes[-1].done:
+                        vote = global_vars.game.days[-1].votes[-1]
+                        if player.user.id in vote.presetVotes:
+                            await vote.cancel_preset(player)
+                            await safe_send(message.author, "Your preset vote has been cancelled.")
+                    backup("current_game.pckl")
+                    return
+
+                # command == "handup"
+                active_vote = None
+                if global_vars.game.days[-1].votes and not global_vars.game.days[-1].votes[-1].done:
+                    active_vote = global_vars.game.days[-1].votes[-1]
+
+                if active_vote:
+                    preset_vote_value = active_vote.presetVotes.get(player.user.id)
+                    if preset_vote_value == 0: # 0 is 'no'
+                        await safe_send(message.author, "You cannot raise your hand with a 'no' pre-vote.")
+                        return
+
+                player.hand_raised = True
+
+                if active_vote:
+                    vt = 1  # Default to 'yes'
+                    banshee_ability = the_ability(player.character, Banshee)
+                    if banshee_ability and banshee_ability.is_screaming:
+                        vt = 2 # Banshee scream with hand up is a 'yes' vote of 2
+
+                    await active_vote.preset_vote(player, vt)
+                    await safe_send(message.author, "Your hand is raised, and you have pre-voted yes.")
+                else:
+                    await safe_send(message.author, "Your hand is raised.")
+
+                backup("current_game.pckl")
                 return
 
             # Help dialogue

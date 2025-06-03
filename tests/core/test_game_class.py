@@ -108,6 +108,26 @@ async def test_reseat_method(mock_discord_setup, setup_test_game):
     # Verify ghost formatting
     assert "~~" in call_args['content']
 
+    # Verify hand-raised formatting for a non-ghost player
+    non_ghost_player_with_hand = None
+    for p in new_order:
+        if not p.is_ghost and p.hand_raised:
+            non_ghost_player_with_hand = p
+            break
+    if non_ghost_player_with_hand:
+        assert f"{non_ghost_player_with_hand.display_name} ✋" in call_args['content']
+
+    # Verify no hand emoji for ghost player even if hand_raised is True
+    ghost_player_with_hand = None
+    for p in new_order:
+        if p.is_ghost and p.hand_raised:
+            ghost_player_with_hand = p
+            break
+    if ghost_player_with_hand:
+        assert f"~~{ghost_player_with_hand.display_name}~~ ✋" not in call_args['content']
+        assert f"~~{ghost_player_with_hand.display_name}~~ X" in call_args['content'] or \
+               f"~~{ghost_player_with_hand.display_name}~~ O" in call_args['content'] # Depending on dead votes
+
 
 @pytest.mark.asyncio
 async def test_whisper_mode_changing(mock_discord_setup, setup_test_game):
