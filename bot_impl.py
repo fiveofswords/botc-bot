@@ -2780,8 +2780,8 @@ async def on_message(message):
                     await safe_send(message.author, "It's not day right now.")
                     return
 
-                if not global_vars.game.days[-1].isNoms:
-                    await safe_send(message.author, "Nominations aren't open right now.")
+                if not (global_vars.game.days[-1].votes and not global_vars.game.days[-1].votes[-1].done):
+                    await safe_send(message.author, "You can only raise or lower your hand during an active vote.")
                     return
 
                 if command == "handdown":
@@ -2794,6 +2794,7 @@ async def on_message(message):
                             await vote.cancel_preset(player)
                             await safe_send(message.author, "Your preset vote has been cancelled.")
                     backup("current_game.pckl")
+                    await global_vars.game.update_seating_order_message()
                     return
 
                 # command == "handup"
@@ -2821,6 +2822,7 @@ async def on_message(message):
                     await safe_send(message.author, "Your hand is raised.")
 
                 backup("current_game.pckl")
+                await global_vars.game.update_seating_order_message()
                 return
 
             # Help dialogue

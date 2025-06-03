@@ -46,6 +46,36 @@ class Game:
         self.show_tally = False
         self.has_automated_life_and_death = False
 
+    async def update_seating_order_message(self):
+        """Updates the pinned seating order message with current hand status."""
+        message_text = "**Seating Order:**"
+        for person in self.seatingOrder:
+            person_display_name = person.display_name
+            if person.is_ghost:
+                if person.dead_votes <= 0:
+                    person_display_name = "~~" + person_display_name + "~~ X"
+                else:
+                    person_display_name = (
+                        "~~" + person_display_name + "~~ " + "O" * person.dead_votes
+                    )
+
+            if person.hand_raised:
+                person_display_name += " ✋"
+
+            message_text += "\n{}".format(person_display_name)
+
+            if isinstance(person.character, SeatingOrderModifier):
+                message_text += person.character.seating_order_message(self.seatingOrder)
+
+        if self.seatingOrderMessage:
+            try:
+                await self.seatingOrderMessage.edit(content=message_text)
+            except discord.errors.NotFound:
+                # The message might have been deleted, handle this case if necessary
+                print(f"Warning: Seating order message (ID: {self.seatingOrderMessage.id}) not found. Could not update.")
+            except Exception as e:
+                print(f"Error updating seating order message: {e}")
+
     async def end(self, winner):
         """Ends the game.
         

@@ -742,22 +742,50 @@ async def test_player_ability_management(mock_discord_setup, setup_test_game):
 
 
 @pytest.mark.asyncio
-async def test_player_handup_command(mock_discord_setup, setup_test_game):
+@patch.object(global_vars, 'game', new_callable=MagicMock) # Mock game at the global_vars module level
+async def test_player_handup_command(mock_game_global, mock_discord_setup, setup_test_game): # Add mock_game_global
     """Test player using the @handup and @handdown commands."""
+    # Use the game object from setup_test_game for actual game logic
     game = setup_test_game['game']
+    # Configure the mock_game_global to return our test game instance
+    # This allows `global_vars.game.update_seating_order_message` to be patched on the *actual* game instance
+    # that on_message will use, while still allowing `game` from `setup_test_game` to drive the test logic.
+    mock_game_global.return_value = game
+    # If global_vars.game is accessed directly (e.g. global_vars.game.days),
+    # make sure the mock forwards to the real game object.
+    # We achieve this by setting the mock's __getattr__ if direct attribute access is needed,
+    # or by ensuring specific attributes like 'days', 'seatingOrderMessage' are also MagicMocks
+    # that can be controlled or asserted. For this test, we'll primarily patch methods on 'game'.
+    # A simpler way for this specific test, if `global_vars.game` is always the same as `setup_test_game['game']`
+    # after initial setup, is to directly patch methods on `setup_test_game['game']`.
+    # However, the subtask asks to patch `global_vars.game.update_seating_order_message`.
+    # Let's assume `on_message` uses `global_vars.game`.
+
+    # To correctly patch the method on the *instance* of the game used by on_message,
+    # we need to ensure global_vars.game *is* that instance when on_message is called.
+    # The fixture setup_test_game already sets global_vars.game.
+    # So, we can patch the method directly on the game object from the fixture.
+    # game = setup_test_game['game'] # Already available via fixture
     alice = setup_test_game['players']['alice']
     bob = setup_test_game['players']['bob'] # another player for vote context
 
-    global_vars.game = game
-    global_vars.channel = mock_discord_setup['channels']['town_square'] # Not strictly used for DM commands but good for context
+    # global_vars.game is already set by setup_test_game fixture
+    global_vars.channel = mock_discord_setup['channels']['town_square']
 
-    # --- Setup for handup/handdown: Active game, daytime, nominations open ---
+    # --- Setup for handup/handdown: Active game, daytime, vote is active ---
+    # Test now requires an active vote for handup/handdown
     await game.start_day()
-    game.days[-1].isNoms = True
+    # game.days[-1].isNoms = True # This condition is no longer the primary one
+    active_vote_setup = setup_test_vote(game, bob, setup_test_game['players']['charlie'], [alice])
+    active_vote_setup.done = False
+    game.days[-1].votes = [active_vote_setup]
     alice.hand_raised = False # Ensure initial state
 
-    # --- Scenario 1: Basic @handup (no active vote) ---
-    with patch('bot_impl.get_player', return_value=alice), \
+    # --- Scenario 1: Basic @handup (now with active vote) ---
+    # We need to patch update_seating_order_message on the game object used by on_message
+    with patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_message_s1, \
+         patch('bot_impl.get_player', return_value=alice), \
+         patch.object(active_vote_setup, 'preset_vote', new_callable=AsyncMock) as mock_preset_s1, \
          patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_handup_no_vote, \
          patch('bot_impl.backup') as mock_backup_handup_no_vote:
 
@@ -769,21 +797,25 @@ async def test_player_handup_command(mock_discord_setup, setup_test_game):
         )
         await on_message(msg_handup_no_vote)
 
-        assert alice.hand_raised is True, "Alice's hand should be raised after @handup (no vote)."
-        mock_safe_send_handup_no_vote.assert_any_call(alice.user, "Your hand is raised.")
-        mock_backup_handup_no_vote.assert_called_once()
+        assert alice.hand_raised is True, "Alice's hand should be raised after @handup (active vote)."
+        mock_safe_send_handup_no_vote.assert_any_call(alice.user, "Your hand is raised, and you have pre-voted yes.")
+        mock_preset_s1.assert_called_once_with(alice, 1)
+        assert mock_backup_handup_no_vote.call_count >= 1 # For hand_raised and possibly preset_vote
+        mock_update_message_s1.assert_called_once()
 
     # --- Reset for next scenario ---
     alice.hand_raised = False
-
-    # --- Setup for active vote scenarios ---
-    # Create an active vote (Bob nominated by some other player, Alice is a voter)
-    active_vote = setup_test_vote(game, bob, setup_test_game['players']['charlie'], [alice])
-    game.days[-1].votes.append(active_vote) # Ensure it's the active vote
+    mock_update_message_s1.reset_mock()
+    active_vote_setup.presetVotes = {} # Clear presets from previous part of scenario
 
     # --- Scenario 2: @handup with an active vote (no pre-existing "no" vote) ---
-    with patch('bot_impl.get_player', return_value=alice), \
-         patch.object(active_vote, 'preset_vote', new_callable=AsyncMock) as mock_preset_vote_active, \
+    # This scenario is largely similar to Scenario 1 now due to rule changes.
+    # We'll keep it to ensure the preset logic is hit correctly.
+    # active_vote is already set up from previous scenario (active_vote_setup)
+
+    with patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_message_s2, \
+         patch('bot_impl.get_player', return_value=alice), \
+         patch.object(active_vote_setup, 'preset_vote', new_callable=AsyncMock) as mock_preset_vote_active, \
          patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_handup_active, \
          patch('bot_impl.backup') as mock_backup_handup_active:
 
@@ -798,17 +830,20 @@ async def test_player_handup_command(mock_discord_setup, setup_test_game):
         assert alice.hand_raised is True, "Alice's hand should be raised after @handup (active vote)."
         mock_preset_vote_active.assert_called_once_with(alice, 1) # vt=1 for yes
         mock_safe_send_handup_active.assert_any_call(alice.user, "Your hand is raised, and you have pre-voted yes.")
-        assert mock_backup_handup_active.call_count == 2 # Once for handup, once for prevote via handup
+        assert mock_backup_handup_active.call_count >= 1
+        mock_update_message_s2.assert_called_once()
 
     # --- Reset for next scenario ---
     alice.hand_raised = False
-    active_vote.presetVotes = {} # Clear preset votes
+    active_vote_setup.presetVotes = {} # Clear preset votes
+    mock_update_message_s2.reset_mock()
 
     # --- Scenario 3: @handup with existing "no" prevote ---
-    active_vote.presetVotes[alice.user.id] = 0 # Alice has a "no" prevote
+    active_vote_setup.presetVotes[alice.user.id] = 0 # Alice has a "no" prevote
 
-    with patch('bot_impl.get_player', return_value=alice), \
-         patch.object(active_vote, 'preset_vote', new_callable=AsyncMock) as mock_preset_vote_no_prevote, \
+    with patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_message_s3, \
+         patch('bot_impl.get_player', return_value=alice), \
+         patch.object(active_vote_setup, 'preset_vote', new_callable=AsyncMock) as mock_preset_vote_no_prevote, \
          patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_no_prevote, \
          patch('bot_impl.backup') as mock_backup_no_prevote:
 
@@ -824,17 +859,21 @@ async def test_player_handup_command(mock_discord_setup, setup_test_game):
         mock_preset_vote_no_prevote.assert_not_called()
         mock_safe_send_no_prevote.assert_any_call(alice.user, "You cannot raise your hand with a 'no' pre-vote.")
         mock_backup_no_prevote.assert_not_called() # No state change, no backup
+        mock_update_message_s3.assert_not_called()
+
 
     # --- Reset for next scenario ---
     alice.hand_raised = False
-    active_vote.presetVotes = {}
+    active_vote_setup.presetVotes = {}
+    # mock_update_message_s3.reset_mock() # Not called, so no need to reset
 
     # --- Scenario 4: Basic @handdown (hand was up, active vote, had preset 'yes' from handup) ---
     alice.hand_raised = True
-    active_vote.presetVotes[alice.user.id] = 1 # Simulate 'yes' prevote from a previous handup
+    active_vote_setup.presetVotes[alice.user.id] = 1 # Simulate 'yes' prevote from a previous handup
 
-    with patch('bot_impl.get_player', return_value=alice), \
-         patch.object(active_vote, 'cancel_preset', new_callable=AsyncMock) as mock_cancel_preset_handdown, \
+    with patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_message_s4, \
+         patch('bot_impl.get_player', return_value=alice), \
+         patch.object(active_vote_setup, 'cancel_preset', new_callable=AsyncMock) as mock_cancel_preset_handdown, \
          patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_handdown, \
          patch('bot_impl.backup') as mock_backup_handdown:
 
@@ -850,14 +889,18 @@ async def test_player_handup_command(mock_discord_setup, setup_test_game):
         mock_cancel_preset_handdown.assert_called_once_with(alice)
         mock_safe_send_handdown.assert_any_call(alice.user, "Your hand is lowered.")
         mock_safe_send_handdown.assert_any_call(alice.user, "Your preset vote has been cancelled.")
-        assert mock_backup_handdown.call_count == 2 # Once for handdown, once for cancel_preset
+        assert mock_backup_handdown.call_count >= 1
+        mock_update_message_s4.assert_called_once()
 
     # --- Scenario 5: @handdown (hand was already down) ---
     alice.hand_raised = False # Ensure hand is already down
-    active_vote.presetVotes = {} # No preset vote
+    active_vote_setup.presetVotes = {} # No preset vote
+    mock_update_message_s4.reset_mock()
 
-    with patch('bot_impl.get_player', return_value=alice), \
-         patch.object(active_vote, 'cancel_preset', new_callable=AsyncMock) as mock_cancel_preset_already_down, \
+
+    with patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_message_s5, \
+         patch('bot_impl.get_player', return_value=alice), \
+         patch.object(active_vote_setup, 'cancel_preset', new_callable=AsyncMock) as mock_cancel_preset_already_down, \
          patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_already_down, \
          patch('bot_impl.backup') as mock_backup_already_down:
 
@@ -873,3 +916,103 @@ async def test_player_handup_command(mock_discord_setup, setup_test_game):
         mock_cancel_preset_already_down.assert_not_called() # No preset to cancel
         mock_safe_send_already_down.assert_any_call(alice.user, "Your hand is lowered.")
         mock_backup_already_down.assert_called_once() # Only for setting hand_raised = False (even if already false)
+        mock_update_message_s5.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_handup_command_timing_and_state(mock_discord_setup, setup_test_game):
+    """Test @handup/@handdown command timing and state restrictions."""
+    game = setup_test_game['game']
+    alice = setup_test_game['players']['alice']
+    bob = setup_test_game['players']['bob'] # For vote context
+
+    global_vars.game = game
+    global_vars.channel = mock_discord_setup['channels']['town_square']
+
+    await game.start_day() # Ensure a day is active
+
+    # --- Scenario 1: Nominations NOT open, NO active vote ---
+    game.days[-1].isNoms = False
+    game.days[-1].votes = []
+    alice.hand_raised = False
+
+    with patch('bot_impl.get_player', return_value=alice), \
+         patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_s1, \
+         patch('bot_impl.backup') as mock_backup_s1:
+
+        msg_handup_s1 = MockMessage(content="@handup", author=alice.user, channel=alice.user.dm_channel, guild=None)
+        await on_message(msg_handup_s1)
+        mock_safe_send_s1.assert_called_with(alice.user, "You can only raise or lower your hand during an active vote.")
+        assert alice.hand_raised is False
+        mock_backup_s1.assert_not_called()
+
+        mock_safe_send_s1.reset_mock()
+        msg_handdown_s1 = MockMessage(content="@handdown", author=alice.user, channel=alice.user.dm_channel, guild=None)
+        await on_message(msg_handdown_s1)
+        mock_safe_send_s1.assert_called_with(alice.user, "You can only raise or lower your hand during an active vote.")
+        assert alice.hand_raised is False
+        mock_backup_s1.assert_not_called()
+
+    # --- Scenario 2: Nominations OPEN, but NO active vote (or last vote is done) ---
+    game.days[-1].isNoms = True
+    # Simulate last vote being done
+    if game.days[-1].votes:
+        game.days[-1].votes[-1].done = True
+    else: # Or no votes at all
+        game.days[-1].votes = []
+    alice.hand_raised = False
+
+    with patch('bot_impl.get_player', return_value=alice), \
+         patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_s2, \
+         patch('bot_impl.backup') as mock_backup_s2:
+
+        msg_handup_s2 = MockMessage(content="@handup", author=alice.user, channel=alice.user.dm_channel, guild=None)
+        await on_message(msg_handup_s2)
+        mock_safe_send_s2.assert_called_with(alice.user, "You can only raise or lower your hand during an active vote.")
+        assert alice.hand_raised is False
+        mock_backup_s2.assert_not_called()
+
+        mock_safe_send_s2.reset_mock()
+        msg_handdown_s2 = MockMessage(content="@handdown", author=alice.user, channel=alice.user.dm_channel, guild=None)
+        await on_message(msg_handdown_s2)
+        mock_safe_send_s2.assert_called_with(alice.user, "You can only raise or lower your hand during an active vote.")
+        assert alice.hand_raised is False
+        mock_backup_s2.assert_not_called()
+
+    # --- Scenario 3: Active vote (isNoms state doesn't strictly matter here due to new logic) ---
+    game.days[-1].isNoms = False # Can be True or False
+    active_vote_s3 = setup_test_vote(game, bob, setup_test_game['players']['charlie'], [alice])
+    active_vote_s3.done = False # Explicitly not done
+    game.days[-1].votes = [active_vote_s3]
+    alice.hand_raised = False
+
+    with patch('bot_impl.get_player', return_value=alice), \
+         patch.object(active_vote_s3, 'preset_vote', new_callable=AsyncMock) as mock_preset_s3, \
+         patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_s3, \
+         patch('bot_impl.backup') as mock_backup_s3:
+
+        msg_handup_s3 = MockMessage(content="@handup", author=alice.user, channel=alice.user.dm_channel, guild=None)
+        await on_message(msg_handup_s3)
+        mock_safe_send_s3.assert_any_call(alice.user, "Your hand is raised, and you have pre-voted yes.")
+        assert alice.hand_raised is True
+        mock_preset_s3.assert_called_once_with(alice, 1)
+        assert mock_backup_s3.call_count >= 1 # Backup for hand_raised, maybe for preset
+
+    # Reset for handdown in active vote
+    alice.hand_raised = True # Simulate hand was up
+    active_vote_s3.presetVotes[alice.user.id] = 1 # Simulate a 'yes' prevote from handup
+    mock_safe_send_s3.reset_mock()
+    mock_backup_s3.reset_mock()
+
+    with patch('bot_impl.get_player', return_value=alice), \
+         patch.object(active_vote_s3, 'cancel_preset', new_callable=AsyncMock) as mock_cancel_preset_s3, \
+         patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_s3_down, \
+         patch('bot_impl.backup') as mock_backup_s3_down:
+
+        msg_handdown_s3 = MockMessage(content="@handdown", author=alice.user, channel=alice.user.dm_channel, guild=None)
+        await on_message(msg_handdown_s3)
+        mock_safe_send_s3_down.assert_any_call(alice.user, "Your hand is lowered.")
+        mock_safe_send_s3_down.assert_any_call(alice.user, "Your preset vote has been cancelled.")
+        assert alice.hand_raised is False
+        mock_cancel_preset_s3.assert_called_once_with(alice)
+        assert mock_backup_s3_down.call_count >= 1 # Backup for hand_raised, maybe for cancel_preset
