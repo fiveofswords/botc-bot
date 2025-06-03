@@ -105,28 +105,22 @@ async def test_reseat_method(mock_discord_setup, setup_test_game):
     call_args = mock_message.edit.call_args[1]
     assert "**Seating Order:**" in call_args['content']
 
-    # Verify ghost formatting
-    assert "~~" in call_args['content']
+    # Verify ghost formatting (assuming at least one player, new_order[0], is a ghost)
+    assert f"~~{new_order[0].display_name}~~ X" in call_args['content'] or \
+           f"~~{new_order[0].display_name}~~ O" in call_args['content'] # Depending on dead votes
 
-    # Verify hand-raised formatting for a non-ghost player
-    non_ghost_player_with_hand = None
-    for p in new_order:
-        if not p.is_ghost and p.hand_raised:
-            non_ghost_player_with_hand = p
-            break
-    if non_ghost_player_with_hand:
-        assert f"{non_ghost_player_with_hand.display_name} ✋" in call_args['content']
+    # Ensure hand emoji is NOT present as reseat no longer adds it directly
+    if any(p.hand_raised for p in new_order if not p.is_ghost):
+        # Find a player who has hand_raised if one exists for a more specific check
+        player_with_hand = next((p for p in new_order if not p.is_ghost and p.hand_raised), None)
+        if player_with_hand:
+            assert f"{player_with_hand.display_name} ✋" not in call_args['content']
+            assert f"{player_with_hand.display_name}" in call_args['content'] # Just their name should be there
 
-    # Verify no hand emoji for ghost player even if hand_raised is True
-    ghost_player_with_hand = None
-    for p in new_order:
-        if p.is_ghost and p.hand_raised:
-            ghost_player_with_hand = p
-            break
-    if ghost_player_with_hand:
-        assert f"~~{ghost_player_with_hand.display_name}~~ ✋" not in call_args['content']
-        assert f"~~{ghost_player_with_hand.display_name}~~ X" in call_args['content'] or \
-               f"~~{ghost_player_with_hand.display_name}~~ O" in call_args['content'] # Depending on dead votes
+    # Verify SeatingOrderModifier is still processed if applicable
+    # This part of the original test logic for reseat should still hold
+    if any(isinstance(p.character, MockSeatingOrderModifier) for p in new_order):
+        assert " (Modified)" in call_args['content']
 
 
 @pytest.mark.asyncio

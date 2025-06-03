@@ -1811,7 +1811,30 @@ async def on_message(message):
                     Has Checked In {person.has_checked_in}
                     ST Channel: {f"https://discord.com/channels/{global_vars.server.id}/{person.st_channel.id}" if person.st_channel else "None"}
                     """)
-                await safe_send(message.author, "\n".join([base_info, person.character.extra_info()]))
+
+                # Add Hand Status
+                hand_status_info = f"Hand Status: {'Raised' if person.hand_raised else 'Lowered'}"
+
+                # Add Preset Vote Status
+                preset_vote_info = "Preset Vote: N/A (No active vote)"
+                active_vote = None
+                if global_vars.game.isDay and global_vars.game.days[-1].votes and not global_vars.game.days[-1].votes[-1].done:
+                    active_vote = global_vars.game.days[-1].votes[-1]
+
+                if active_vote:
+                    preset_value = active_vote.presetVotes.get(person.user.id)
+                    if preset_value is None:
+                        preset_vote_info = "Preset Vote: None"
+                    elif preset_value == 0:
+                        preset_vote_info = "Preset Vote: No"
+                    elif preset_value == 1:
+                        preset_vote_info = "Preset Vote: Yes"
+                    elif preset_value == 2: # Assuming 2 is for Banshee scream, adjust if needed
+                        preset_vote_info = "Preset Vote: Yes (Banshee Scream)"
+                    # Add more conditions if other preset_values are possible
+
+                full_info = "\n".join([base_info, hand_status_info, preset_vote_info, person.character.extra_info()])
+                await safe_send(message.author, full_info)
                 return
             # Views relevant information about a player
             elif command == "votehistory":
@@ -2787,14 +2810,32 @@ async def on_message(message):
                 if command == "handdown":
                     player.hand_raised = False
                     await safe_send(message.author, "Your hand is lowered.")
-                    # If there's an active vote, cancel preset vote
-                    if global_vars.game.days[-1].votes and not global_vars.game.days[-1].votes[-1].done:
-                        vote = global_vars.game.days[-1].votes[-1]
-                        if player.user.id in vote.presetVotes:
-                            await vote.cancel_preset(player)
-                            await safe_send(message.author, "Your preset vote has been cancelled.")
-                    backup("current_game.pckl")
+                    backup("current_game.pckl") # Backup for hand_raised change
                     await global_vars.game.update_seating_order_message()
+
+                    active_vote = None
+                    if global_vars.game.days[-1].votes and not global_vars.game.days[-1].votes[-1].done:
+                        active_vote = global_vars.game.days[-1].votes[-1]
+
+                    if active_vote and player.user.id in active_vote.presetVotes:
+                        prompt_msg = await safe_send(message.author, "Would you like to also cancel your current preset vote? (yes/no/cancel)")
+                        try:
+                            choice = await client.wait_for(
+                                "message",
+                                check=(lambda x: x.author == message.author and x.channel == prompt_msg.channel),
+                                timeout=60.0,  # 60 seconds to respond
+                            )
+
+                            if choice.content.lower() in ["yes", "y"]:
+                                await active_vote.cancel_preset(player)
+                                await safe_send(message.author, "Your preset vote has been cancelled.")
+                                backup("current_game.pckl") # Backup for preset cancellation
+                            elif choice.content.lower() in ["no", "n"]:
+                                await safe_send(message.author, "Okay, your preset vote remains active.")
+                            else: # Includes "cancel" or any other input
+                                await safe_send(message.author, "Preset vote cancellation action cancelled. Your preset vote remains active.")
+                        except asyncio.TimeoutError:
+                            await safe_send(message.author, "Timed out. Your preset vote remains active.")
                     return
 
                 # command == "handup"
@@ -2802,27 +2843,38 @@ async def on_message(message):
                 if global_vars.game.days[-1].votes and not global_vars.game.days[-1].votes[-1].done:
                     active_vote = global_vars.game.days[-1].votes[-1]
 
-                if active_vote:
-                    preset_vote_value = active_vote.presetVotes.get(player.user.id)
-                    if preset_vote_value == 0: # 0 is 'no'
-                        await safe_send(message.author, "You cannot raise your hand with a 'no' pre-vote.")
-                        return
+                # Removed the check for preset_vote_value == 0 here
 
                 player.hand_raised = True
+                await safe_send(message.author, "Your hand is raised.") # Initial confirmation
+                backup("current_game.pckl") # Backup for hand_raised change
+                await global_vars.game.update_seating_order_message()
 
                 if active_vote:
-                    vt = 1  # Default to 'yes'
-                    banshee_ability = the_ability(player.character, Banshee)
-                    if banshee_ability and banshee_ability.is_screaming:
-                        vt = 2 # Banshee scream with hand up is a 'yes' vote of 2
+                    # Ask for prevote confirmation
+                    prompt_msg = await safe_send(message.author, "Would you like to also preset your vote to YES for the current nomination? (yes/no/cancel)")
+                    try:
+                        choice = await client.wait_for(
+                            "message",
+                            check=(lambda x: x.author == message.author and x.channel == prompt_msg.channel),
+                            timeout=60.0,  # 60 seconds to respond
+                        )
 
-                    await active_vote.preset_vote(player, vt)
-                    await safe_send(message.author, "Your hand is raised, and you have pre-voted yes.")
-                else:
-                    await safe_send(message.author, "Your hand is raised.")
+                        if choice.content.lower() in ["yes", "y"]:
+                            vt = 1  # Default to 'yes'
+                            banshee_ability = the_ability(player.character, Banshee)
+                            if banshee_ability and banshee_ability.is_screaming:
+                                vt = 2 # Banshee scream with hand up is a 'yes' vote of 2
 
-                backup("current_game.pckl")
-                await global_vars.game.update_seating_order_message()
+                            await active_vote.preset_vote(player, vt)
+                            await safe_send(message.author, "Your vote has been preset to YES.")
+                            backup("current_game.pckl") # Backup for prevote change
+                        elif choice.content.lower() in ["no", "n"]:
+                            await safe_send(message.author, "Okay, your vote has not been preset.")
+                        else: # Includes "cancel" or any other input
+                            await safe_send(message.author, "Preset vote action cancelled.")
+                    except asyncio.TimeoutError:
+                        await safe_send(message.author, "Timed out. Your vote has not been preset.")
                 return
 
             # Help dialogue
