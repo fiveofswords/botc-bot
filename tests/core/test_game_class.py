@@ -90,8 +90,15 @@ async def test_reseat_method(mock_discord_setup, setup_test_game):
     new_order[0].is_ghost = True
 
     # Test reseat with new order
-    with patch('model.game.game.reorder_channels', new_callable=AsyncMock) as mock_reorder:
+    # reseat now calls game.update_seating_order_message, which in turn calls game.seatingOrderMessage.edit
+    with patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_message, \
+         patch('model.game.game.reorder_channels', new_callable=AsyncMock) as mock_reorder:
+        # Crucially, set side_effect to call the actual method so game.seatingOrderMessage.edit gets called
+        mock_update_message.side_effect = game.update_seating_order_message
+
         await game.reseat(new_order)
+
+        mock_update_message.assert_called_once()
         assert mock_reorder.called
 
     # Check positions were updated correctly
@@ -106,16 +113,35 @@ async def test_reseat_method(mock_discord_setup, setup_test_game):
     assert "**Seating Order:**" in call_args['content']
 
     # Verify ghost formatting (assuming at least one player, new_order[0], is a ghost)
+    # This check is valid as update_seating_order_message handles ghost display
     assert f"~~{new_order[0].display_name}~~ X" in call_args['content'] or \
-           f"~~{new_order[0].display_name}~~ O" in call_args['content'] # Depending on dead votes
+           f"~~{new_order[0].display_name}~~ O" in call_args['content']
 
-    # Ensure hand emoji is NOT present as reseat no longer adds it directly
-    if any(p.hand_raised for p in new_order if not p.is_ghost):
-        # Find a player who has hand_raised if one exists for a more specific check
-        player_with_hand = next((p for p in new_order if not p.is_ghost and p.hand_raised), None)
-        if player_with_hand:
-            assert f"{player_with_hand.display_name} ✋" not in call_args['content']
-            assert f"{player_with_hand.display_name}" in call_args['content'] # Just their name should be there
+    # Verify hand-raised formatting for a non-ghost player, if one exists with hand raised
+    # This check is valid as update_seating_order_message handles hand display
+    non_ghost_player_with_hand_found = False
+    for p_idx, p in enumerate(new_order):
+        if not p.is_ghost and p.hand_raised:
+            assert f"{p.display_name} ✋" in call_args['content'], f"Player {p.display_name} (index {p_idx}) should have hand emoji."
+            non_ghost_player_with_hand_found = True
+            break # Found one, that's enough for this check
+
+    # Verify no hand emoji for ghost player even if hand_raised is True
+    # This check is also valid as update_seating_order_message handles this
+    ghost_player_with_hand_raised = None
+    for p in new_order:
+        if p.is_ghost and p.hand_raised: # Make a ghost player have their hand up for testing
+            ghost_player_with_hand_raised = p
+            break
+    if ghost_player_with_hand_raised:
+         # Ensure the specific format for ghost without hand emoji is present
+        ghost_text_without_hand = f"~~{ghost_player_with_hand_raised.display_name}~~ X"
+        ghost_text_with_votes_without_hand = f"~~{ghost_player_with_hand_raised.display_name}~~ {'O'*ghost_player_with_hand_raised.dead_votes if ghost_player_with_hand_raised.dead_votes > 0 else 'X'}"
+
+        # Check that the hand emoji is NOT directly after the strikethrough name
+        assert f"~~{ghost_player_with_hand_raised.display_name}~~ ✋" not in call_args['content']
+        # Check that one of the valid ghost formats (without hand emoji) is present
+        assert ghost_text_without_hand in call_args['content'] or ghost_text_with_votes_without_hand in call_args['content']
 
     # Verify SeatingOrderModifier is still processed if applicable
     # This part of the original test logic for reseat should still hold

@@ -133,27 +133,13 @@ class Game:
         # Seating order
         self.seatingOrder = new_seating_order
 
-        # Seating order message
-        message_text = "**Seating Order:**"
+        # Update player positions
         for index, person in enumerate(self.seatingOrder):
-
-            if person.is_ghost:
-                if person.dead_votes <= 0:
-                    message_text += "\n{}".format("~~" + person.display_name + "~~ X")
-                else:
-                    message_text += "\n{}".format(
-                        "~~" + person.display_name + "~~ " + "O" * person.dead_votes
-                    )
-
-            else:
-                message_text += "\n{}".format(person.display_name)
-
-            if isinstance(person.character, SeatingOrderModifier):
-                message_text += person.character.seating_order_message(self.seatingOrder)
-
             person.position = index
 
-        await self.seatingOrderMessage.edit(content=message_text)
+        # Update the seating order message using the dedicated method
+        await self.update_seating_order_message()
+
         await reorder_channels([x.st_channel for x in self.seatingOrder])
 
     async def add_traveler(self, person):
