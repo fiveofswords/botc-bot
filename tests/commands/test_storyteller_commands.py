@@ -14,7 +14,7 @@ from bot_client import client
 from bot_impl import Vote, on_message
 # Import test fixtures from fixtures directory
 from tests.fixtures.command_testing import run_command_storyteller
-from tests.fixtures.discord_mocks import MockChannel, mock_discord_setup
+from tests.fixtures.discord_mocks import MockChannel, MockMessage, mock_discord_setup
 from tests.fixtures.game_fixtures import setup_test_game
 
 
@@ -250,15 +250,17 @@ async def test_storyteller_execute_command(mock_discord_setup, setup_test_game):
     global_vars.game = setup_test_game['game']
     global_vars.server = mock_discord_setup['guild']
 
-    # Get storyteller from fixture
-    storyteller = setup_test_game['players']['storyteller']
+    # Extract fixture data to avoid warnings
+    alice_player = setup_test_game['players']['alice']
+    game = setup_test_game['game']
+    storyteller = setup_test_game['players']['storyteller']  # noqa: F841
 
     # Ensure Alice is alive
-    setup_test_game['players']['alice'].is_ghost = False
-    setup_test_game['players']['alice'].dead_votes = 0
+    alice_player.is_ghost = False
+    alice_player.dead_votes = 0
 
     # Start a day to make sure the day list exists
-    await setup_test_game['game'].start_day()
+    await game.start_day()
 
     # For test simplicity, let's test execution by checking if the execute function was called
     # Mock update_presence to avoid client.ws.change_presence issues
@@ -266,21 +268,21 @@ async def test_storyteller_execute_command(mock_discord_setup, setup_test_game):
             patch('bot_impl.backup'), \
             patch('utils.message_utils.safe_send', return_value=AsyncMock()):
         # Mock the player selection
-        with patch('bot_impl.select_player', return_value=setup_test_game['players']['alice']):
+        with patch('bot_impl.select_player', return_value=alice_player):
             # Set up the test with mocked flow
             async def custom_execute(user, force=False):
                 # Simulate the execution flow where we say "yes" to dying and "yes" to ending day
-                await setup_test_game['players']['alice'].kill(suppress=True, force=True)
-                setup_test_game['game'].days[-1].isExecutionToday = True
-                await setup_test_game['game'].days[-1].end()
+                await alice_player.kill(suppress=True, force=True)
+                game.days[-1].isExecutionToday = True
+                await game.days[-1].end()
                 return True
 
             # Mock the execute, kill, and end day methods
-            with patch.object(setup_test_game['players']['alice'], 'execute',
+            with patch.object(alice_player, 'execute',
                               side_effect=custom_execute) as mock_execute, \
-                    patch.object(setup_test_game['players']['alice'], 'kill',
+                    patch.object(alice_player, 'kill',
                                  new_callable=AsyncMock) as mock_kill, \
-                    patch.object(setup_test_game['game'].days[-1], 'end',
+                    patch.object(game.days[-1], 'end',
                                  new_callable=AsyncMock) as mock_end_day:
                 # Execute the execute command
                 mock_send = await run_command_storyteller(
@@ -993,13 +995,14 @@ async def test_info_command_enhancements(mock_discord_setup, setup_test_game):
     elif not game.isDay: # If a day exists but it's night, start a new day
         await game.start_day()
 
-
-    with patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send:
+    with patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send, \
+            patch('bot_impl.backup') as mock_backup:
         # Scenario 1: No active vote
         game.days[-1].votes = []
         alice.hand_raised = True
 
-        msg_s1 = MockMessage(content=f"@info {alice.user.name}", author=storyteller.user, channel=storyteller.user.dm_channel, guild=None)
+        msg_s1 = MockMessage(message_id=2001, content=f"@info {alice.user.name}", author=storyteller.user,
+                             channel=storyteller.user.dm_channel, guild=None)
         await on_message(msg_s1)
 
         mock_safe_send.assert_called_once()
@@ -1017,7 +1020,8 @@ async def test_info_command_enhancements(mock_discord_setup, setup_test_game):
         if alice.user.id in active_vote_s2.presetVotes:
             del active_vote_s2.presetVotes[alice.user.id]
 
-        msg_s2 = MockMessage(content=f"@info {alice.user.name}", author=storyteller.user, channel=storyteller.user.dm_channel, guild=None)
+        msg_s2 = MockMessage(message_id=2002, content=f"@info {alice.user.name}", author=storyteller.user,
+                             channel=storyteller.user.dm_channel, guild=None)
         await on_message(msg_s2)
 
         mock_safe_send.assert_called_once()
@@ -1031,7 +1035,8 @@ async def test_info_command_enhancements(mock_discord_setup, setup_test_game):
         alice.hand_raised = True
         active_vote_s2.presetVotes[alice.user.id] = 1
 
-        msg_s3 = MockMessage(content=f"@info {alice.user.name}", author=storyteller.user, channel=storyteller.user.dm_channel, guild=None)
+        msg_s3 = MockMessage(message_id=2003, content=f"@info {alice.user.name}", author=storyteller.user,
+                             channel=storyteller.user.dm_channel, guild=None)
         await on_message(msg_s3)
 
         mock_safe_send.assert_called_once()
@@ -1044,7 +1049,8 @@ async def test_info_command_enhancements(mock_discord_setup, setup_test_game):
         alice.hand_raised = False
         active_vote_s2.presetVotes[alice.user.id] = 0
 
-        msg_s4 = MockMessage(content=f"@info {alice.user.name}", author=storyteller.user, channel=storyteller.user.dm_channel, guild=None)
+        msg_s4 = MockMessage(message_id=2004, content=f"@info {alice.user.name}", author=storyteller.user,
+                             channel=storyteller.user.dm_channel, guild=None)
         await on_message(msg_s4)
 
         mock_safe_send.assert_called_once()
@@ -1058,7 +1064,8 @@ async def test_info_command_enhancements(mock_discord_setup, setup_test_game):
         alice.hand_raised = True
         active_vote_s2.presetVotes[alice.user.id] = 2
 
-        msg_s5 = MockMessage(content=f"@info {alice.user.name}", author=storyteller.user, channel=storyteller.user.dm_channel, guild=None)
+        msg_s5 = MockMessage(message_id=2005, content=f"@info {alice.user.name}", author=storyteller.user,
+                             channel=storyteller.user.dm_channel, guild=None)
         await on_message(msg_s5)
 
         mock_safe_send.assert_called_once()

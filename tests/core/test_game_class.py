@@ -13,6 +13,7 @@ from model.characters import Character
 from model.game import Day
 from tests.test_bot_integration import mock_discord_setup, setup_test_game, MockChannel
 
+
 # Mock interfaces for testing since we can't create multiple inheritance with them
 class MockSeatingOrderModifier:
     def seating_order_message(self, seating_order):
@@ -91,14 +92,11 @@ async def test_reseat_method(mock_discord_setup, setup_test_game):
 
     # Test reseat with new order
     # reseat now calls game.update_seating_order_message, which in turn calls game.seatingOrderMessage.edit
-    with patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_message, \
-         patch('model.game.game.reorder_channels', new_callable=AsyncMock) as mock_reorder:
-        # Crucially, set side_effect to call the actual method so game.seatingOrderMessage.edit gets called
-        mock_update_message.side_effect = game.update_seating_order_message
-
+    with patch('model.game.game.reorder_channels', new_callable=AsyncMock) as mock_reorder:
+        # Don't mock update_seating_order_message to avoid recursion
+        # Let it call the real method which will edit the mock message
         await game.reseat(new_order)
 
-        mock_update_message.assert_called_once()
         assert mock_reorder.called
 
     # Check positions were updated correctly
