@@ -1001,7 +1001,7 @@ async def test_info_command_enhancements(mock_discord_setup, setup_test_game):
         game.days[-1].votes = []
         alice.hand_raised = True
 
-        msg_s1 = MockMessage(message_id=2001, content=f"@info {alice.user.name}", author=storyteller.user,
+        msg_s1 = MockMessage(id=2001, content=f"@info {alice.user.name}", author=storyteller.user,
                              channel=storyteller.user.dm_channel, guild=None)
         await on_message(msg_s1)
 
@@ -1020,7 +1020,7 @@ async def test_info_command_enhancements(mock_discord_setup, setup_test_game):
         if alice.user.id in active_vote_s2.presetVotes:
             del active_vote_s2.presetVotes[alice.user.id]
 
-        msg_s2 = MockMessage(message_id=2002, content=f"@info {alice.user.name}", author=storyteller.user,
+        msg_s2 = MockMessage(id=2002, content=f"@info {alice.user.name}", author=storyteller.user,
                              channel=storyteller.user.dm_channel, guild=None)
         await on_message(msg_s2)
 
@@ -1035,7 +1035,7 @@ async def test_info_command_enhancements(mock_discord_setup, setup_test_game):
         alice.hand_raised = True
         active_vote_s2.presetVotes[alice.user.id] = 1
 
-        msg_s3 = MockMessage(message_id=2003, content=f"@info {alice.user.name}", author=storyteller.user,
+        msg_s3 = MockMessage(id=2003, content=f"@info {alice.user.name}", author=storyteller.user,
                              channel=storyteller.user.dm_channel, guild=None)
         await on_message(msg_s3)
 
@@ -1049,7 +1049,7 @@ async def test_info_command_enhancements(mock_discord_setup, setup_test_game):
         alice.hand_raised = False
         active_vote_s2.presetVotes[alice.user.id] = 0
 
-        msg_s4 = MockMessage(message_id=2004, content=f"@info {alice.user.name}", author=storyteller.user,
+        msg_s4 = MockMessage(id=2004, content=f"@info {alice.user.name}", author=storyteller.user,
                              channel=storyteller.user.dm_channel, guild=None)
         await on_message(msg_s4)
 
@@ -1064,7 +1064,7 @@ async def test_info_command_enhancements(mock_discord_setup, setup_test_game):
         alice.hand_raised = True
         active_vote_s2.presetVotes[alice.user.id] = 2
 
-        msg_s5 = MockMessage(message_id=2005, content=f"@info {alice.user.name}", author=storyteller.user,
+        msg_s5 = MockMessage(id=2005, content=f"@info {alice.user.name}", author=storyteller.user,
                              channel=storyteller.user.dm_channel, guild=None)
         await on_message(msg_s5)
 

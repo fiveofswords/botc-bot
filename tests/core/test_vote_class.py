@@ -168,7 +168,7 @@ async def test_vote_with_yes(mock_discord_setup, setup_test_game):
     """Test the vote method of Vote with a 'yes' vote."""
     # Create a mock message with pin method
     mock_message = create_mock_message(
-        message_id=123,
+        id=123,
         content="Test vote message",
         channel=mock_discord_setup['channels']['town_square'],
         author=mock_discord_setup['members']['storyteller']
@@ -211,7 +211,7 @@ async def test_vote_with_no(mock_discord_setup, setup_test_game):
     """Test the vote method of Vote with a 'no' vote."""
     # Create a mock message with pin method
     mock_message = create_mock_message(
-        message_id=123,
+        id=123,
         content="Test vote message",
         channel=mock_discord_setup['channels']['town_square'],
         author=mock_discord_setup['members']['storyteller']

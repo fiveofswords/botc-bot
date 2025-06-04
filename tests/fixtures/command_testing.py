@@ -14,7 +14,7 @@ from tests.fixtures.discord_mocks import MockMessage
 async def create_command_message(content, channel, author, guild=None):
     """Create a message object for command testing."""
     return MockMessage(
-        message_id=1000,
+        id=1000,
         content=content,
         channel=channel,
         author=author,

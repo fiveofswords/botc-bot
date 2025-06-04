@@ -182,7 +182,7 @@ async def test_player_preset_vote_command(mock_discord_setup, setup_test_game):
                 patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_bot_safe_send:
             # Create a message object
             message = MockMessage(
-                message_id=1000,
+                id=1000,
                 content="@presetvote yes",
                 channel=alice.user.dm_channel,  # Use Alice's DM channel
                 author=alice.user,
@@ -256,7 +256,7 @@ async def test_player_default_vote_command(mock_discord_setup, setup_test_game):
                     patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_bot_safe_send:
                 # Create a message object
                 message = MockMessage(
-                    message_id=1000,
+                    id=1000,
                     content="@defaultvote yes 5",  # Vote yes for 5 minutes
                     channel=alice.user.dm_channel,  # Use Alice's DM channel
                     author=alice.user,
@@ -346,7 +346,7 @@ async def test_player_info_command(mock_discord_setup, setup_test_game):
                         patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_bot_safe_send:
                     # Create a message object
                     message = MockMessage(
-                        message_id=1000,
+                        id=1000,
                         content="@info bob",
                         channel=storyteller.user.dm_channel,
                         author=storyteller.user,
@@ -391,7 +391,7 @@ async def test_player_history_command(mock_discord_setup, setup_test_game):
                     patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_bot_safe_send:
                 # Create a message object
                 message = MockMessage(
-                    message_id=1000,
+                    id=1000,
                     content="@history bob",
                     channel=alice.user.dm_channel,
                     author=alice.user,
@@ -510,7 +510,7 @@ async def test_player_poisoned_status(mock_discord_setup, setup_test_game):
                         patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_bot_safe_send:
                     # Create a message object
                     message = MockMessage(
-                        message_id=1000,
+                        id=1000,
                         content="@poison alice",
                         channel=storyteller.user.dm_channel,
                         author=storyteller.user,
@@ -537,7 +537,7 @@ async def test_player_poisoned_status(mock_discord_setup, setup_test_game):
                         patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_bot_safe_send:
                     # Create a message object
                     message = MockMessage(
-                        message_id=1001,
+                        id=1001,
                         content="@unpoison alice",
                         channel=storyteller.user.dm_channel,
                         author=storyteller.user,
@@ -620,7 +620,7 @@ async def test_player_ability_management(mock_discord_setup, setup_test_game):
                         patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_bot_safe_send:
                     # Create a message object
                     message = MockMessage(
-                        message_id=1000,
+                        id=1000,
                         content="@changeability alice seeToken",
                         channel=storyteller.user.dm_channel,
                         author=storyteller.user,
@@ -652,7 +652,7 @@ async def test_player_ability_management(mock_discord_setup, setup_test_game):
                         patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_bot_safe_send:
                     # Create a message object
                     message = MockMessage(
-                        message_id=1001,
+                        id=1001,
                         content="@removeability alice",
                         channel=storyteller.user.dm_channel,
                         author=storyteller.user,
