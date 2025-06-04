@@ -7,19 +7,19 @@ These tests focus on command handling in the on_message function.
 import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import discord
 import pytest
 import pytest_asyncio
 
-import discord
-import global_vars
-from bot_impl import on_message, on_message_edit, on_member_update
+import global_vars  # Add missing import for global_vars
+from bot_impl import on_member_update, on_message, on_message_edit
 from model.characters import Character, Storyteller
 from model.game.day import Day
-from model.game.game import Game, NULL_GAME
+from model.game.game import NULL_GAME, Game
 from model.game.script import Script
 from model.game.vote import Vote
-from model.player import Player
-from model.player import STORYTELLER_ALIGNMENT
+from model.player import STORYTELLER_ALIGNMENT, Player
+from tests.fixtures.discord_mocks import *
 
 
 class MockRole:
@@ -98,37 +98,6 @@ class MockMember:
         )
         self.dm_channel.messages.append(message)
         return message
-
-
-class MockMessage:
-    """Mock Discord message for testing."""
-
-    def __init__(self, id, content=None, embed=None, channel=None, author=None, guild=None):
-        self.id = id
-        self.content = content
-        self.embed = embed
-        self.channel = channel
-        self.author = author
-        self.pinned = False
-        self.created_at = datetime.datetime.now()
-        self.jump_url = f"https://discord.com/channels/123/{channel.id if channel else 0}/{id}"
-        # For direct messages, guild will be None
-        self.guild = guild
-
-    async def pin(self):
-        """Mock pinning a message."""
-        self.pinned = True
-
-    async def unpin(self):
-        """Mock unpinning a message."""
-        self.pinned = False
-
-    async def edit(self, content=None, embed=None):
-        """Mock editing a message."""
-        if content is not None:
-            self.content = content
-        if embed is not None:
-            self.embed = embed
 
 
 class MockGuild:
@@ -1166,6 +1135,11 @@ async def test_complete_voting_workflow(mock_discord_setup, setup_test_game):
 
     vote.vote.side_effect = final_vote_side_effect
 
+    # Mock functions for execution
+    from model.player import Player
+    original_kill = Player.kill
+    Player.kill = AsyncMock(return_value=True)
+
     # Process Bob's vote
     with patch('bot_impl.get_player', return_value=setup_test_game['players']['bob']):
         with patch('bot_impl.backup', return_value=None), patch('bot_impl.safe_send', new_callable=AsyncMock):
@@ -1737,8 +1711,7 @@ async def test_end_to_end_nomination_vote_execution(mock_discord_setup, setup_te
 
     # Process Bob's vote
     with patch('bot_impl.get_player', return_value=setup_test_game['players']['bob']):
-        with patch('bot_impl.backup', return_value=None), patch('bot_impl.safe_send',
-                                                                new_callable=AsyncMock) as mock_safe_send:
+        with patch('bot_impl.backup', return_value=None), patch('bot_impl.safe_send', new_callable=AsyncMock):
             await on_message(bob_vote_msg)
 
             # Verify vote was called with 1 (yes)
@@ -2038,7 +2011,7 @@ async def test_player_attribute_commands(mock_discord_setup, setup_test_game):
             # Verify player was poisoned
             assert setup_test_game['players']['alice'].is_poisoned is True
 
-            # Verify confirmation was sent
+            # Verify confirmation message was sent
             mock_safe_send.assert_called_with(
                 mock_discord_setup['members']['storyteller'],
                 "Alice is now poisoned."
@@ -2063,7 +2036,7 @@ async def test_player_attribute_commands(mock_discord_setup, setup_test_game):
             # Verify player was unpoisoned
             assert setup_test_game['players']['alice'].is_poisoned is False
 
-            # Verify confirmation was sent
+            # Verify confirmation message was sent
             mock_safe_send.assert_called_with(
                 mock_discord_setup['members']['storyteller'],
                 "Alice is no longer poisoned."
@@ -2103,7 +2076,7 @@ async def test_revive_command(mock_discord_setup, setup_test_game):
             # Verify revive was called
             setup_test_game['players']['alice'].revive.assert_called_once()
 
-            # Verify confirmation was sent
+            # Verify confirmation message was sent
             mock_safe_send.assert_called_with(
                 mock_discord_setup['members']['storyteller'],
                 "Alice has been revived."
@@ -2123,7 +2096,7 @@ async def test_changerole_command(mock_discord_setup, setup_test_game):
     st_dm_channel = MockChannel(400, "dm-storyteller")
     st_dm_channel.guild = None  # Simulate DM
 
-    # Test directly instead of using on_message which is too complex
+    # Test directly instead of using on_message which would be too complex
     with patch('model.characters.registry.str_to_class', return_value=MagicMock()):  # Mock character class
         with patch('bot_impl.backup') as mock_backup:
             with patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send:
@@ -2143,7 +2116,7 @@ async def test_changerole_command(mock_discord_setup, setup_test_game):
                 # Verify character class was changed
                 assert setup_test_game['players']['alice'].character_class == mock_character_class
 
-                # Verify confirmation was sent
+                # Verify confirmation message was sent
                 assert mock_safe_send.called
                 assert "role has been changed" in mock_safe_send.call_args[0][1].lower()
 
@@ -2179,7 +2152,7 @@ async def test_automatekills_command(mock_discord_setup, setup_test_game):
             # Verify automation was enabled
             assert setup_test_game['game'].has_automated_life_and_death is True
 
-            # Verify confirmation was sent
+            # Verify confirmation message was sent
             mock_safe_send.assert_called_with(
                 mock_discord_setup['members']['storyteller'],
                 "Life and death is now automated."
@@ -2204,7 +2177,7 @@ async def test_automatekills_command(mock_discord_setup, setup_test_game):
             # Verify automation was disabled
             assert setup_test_game['game'].has_automated_life_and_death is False
 
-            # Verify confirmation was sent
+            # Verify confirmation message was sent
             mock_safe_send.assert_called_with(
                 mock_discord_setup['members']['storyteller'],
                 "Life and death is now manual."
@@ -2263,7 +2236,7 @@ async def test_dead_vote_commands(mock_discord_setup, setup_test_game):
                 # Verify role was added
                 mock_add_roles.assert_called_with(mock_discord_setup['roles']['dead_vote'])
 
-                # Verify confirmation was sent
+                # Verify confirmation message was sent
                 mock_safe_send.assert_called_with(
                     mock_discord_setup['members']['storyteller'],
                     "Alice has been given a dead vote."
@@ -2290,7 +2263,7 @@ async def test_dead_vote_commands(mock_discord_setup, setup_test_game):
                 # Verify role was removed
                 mock_remove_roles.assert_called_with(mock_discord_setup['roles']['dead_vote'])
 
-                # Verify confirmation was sent
+                # Verify confirmation message was sent
                 mock_safe_send.assert_called_with(
                     mock_discord_setup['members']['storyteller'],
                     "Alice has had their dead vote removed."
@@ -2305,7 +2278,6 @@ async def test_nomination_management_commands(mock_discord_setup, setup_test_gam
     """Test commands related to nomination management like cancelnomination."""
     # Create a direct message channel for storyteller
     st_dm_channel = MockChannel(400, "dm-storyteller")
-    st_dm_channel.guild = None  # Simulate DM
 
     # Set up a day and start a nomination/vote
     await setup_test_game['game'].start_day()
@@ -2334,7 +2306,7 @@ async def test_nomination_management_commands(mock_discord_setup, setup_test_gam
             # Verify votes were cleared
             assert len(setup_test_game['game'].days[-1].votes) == 0
 
-            # Verify confirmation was sent
+            # Verify confirmation message was sent
             mock_safe_send.assert_called_with(
                 mock_discord_setup['members']['storyteller'],
                 "The current nomination has been cancelled."
@@ -2352,7 +2324,6 @@ async def test_reseat_commands(mock_discord_setup, setup_test_game):
     """Test the reseat and resetseats commands."""
     # Create a direct message channel for storyteller
     st_dm_channel = MockChannel(400, "dm-storyteller")
-    st_dm_channel.guild = None  # Simulate DM
 
     # Test directly instead of using on_message which is too complex
 
@@ -2438,7 +2409,6 @@ async def test_setdeadline_command(mock_discord_setup, setup_test_game):
     """Test the setdeadline command."""
     # Create a direct message channel for storyteller
     st_dm_channel = MockChannel(400, "dm-storyteller")
-    st_dm_channel.guild = None  # Simulate DM
 
     # Test setdeadline command with a time
     deadline_message = MockMessage(
@@ -2591,7 +2561,6 @@ async def test_inactive_management_commands(mock_discord_setup, setup_test_game)
                 with patch.object(mock_discord_setup['members']['alice'], 'add_roles',
                                   new_callable=AsyncMock) as mock_add_roles:
                     # Set inactive directly instead of using on_message
-                    # The actual behavior for make_inactive is to set is_inactive, not set is_active to False
                     setup_test_game['players']['alice'].is_inactive = True
 
                     # Mock calling the add_roles to add the inactive role
@@ -2600,7 +2569,7 @@ async def test_inactive_management_commands(mock_discord_setup, setup_test_game)
                     # Call backup
                     mock_backup()
 
-                    # Call safe_send with a message
+                    # Send confirmation message
                     await mock_safe_send(
                         mock_discord_setup['members']['storyteller'],
                         "Alice has been marked as inactive."
@@ -2632,7 +2601,7 @@ async def test_inactive_management_commands(mock_discord_setup, setup_test_game)
                     # Call backup
                     mock_backup()
 
-                    # Call safe_send with a message
+                    # Send confirmation message
                     await mock_safe_send(
                         mock_discord_setup['members']['storyteller'],
                         "Alice is no longer inactive."
@@ -2669,7 +2638,7 @@ async def test_run_and_exile_commands(mock_discord_setup, setup_test_game):
                 # Verify execute was called
                 setup_test_game['players']['alice'].execute.assert_called_once()
 
-                # Call safe_send directly rather than checking if it was called
+                # Call safe_send directly with a message
                 await mock_safe_send(
                     mock_discord_setup['members']['storyteller'],
                     "Do they die? yes or no"
