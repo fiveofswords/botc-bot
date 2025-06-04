@@ -85,10 +85,25 @@ async def test_reseat_method(mock_discord_setup, setup_test_game):
     game.seatingOrderMessage = mock_message
 
     # Create a new seating order by shuffling the current one
-    new_order = game.seatingOrder.copy()
+    new_order = game.seatingOrder.copy() # Alice, Bob, Charlie by default
 
-    # Make one player a ghost to test special formatting
-    new_order[0].is_ghost = True
+    # Setup specific player states for testing display:
+    # Player 0 (Alice): Ghost, hand raised, 0 dead votes
+    alice_player = new_order[0]
+    alice_player.is_ghost = True
+    alice_player.hand_raised = True
+    alice_player.dead_votes = 0
+
+    # Player 1 (Bob): Ghost, hand NOT raised, 1 dead vote
+    bob_player = new_order[1]
+    bob_player.is_ghost = True
+    bob_player.hand_raised = False # Explicitly false
+    bob_player.dead_votes = 1
+
+    # Player 2 (Charlie): Alive, hand raised
+    charlie_player = new_order[2]
+    charlie_player.is_ghost = False # Ensure alive, already default
+    charlie_player.hand_raised = True
 
     # Test reseat with new order
     # reseat now calls game.update_seating_order_message, which in turn calls game.seatingOrderMessage.edit
@@ -108,38 +123,27 @@ async def test_reseat_method(mock_discord_setup, setup_test_game):
 
     # Check the content of the edited message
     call_args = mock_message.edit.call_args[1]
-    assert "**Seating Order:**" in call_args['content']
+    content = call_args['content'] # Easier to reference
+    assert "**Seating Order:**" in content
 
-    # Verify ghost formatting (assuming at least one player, new_order[0], is a ghost)
-    # This check is valid as update_seating_order_message handles ghost display
-    assert f"~~{new_order[0].display_name}~~ X" in call_args['content'] or \
-           f"~~{new_order[0].display_name}~~ O" in call_args['content']
+    # Assertions for Alice (Ghost, hand raised, 0 dead votes)
+    # Expected format: ~~Name~~ X ✋
+    expected_alice_text = f"~~{alice_player.display_name}~~ X ✋"
+    assert expected_alice_text in content, f"Alice's display incorrect. Expected: '{expected_alice_text}' in '{content}'"
 
-    # Verify hand-raised formatting for a non-ghost player, if one exists with hand raised
-    # This check is valid as update_seating_order_message handles hand display
-    non_ghost_player_with_hand_found = False
-    for p_idx, p in enumerate(new_order):
-        if not p.is_ghost and p.hand_raised:
-            assert f"{p.display_name} ✋" in call_args['content'], f"Player {p.display_name} (index {p_idx}) should have hand emoji."
-            non_ghost_player_with_hand_found = True
-            break # Found one, that's enough for this check
+    # Assertions for Bob (Ghost, hand NOT raised, 1 dead vote)
+    # Expected format: ~~Name~~ O
+    expected_bob_text = f"~~{bob_player.display_name}~~ O" # 1 dead vote = O
+    assert expected_bob_text in content, f"Bob's display incorrect. Expected: '{expected_bob_text}' in '{content}'"
+    # Also ensure Bob does NOT have hand emoji since hand is not raised
+    # Bob should not have hand emoji before the vote token indicator
+    assert f"~~{bob_player.display_name}~~ O ✋" not in content, f"Bob ({bob_player.display_name}) should not have hand emoji before vote token."
 
-    # Verify no hand emoji for ghost player even if hand_raised is True
-    # This check is also valid as update_seating_order_message handles this
-    ghost_player_with_hand_raised = None
-    for p in new_order:
-        if p.is_ghost and p.hand_raised: # Make a ghost player have their hand up for testing
-            ghost_player_with_hand_raised = p
-            break
-    if ghost_player_with_hand_raised:
-         # Ensure the specific format for ghost without hand emoji is present
-        ghost_text_without_hand = f"~~{ghost_player_with_hand_raised.display_name}~~ X"
-        ghost_text_with_votes_without_hand = f"~~{ghost_player_with_hand_raised.display_name}~~ {'O'*ghost_player_with_hand_raised.dead_votes if ghost_player_with_hand_raised.dead_votes > 0 else 'X'}"
 
-        # Check that the hand emoji is NOT directly after the strikethrough name
-        assert f"~~{ghost_player_with_hand_raised.display_name}~~ ✋" not in call_args['content']
-        # Check that one of the valid ghost formats (without hand emoji) is present
-        assert ghost_text_without_hand in call_args['content'] or ghost_text_with_votes_without_hand in call_args['content']
+    # Assertions for Charlie (Alive, hand raised)
+    # Expected format: Name ✋
+    expected_charlie_text = f"{charlie_player.display_name} ✋"
+    assert expected_charlie_text in content, f"Charlie's display incorrect. Expected: '{expected_charlie_text}' in '{content}'"
 
     # Verify SeatingOrderModifier is still processed if applicable
     # This part of the original test logic for reseat should still hold
