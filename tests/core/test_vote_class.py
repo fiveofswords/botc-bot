@@ -8,7 +8,6 @@ import pytest
 
 import global_vars
 from bot_impl import Vote
-from model.player import Player
 from tests.fixtures.discord_mocks import mock_discord_setup, create_mock_message
 from tests.fixtures.game_fixtures import setup_test_game, setup_test_vote
 
@@ -902,7 +901,9 @@ async def test_end_vote_lowers_hands(mock_discord_setup, setup_test_game):
 
     # Initial update of seating order message (simulating it exists)
     # We need to mock the message object that update_seating_order_message would interact with
-    mock_message = create_mock_message(id=999, content="Initial seating order")
+    mock_message = create_mock_message(id=999, content="Initial seating order",
+                                       channel=mock_discord_setup['channels']['town_square'],
+                                       author=mock_discord_setup['members']['storyteller'])
     game_fixture.seatingOrderMessage = mock_message
     # Patch safe_send used by update_seating_order_message if it creates a new message
     # or edit if it edits an existing one. For this test, we assume it edits game_fixture.seatingOrderMessage
@@ -914,7 +915,10 @@ async def test_end_vote_lowers_hands(mock_discord_setup, setup_test_game):
 
         # Act
         # We need to patch safe_send because end_vote sends messages
-        with patch('model.game.vote.safe_send', new_callable=AsyncMock, return_value=create_mock_message(id=111)):
+        with patch('model.game.vote.safe_send', new_callable=AsyncMock,
+                   return_value=create_mock_message(id=111, content="Vote ended",
+                                                    channel=mock_discord_setup['channels']['town_square'],
+                                                    author=mock_discord_setup['members']['storyteller'])):
             await vote_fixture.end_vote()
 
         # Assert
@@ -959,7 +963,8 @@ async def test_vote_sets_hand_and_locks(mock_discord_setup, setup_test_game):
 
     # Ensure charlie is in seating order and next to vote for this test
     game_fixture.seatingOrder = [charlie, alice, bob]
-    vote_fixture = setup_test_vote(game_fixture, alice, bob, custom_order=[charlie, alice, bob])
+    vote_fixture = setup_test_vote(game_fixture, alice, bob)
+    vote_fixture.order = [charlie, alice, bob]
     vote_fixture.position = 0 # Charlie is voting
 
     voting_player = vote_fixture.order[vote_fixture.position]
@@ -975,7 +980,9 @@ async def test_vote_sets_hand_and_locks(mock_discord_setup, setup_test_game):
     vote_fixture.end_vote = AsyncMock()
 
     # Mock message fetching for pinning, as vote() tries to pin announcement messages
-    mock_pinned_message = create_mock_message(id=12345)
+    mock_pinned_message = create_mock_message(id=12345, content="Nomination announcement",
+                                              channel=mock_discord_setup['channels']['town_square'],
+                                              author=mock_discord_setup['members']['storyteller'])
     mock_pinned_message.pin = AsyncMock()
 
     initial_hand_state = voting_player.hand_raised

@@ -16,6 +16,7 @@ import global_vars
 from bot_client import client, logger
 from config import *
 from model.channels import ChannelManager
+from model.channels.channel_utils import reorder_channels
 from model.characters import Character, AbilityModifier, Amnesiac, Minion, Demon, Outsider, Townsfolk, \
     SeatingOrderModifier, Traveler, Storyteller, Banshee
 from model.game.game import Game, NULL_GAME
@@ -25,7 +26,6 @@ from model.game.whisper_mode import to_whisper_mode, chose_whisper_candidates
 from model.player import Player, STORYTELLER_ALIGNMENT
 from model.settings import GlobalSettings, GameSettings
 from time_utils import parse_deadline
-from model.channels.channel_utils import reorder_channels
 from utils.character_utils import the_ability
 from utils.message_utils import safe_send
 from utils.player_utils import check_and_print_if_one_or_zero_to_check_in
@@ -2808,7 +2808,8 @@ async def on_message(message):
                     return
 
                 if player.hand_locked_for_vote:
-                    await safe_send(message.author, "Your hand is currently locked by your vote and cannot be changed for this round.")
+                    await safe_send(message.author,
+                                    "Your hand is currently locked by your vote and cannot be changed for this nomination.")
                     return
 
                 if command == "handdown":

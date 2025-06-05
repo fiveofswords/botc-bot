@@ -6,14 +6,13 @@ such as voting, nominating, checking in, sending PMs, etc.
 """
 
 import datetime
-from unittest.mock import AsyncMock, MagicMock, patch, ANY
+from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 import discord
+import pytest
 
 import global_vars
 from bot_impl import on_message, Vote
-from model.game.day import Day
 from tests.fixtures.command_testing import run_command_vote
 # Import test fixtures from fixtures directory
 from tests.fixtures.discord_mocks import MockMessage, mock_discord_setup
@@ -712,20 +711,26 @@ class TestPlayerCommands: # Consolidating into a class if not already structured
         player_obj.hand_locked_for_vote = True
         player_obj.hand_raised = False # Initial state for handup test
 
+        # Debug: verify the hand_locked_for_vote is set correctly
+        print(f"player_obj.hand_locked_for_vote: {player_obj.hand_locked_for_vote}")
+        print(f"player_obj ID: {id(player_obj)}")
+
         # Simulate active game and vote state for command pre-checks
         game_fixture.isDay = True
-        mock_active_day = AsyncMock(spec=Day)
-        game_fixture.days = [mock_active_day]
 
-        mock_active_vote = AsyncMock(spec=Vote)
+        # Create a real Day object to avoid AsyncMock issues with attribute access
+        from model.game.day import Day as RealDay
+        real_day = RealDay()
+
+        # Create a mock vote that behaves like a real vote object
+        mock_active_vote = MagicMock()
         mock_active_vote.done = False
-        mock_active_day.votes = [mock_active_vote]
+        real_day.votes = [mock_active_vote]
 
-        # Mock functions that should NOT be called if the hand is locked
-        # Patch get_player because on_message uses it to resolve the Player object from message.author
-        with patch('bot_impl.get_player', return_value=player_obj) as mock_get_player, \
-             patch('bot_impl.backup', new_callable=AsyncMock) as mock_backup, \
-             patch.object(game_fixture, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_seating_message, \
+        game_fixture.days = [real_day]
+
+        with patch('bot_impl.backup', new_callable=AsyncMock) as mock_backup, \
+                patch.object(game_fixture, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_seating_message, \
              patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send:
 
             # --- Test @handup ---
@@ -735,6 +740,7 @@ class TestPlayerCommands: # Consolidating into a class if not already structured
                 player_obj.user.dm_channel = mock_dm_channel_handup
 
             msg_handup = MockMessage(
+                id=1000,
                 author=player_obj.user,
                 guild=None, # Indicates DM
                 content="@handup",
@@ -744,13 +750,16 @@ class TestPlayerCommands: # Consolidating into a class if not already structured
             await on_message(msg_handup)
 
             # Assert for @handup
-            mock_safe_send.assert_any_call(player_obj.user, "Your hand is currently locked by your vote and cannot be changed for this round.")
+            # Check if the hand lock message was sent
+            expected_message = "Your hand is currently locked by your vote and cannot be changed for this nomination."
+            mock_safe_send.assert_any_call(player_obj.user, expected_message)
             assert not player_obj.hand_raised, "Hand should NOT have been raised if locked."
             mock_update_seating_message.assert_not_called()
-            mock_backup.assert_not_called() # backup is called at the start of on_message, so this will fail.
-                                            # We should check call count or specific calls after the initial one.
             initial_backup_call_count = mock_backup.call_count
 
+            # The backup call count should be 1 (from on_message start) since hand is locked
+            # and no additional backup should have been called for hand changes
+            assert initial_backup_call_count == 1, f"Expected 1 backup call (from on_message start), got {initial_backup_call_count}"
 
             # --- Test @handdown ---
             player_obj.hand_raised = True # Set hand to raised to test lowering it
@@ -763,6 +772,7 @@ class TestPlayerCommands: # Consolidating into a class if not already structured
                 player_obj.user.dm_channel = mock_dm_channel_handdown
 
             msg_handdown = MockMessage(
+                id=1001,
                 author=player_obj.user,
                 guild=None,
                 content="@handdown",
@@ -772,18 +782,16 @@ class TestPlayerCommands: # Consolidating into a class if not already structured
             await on_message(msg_handdown)
 
             # Assert for @handdown
-            mock_safe_send.assert_any_call(player_obj.user, "Your hand is currently locked by your vote and cannot be changed for this round.")
+            mock_safe_send.assert_any_call(player_obj.user,
+                                           "Your hand is currently locked by your vote and cannot be changed for this nomination.")
             assert player_obj.hand_raised, "Hand should have REMAINED raised if locked."
             mock_update_seating_message.assert_not_called()
-            assert mock_backup.call_count == initial_backup_call_count, "Backup should not have been called again for a locked hand action."
+            # For handdown, backup should be called again from on_message start, but no additional 
+            # backup should be called from hand changes since it's locked
+            # So we expect: initial_backup_call_count (1) + 1 (from second on_message call) = 2
+            expected_final_count = initial_backup_call_count + 1  # +1 from second on_message call
+            assert mock_backup.call_count == expected_final_count, f"Expected {expected_final_count} backup calls (1 per on_message call, no hand change backups), got {mock_backup.call_count}"
 
-        # Simulate hand raised
-        alice.hand_raised = True
-        assert alice.hand_raised is True
-
-        # Simulate hand lowered
-        alice.hand_raised = False
-        assert alice.hand_raised is False
 
 
 @pytest.mark.asyncio
