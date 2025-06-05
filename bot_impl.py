@@ -2803,7 +2803,7 @@ async def on_message(message):
                     await safe_send(message.author, "It's not day right now.")
                     return
 
-                if not (global_vars.game.days[-1].votes and not global_vars.game.days[-1].votes[-1].done):
+                if not global_vars.game.days[-1].votes or global_vars.game.days[-1].votes[-1].done:
                     await safe_send(message.author, "You can only raise or lower your hand during an active vote.")
                     return
 
