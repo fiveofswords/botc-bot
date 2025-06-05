@@ -234,6 +234,368 @@ async def test_player_preset_vote_command(mock_discord_setup, setup_test_game):
     # For now, we'll test the basic preset functionality works
     # TODO: Implement proper test for hand-raising prompt after prevote
 
+
+@pytest.mark.asyncio
+async def test_cancelnomination_resets_all_hands(mock_discord_setup, setup_test_game):
+    """Test that cancelnomination resets hand_raised and hand_locked_for_vote for all players."""
+    game = setup_test_game['game']
+    storyteller = setup_test_game['players']['storyteller']
+    alice = setup_test_game['players']['alice']
+    bob = setup_test_game['players']['bob']
+    charlie = setup_test_game['players']['charlie']
+
+    global_vars.game = game
+    global_vars.channel = mock_discord_setup['channels']['town_square']
+    global_vars.gamemaster_role = mock_discord_setup['roles']['gamemaster']
+    global_vars.server = mock_discord_setup['guild']
+
+
+    await game.start_day()
+    # Setup an active vote
+    vote = setup_test_vote(game, charlie, alice, [alice, bob])
+    game.days[-1].votes.append(vote)
+
+    # Set some initial hand states
+    alice.hand_raised = True
+    alice.hand_locked_for_vote = True
+    bob.hand_raised = True
+    bob.hand_locked_for_vote = False
+    charlie.hand_raised = False # Nominee, but good to test
+    charlie.hand_locked_for_vote = True
+
+    # Mock necessary functions
+    with patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_seating, \
+         patch('bot_impl.backup') as mock_backup, \
+            patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send, \
+            patch.object(vote, 'delete', new_callable=AsyncMock) as mock_vote_delete, \
+            patch.object(game.days[-1], 'open_pms', new_callable=AsyncMock) as mock_open_pms, \
+            patch.object(game.days[-1], 'open_noms', new_callable=AsyncMock) as mock_open_noms:
+
+        # Create a message object for the storyteller to cancel the nomination
+        # Ensure the storyteller's user object has necessary attributes for get_member
+        storyteller.user.roles = [global_vars.gamemaster_role] # Assign gamemaster role
+        mock_discord_setup['guild'].get_member = MagicMock(return_value=storyteller.user)
+
+
+        msg_cancel = MockMessage(
+            id=1002,
+            author=storyteller.user, # Storyteller initiates cancelnomination
+            guild=None, # DM to bot
+            content="@cancelnomination",
+            channel=storyteller.user.dm_channel # Storyteller's DM channel
+        )
+
+        await on_message(msg_cancel)
+
+        # Assertions
+        for player in game.seatingOrder:
+            assert not player.hand_raised, f"Player {player.display_name} hand_raised should be False"
+            assert not player.hand_locked_for_vote, f"Player {player.display_name} hand_locked_for_vote should be False"
+
+        mock_update_seating.assert_called_once()
+        mock_safe_send.assert_any_call(global_vars.channel, "Nomination canceled!")
+        assert mock_backup.called # Ensure backup is called
+
+
+@pytest.mark.asyncio
+async def test_presetvote_player_context_hand_up(mock_discord_setup, setup_test_game):
+    """Test presetvote by player, choosing hand up."""
+    game = setup_test_game['game']
+    alice = setup_test_game['players']['alice']
+    bob = setup_test_game['players']['bob']
+    charlie = setup_test_game['players']['charlie']
+
+    global_vars.game = game
+    global_vars.channel = mock_discord_setup['channels']['town_square']
+
+    await game.start_day()
+    vote = setup_test_vote(game, charlie, bob, [alice, bob]) # alice will preset
+    game.days[-1].votes.append(vote)
+    alice.hand_raised = False # Ensure initial state
+
+    # Mock client.wait_for for hand status prompt
+    # First call to safe_send is the confirmation of prevote, second is hand status prompt
+    mock_safe_send_channel = AsyncMock(spec=discord.TextChannel) # Mock the channel returned by safe_send
+    mock_user_message_hand_up = MockMessage(id=1003, content="up", author=alice.user, channel=mock_safe_send_channel)
+
+    with patch('bot_impl.get_player', return_value=alice), \
+         patch('bot_impl.backup') as mock_backup, \
+         patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_seating, \
+         patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_utils, \
+            patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send_impl, \
+            patch('bot_impl.client', mock_discord_setup['client']):
+
+        # Simulate that the first safe_send returns a channel where client.wait_for will listen
+        mock_safe_send_impl.return_value.channel = mock_safe_send_channel
+        # Simulate the choice for hand status
+        mock_discord_setup['client'].wait_for = AsyncMock(return_value=mock_user_message_hand_up)
+
+        msg = MockMessage(
+            id=1004,
+            author=alice.user,
+            guild=None,
+            content="@presetvote yes",
+            channel=alice.user.dm_channel
+        )
+        await on_message(msg)
+
+        assert alice.hand_raised is True
+        mock_update_seating.assert_called_once()
+        # Backup is called once at the start of on_message, once after preset, once after hand_status
+        assert mock_backup.call_count >= 3
+        mock_safe_send_impl.assert_any_call(alice.user, "Your hand is now up.")
+
+@pytest.mark.asyncio
+async def test_presetvote_storyteller_context_hand_down(mock_discord_setup, setup_test_game):
+    """Test presetvote by storyteller for a player, choosing hand down."""
+    game = setup_test_game['game']
+    storyteller = setup_test_game['players']['storyteller']
+    alice = setup_test_game['players']['alice'] # Target player
+    bob = setup_test_game['players']['bob']
+    charlie = setup_test_game['players']['charlie']
+
+    global_vars.game = game
+    global_vars.channel = mock_discord_setup['channels']['town_square']
+    global_vars.gamemaster_role = mock_discord_setup['roles']['gamemaster']
+    global_vars.server = mock_discord_setup['guild']
+
+    await game.start_day()
+    vote = setup_test_vote(game, charlie, bob, [alice, bob])
+    game.days[-1].votes.append(vote)
+    alice.hand_raised = True # Ensure initial state
+
+    # Mock client.wait_for for ST choosing player, then for hand status
+    mock_safe_send_channel = AsyncMock(spec=discord.TextChannel)
+    mock_st_message_player_choice = MockMessage(id=1005, content="alice", author=storyteller.user,
+                                                channel=mock_safe_send_channel)
+    mock_st_message_hand_down = MockMessage(id=1006, content="down", author=storyteller.user,
+                                            channel=mock_safe_send_channel)
+
+    storyteller.user.roles = [global_vars.gamemaster_role]
+    mock_discord_setup['guild'].get_member = MagicMock(return_value=storyteller.user)
+
+
+    with patch('bot_impl.select_player', return_value=alice), \
+         patch('bot_impl.backup') as mock_backup, \
+         patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_seating, \
+         patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_utils, \
+            patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send_impl, \
+            patch('bot_impl.client', mock_discord_setup['client']):
+
+        mock_safe_send_impl.return_value.channel = mock_safe_send_channel
+        # Order of return values for client.wait_for: 1. ST chooses player, 2. ST chooses hand status
+        mock_discord_setup['client'].wait_for = AsyncMock(side_effect=[
+            mock_st_message_player_choice,
+            mock_st_message_hand_down
+        ])
+
+        msg = MockMessage(
+            id=1007,
+            author=storyteller.user,
+            guild=None,
+            content="@presetvote yes", # ST presets 'yes' for Alice
+            channel=storyteller.user.dm_channel
+        )
+        await on_message(msg)
+
+        assert alice.hand_raised is False
+        mock_update_seating.assert_called_once()
+        assert mock_backup.call_count >= 3
+        mock_safe_send_impl.assert_any_call(storyteller.user, f"{alice.display_name}'s hand is now down.")
+
+
+@pytest.mark.asyncio
+async def test_cancelpreset_player_context_hand_up(mock_discord_setup, setup_test_game):
+    """Test cancelpreset by player, choosing hand up."""
+    game = setup_test_game['game']
+    alice = setup_test_game['players']['alice']
+    bob = setup_test_game['players']['bob']
+    charlie = setup_test_game['players']['charlie']
+
+    global_vars.game = game
+    global_vars.channel = mock_discord_setup['channels']['town_square']
+
+    await game.start_day()
+    vote = setup_test_vote(game, charlie, bob, [alice, bob])
+    game.days[-1].votes.append(vote)
+    vote.presetVotes[alice.user.id] = 1 # Alice has a preset vote
+    alice.hand_raised = False # Initial state
+
+    mock_safe_send_channel = AsyncMock(spec=discord.TextChannel)
+    mock_user_message_hand_up = MockMessage(id=1003, content="up", author=alice.user, channel=mock_safe_send_channel)
+
+    with patch('bot_impl.get_player', return_value=alice), \
+         patch('bot_impl.backup') as mock_backup, \
+         patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_seating, \
+         patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_utils, \
+            patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send_impl, \
+            patch('bot_impl.client', mock_discord_setup['client']):
+
+        mock_safe_send_impl.return_value.channel = mock_safe_send_channel
+        mock_discord_setup['client'].wait_for = AsyncMock(return_value=mock_user_message_hand_up)
+
+        msg = MockMessage(
+            id=1008,
+            author=alice.user,
+            guild=None,
+            content="@cancelpreset",
+            channel=alice.user.dm_channel
+        )
+        await on_message(msg)
+
+        assert alice.user.id not in vote.presetVotes # Prevote should be cancelled
+        assert alice.hand_raised is True
+        mock_update_seating.assert_called_once()
+        assert mock_backup.call_count >= 2 # Once for on_message, once for hand status change
+        mock_safe_send_impl.assert_any_call(alice.user, "Your hand is now up.")
+
+
+@pytest.mark.asyncio
+async def test_cancelpreset_storyteller_context_hand_down(mock_discord_setup, setup_test_game):
+    """Test cancelpreset by storyteller for a player, choosing hand down."""
+    game = setup_test_game['game']
+    storyteller = setup_test_game['players']['storyteller']
+    alice = setup_test_game['players']['alice'] # Target player
+    bob = setup_test_game['players']['bob']
+    charlie = setup_test_game['players']['charlie']
+
+    global_vars.game = game
+    global_vars.channel = mock_discord_setup['channels']['town_square']
+    global_vars.gamemaster_role = mock_discord_setup['roles']['gamemaster']
+    global_vars.server = mock_discord_setup['guild']
+
+    await game.start_day()
+    vote = setup_test_vote(game, charlie, bob, [alice, bob])
+    game.days[-1].votes.append(vote)
+    vote.presetVotes[alice.user.id] = 0 # Alice has a preset vote
+    alice.hand_raised = True # Initial state
+
+    mock_safe_send_channel = AsyncMock(spec=discord.TextChannel)
+    mock_st_message_player_choice = MockMessage(id=1005, content="alice", author=storyteller.user,
+                                                channel=mock_safe_send_channel)
+    mock_st_message_hand_down = MockMessage(id=1006, content="down", author=storyteller.user,
+                                            channel=mock_safe_send_channel)
+
+    storyteller.user.roles = [global_vars.gamemaster_role] # Assign gamemaster role
+    mock_discord_setup['guild'].get_member = MagicMock(return_value=storyteller.user)
+
+
+    with patch('bot_impl.select_player', return_value=alice), \
+         patch('bot_impl.backup') as mock_backup, \
+         patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_seating, \
+         patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_utils, \
+            patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send_impl, \
+            patch('bot_impl.client', mock_discord_setup['client']):
+
+        mock_safe_send_impl.return_value.channel = mock_safe_send_channel
+        mock_discord_setup['client'].wait_for = AsyncMock(side_effect=[
+            mock_st_message_player_choice,
+            mock_st_message_hand_down
+        ])
+
+        msg = MockMessage(
+            id=1009,
+            author=storyteller.user,
+            guild=None,
+            content="@cancelpreset",
+            channel=storyteller.user.dm_channel
+        )
+        await on_message(msg)
+
+        assert alice.user.id not in vote.presetVotes
+        assert alice.hand_raised is False
+        mock_update_seating.assert_called_once()
+        assert mock_backup.call_count >= 2
+        mock_safe_send_impl.assert_any_call(storyteller.user, f"{alice.display_name}'s hand is now down.")
+
+
+@pytest.mark.asyncio
+async def test_handup_prevote_yes(mock_discord_setup, setup_test_game):
+    """Test @handup command followed by presetting vote to YES."""
+    game = setup_test_game['game']
+    alice = setup_test_game['players']['alice']
+    bob = setup_test_game['players']['bob']
+    charlie = setup_test_game['players']['charlie']
+
+    global_vars.game = game
+    global_vars.channel = mock_discord_setup['channels']['town_square']
+
+    await game.start_day()
+    vote = setup_test_vote(game, charlie, bob, [alice, bob])
+    game.days[-1].votes.append(vote)
+    alice.hand_raised = False # Start with hand down
+
+    mock_safe_send_channel = AsyncMock(spec=discord.TextChannel)
+    mock_user_prevote_yes = MockMessage(id=1010, content="yes", author=alice.user, channel=mock_safe_send_channel)
+
+    with patch('bot_impl.get_player', return_value=alice), \
+         patch('bot_impl.backup') as mock_backup, \
+         patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_seating, \
+         patch.object(vote, 'preset_vote', wraps=vote.preset_vote) as mock_preset_vote_method, \
+            patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send_impl, \
+            patch('bot_impl.client', mock_discord_setup['client']):
+
+        mock_safe_send_impl.return_value.channel = mock_safe_send_channel
+        mock_discord_setup['client'].wait_for = AsyncMock(return_value=mock_user_prevote_yes)
+
+        msg = MockMessage(
+            id=1011,
+            author=alice.user,
+            guild=None,
+            content="@handup",
+            channel=alice.user.dm_channel
+        )
+        await on_message(msg)
+
+        assert alice.hand_raised is True
+        mock_preset_vote_method.assert_called_once()
+        # Alice is not a Banshee here, so vt should be 1
+        assert mock_preset_vote_method.call_args[0][1] == 1 # vt = 1 for 'yes'
+        mock_update_seating.assert_called_once() # Called after hand_raised change
+        # Backup: 1 (on_message) + 1 (hand_raised) + 1 (preset_vote)
+        assert mock_backup.call_count == 3
+        mock_safe_send_impl.assert_any_call(alice.user, "Your vote has been preset to YES.")
+
+@pytest.mark.asyncio
+async def test_handup_no_active_vote(mock_discord_setup, setup_test_game):
+    """Test @handup command when there is no active vote."""
+    game = setup_test_game['game']
+    alice = setup_test_game['players']['alice']
+
+    global_vars.game = game
+    global_vars.channel = mock_discord_setup['channels']['town_square']
+
+    await game.start_day()
+    # Ensure no active vote: game.days[-1].votes is empty or last vote is done
+    game.days[-1].votes = []
+    alice.hand_raised = False
+
+    with patch('bot_impl.get_player', return_value=alice), \
+         patch('bot_impl.backup') as mock_backup, \
+         patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_seating, \
+            patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send_impl, \
+            patch('bot_impl.client', mock_discord_setup['client']):
+
+        # client.wait_for should not be called if there's no active vote for prevote prompt
+        mock_discord_setup['client'].wait_for = AsyncMock()
+
+        msg = MockMessage(
+            id=1012,
+            author=alice.user,
+            guild=None,
+            content="@handup",
+            channel=alice.user.dm_channel
+        )
+        await on_message(msg)
+
+        assert alice.hand_raised is False  # Hand should not go up without active vote
+        mock_update_seating.assert_not_called()  # Not called since hand doesn't change
+        mock_discord_setup['client'].wait_for.assert_not_called()  # No prevote prompt
+        # Backup: 1 (on_message)
+        assert mock_backup.call_count == 1
+        mock_safe_send_impl.assert_any_call(alice.user, "You can only raise or lower your hand during an active vote.")
+
+
 @pytest.mark.asyncio
 async def test_player_default_vote_command(mock_discord_setup, setup_test_game):
     """Test player setting a default vote."""

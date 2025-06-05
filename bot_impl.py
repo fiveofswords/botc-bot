@@ -1570,11 +1570,21 @@ async def on_message(message):
                     await safe_send(message.author, "There's no vote right now.")
                     return
 
-                if global_vars.game.days[-1].votes[-1].nominator:
-                    # check for storyteller
-                    global_vars.game.days[-1].votes[-1].nominator.can_nominate = True
+                # Reset hand status for all players
+                for player_in_game in global_vars.game.seatingOrder:
+                    player_in_game.hand_raised = False
+                    player_in_game.hand_locked_for_vote = False
 
-                await global_vars.game.days[-1].votes[-1].delete()
+                await global_vars.game.update_seating_order_message()
+
+                current_nomination = global_vars.game.days[-1].votes[-1]
+                nominator = current_nomination.nominator
+
+                if nominator:
+                    # check for storyteller
+                    nominator.can_nominate = True
+
+                await current_nomination.delete()
                 await global_vars.game.days[-1].open_pms()
                 await global_vars.game.days[-1].open_noms()
                 await safe_send(global_vars.channel, "Nomination canceled!")
@@ -2331,23 +2341,35 @@ async def on_message(message):
                     if global_vars.game is not NULL_GAME:
                         backup("current_game.pckl")
 
-                    # Ask to raise hand if a player prevoted yes for themselves
-                    if person.user == message.author and vt > 0:
-                        try:
-                            hand_up_prompt = await safe_send(message.author, "You have pre-voted yes. Would you like to put your hand up as well? (yes/no)")
-                            hand_up_choice = await client.wait_for(
-                                "message",
-                                check=(lambda x: x.author == message.author and x.channel == hand_up_prompt.channel),
-                                timeout=200, # Give them a minute to respond
-                            )
-                            if hand_up_choice.content.lower() in ["yes", "y"]:
-                                person.hand_raised = True
-                                await safe_send(message.author, "Thank you for inputting your prevote. Your hand is raised.")
+                    # Prompt for hand status (Storyteller context)
+                    try:
+                        hand_status_prompt_st = await safe_send(message.author, f"Hand up or down for {person.display_name}? (up/down/cancel)")
+                        hand_status_choice_st = await client.wait_for(
+                            "message",
+                            check=(lambda x: x.author == message.author and x.channel == hand_status_prompt_st.channel),
+                            timeout=200,
+                        )
+                        choice_content_st = hand_status_choice_st.content.lower()
+                        if choice_content_st == "up":
+                            person.hand_raised = True
+                            await safe_send(message.author, f"{person.display_name}'s hand is now up.")
+                        elif choice_content_st == "down":
+                            person.hand_raised = False
+                            await safe_send(message.author, f"{person.display_name}'s hand is now down.")
+                        elif choice_content_st == "cancel":
+                            await safe_send(message.author, "Hand status change cancelled.")
+                        else:
+                            await safe_send(message.author, "Invalid choice. Hand status not changed.")
+
+                        if choice_content_st in ["up", "down"]:
+                            await global_vars.game.update_seating_order_message()
+                            if global_vars.game is not NULL_GAME:
                                 backup("current_game.pckl")
-                        except asyncio.TimeoutError:
-                            pass # Timeout, do nothing
-                        except Exception as e:
-                            logger.error(f"Error during hand up prompt after prevote: {e}")
+
+                    except asyncio.TimeoutError:
+                        await safe_send(message.author, "Timed out. Hand status not changed.")
+                    except Exception as e:
+                        logger.error(f"Error during hand status prompt for ST in presetvote: {e}")
                     return
 
                 the_player = await get_player(message.author)
@@ -2371,23 +2393,35 @@ async def on_message(message):
                 if global_vars.game is not NULL_GAME:
                     backup("current_game.pckl")
 
-                # Ask to raise hand if player prevoted yes for themselves
-                if vt > 0: # vt > 0 means a 'yes' vote (1 or 2 for Banshee)
-                    try:
-                        hand_up_prompt = await safe_send(message.author, "You have pre-voted yes. Would you like to put your hand up as well? (yes/no)")
-                        hand_up_choice = await client.wait_for(
-                            "message",
-                            check=(lambda x: x.author == message.author and x.channel == hand_up_prompt.channel),
-                            timeout=200, # Give them a minute to respond
-                        )
-                        if hand_up_choice.content.lower() in ["yes", "y"]:
-                            the_player.hand_raised = True
-                            await safe_send(message.author, "Thank you for inputting your prevote. Your hand is raised.")
+                # Prompt for hand status
+                try:
+                    hand_status_prompt = await safe_send(message.author, "Hand up or down? (up/down/cancel)")
+                    hand_status_choice = await client.wait_for(
+                        "message",
+                        check=(lambda x: x.author == message.author and x.channel == hand_status_prompt.channel),
+                        timeout=200,  # 200 seconds to respond
+                    )
+                    choice_content = hand_status_choice.content.lower()
+                    if choice_content == "up":
+                        the_player.hand_raised = True
+                        await safe_send(message.author, "Your hand is now up.")
+                    elif choice_content == "down":
+                        the_player.hand_raised = False
+                        await safe_send(message.author, "Your hand is now down.")
+                    elif choice_content == "cancel":
+                        await safe_send(message.author, "Hand status change cancelled.")
+                    else:
+                        await safe_send(message.author, "Invalid choice. Hand status not changed.")
+
+                    if choice_content in ["up", "down"]:
+                        await global_vars.game.update_seating_order_message()
+                        if global_vars.game is not NULL_GAME:
                             backup("current_game.pckl")
-                    except asyncio.TimeoutError:
-                        pass # Timeout, do nothing
-                    except Exception as e:
-                        logger.error(f"Error during hand up prompt after prevote: {e}")
+
+                except asyncio.TimeoutError:
+                    await safe_send(message.author, "Timed out. Hand status not changed.")
+                except Exception as e:
+                    logger.error(f"Error during hand status prompt after presetvote: {e}")
                 return
 
             # Cancels a preset vote
@@ -2436,12 +2470,73 @@ async def on_message(message):
                     await safe_send(message.author, "Successfully canceled!")
                     if global_vars.game is not NULL_GAME:
                         backup("current_game.pckl")
+
+                    # Prompt for hand status (Storyteller context)
+                    try:
+                        hand_status_prompt_st = await safe_send(message.author, f"Hand up or down for {person.display_name}? (up/down/cancel)")
+                        hand_status_choice_st = await client.wait_for(
+                            "message",
+                            check=(lambda x: x.author == message.author and x.channel == hand_status_prompt_st.channel),
+                            timeout=200,
+                        )
+                        choice_content_st = hand_status_choice_st.content.lower()
+                        if choice_content_st == "up":
+                            person.hand_raised = True
+                            await safe_send(message.author, f"{person.display_name}'s hand is now up.")
+                        elif choice_content_st == "down":
+                            person.hand_raised = False
+                            await safe_send(message.author, f"{person.display_name}'s hand is now down.")
+                        elif choice_content_st == "cancel":
+                            await safe_send(message.author, "Hand status change cancelled.")
+                        else:
+                            await safe_send(message.author, "Invalid choice. Hand status not changed.")
+
+                        if choice_content_st in ["up", "down"]:
+                            await global_vars.game.update_seating_order_message()
+                            if global_vars.game is not NULL_GAME:
+                                backup("current_game.pckl")
+
+                    except asyncio.TimeoutError:
+                        await safe_send(message.author, "Timed out. Hand status not changed.")
+                    except Exception as e:
+                        logger.error(f"Error during hand status prompt for ST in cancelpreset: {e}")
                     return
 
-                await vote.cancel_preset(await get_player(message.author))
+                the_player = await get_player(message.author)
+                await vote.cancel_preset(the_player)
                 await safe_send(message.author, "Successfully canceled! For more nuanced presets, contact the storytellers.")
                 if global_vars.game is not NULL_GAME:
                     backup("current_game.pckl")
+
+                # Prompt for hand status
+                try:
+                    hand_status_prompt = await safe_send(message.author, "Hand up or down? (up/down/cancel)")
+                    hand_status_choice = await client.wait_for(
+                        "message",
+                        check=(lambda x: x.author == message.author and x.channel == hand_status_prompt.channel),
+                        timeout=200,  # 200 seconds to respond
+                    )
+                    choice_content = hand_status_choice.content.lower()
+                    if choice_content == "up":
+                        the_player.hand_raised = True
+                        await safe_send(message.author, "Your hand is now up.")
+                    elif choice_content == "down":
+                        the_player.hand_raised = False
+                        await safe_send(message.author, "Your hand is now down.")
+                    elif choice_content == "cancel":
+                        await safe_send(message.author, "Hand status change cancelled.")
+                    else:
+                        await safe_send(message.author, "Invalid choice. Hand status not changed.")
+
+                    if choice_content in ["up", "down"]:
+                        await global_vars.game.update_seating_order_message()
+                        if global_vars.game is not NULL_GAME:
+                            backup("current_game.pckl")
+
+                except asyncio.TimeoutError:
+                    await safe_send(message.author, "Timed out. Hand status not changed.")
+                except Exception as e:
+                    logger.error(f"Error during hand status prompt after cancelpreset: {e}")
                 return
 
             elif command == "adjustvotes" or command == "adjustvote":
@@ -2822,25 +2917,41 @@ async def on_message(message):
                     if global_vars.game.days[-1].votes and not global_vars.game.days[-1].votes[-1].done:
                         active_vote = global_vars.game.days[-1].votes[-1]
 
-                    if active_vote and player.user.id in active_vote.presetVotes:
-                        prompt_msg = await safe_send(message.author, "Would you like to also cancel your current preset vote? (yes/no/cancel)")
+                    if active_vote:
                         try:
-                            choice = await client.wait_for(
+                            prevote_prompt_msg = await safe_send(message.author, "Preset vote to YES, NO, or CANCEL existing prevote? (yes/no/cancel)")
+                            prevote_choice_msg = await client.wait_for(
                                 "message",
-                                check=(lambda x: x.author == message.author and x.channel == prompt_msg.channel),
-                                timeout=200,  # 60 seconds to respond
+                                check=(lambda x: x.author == message.author and x.channel == prevote_prompt_msg.channel),
+                                timeout=200,
                             )
+                            prevote_choice = prevote_choice_msg.content.lower()
 
-                            if choice.content.lower() in ["yes", "y"]:
+                            if prevote_choice in ["yes", "y"]:
+                                vt = 1  # Default to 'yes'
+                                banshee_ability = the_ability(player.character, Banshee)
+                                if banshee_ability and banshee_ability.is_screaming:
+                                    vt = 2
+                                await active_vote.preset_vote(player, vt)
+                                await safe_send(message.author, "Your vote has been preset to YES.")
+                                if global_vars.game is not NULL_GAME:
+                                    backup("current_game.pckl")
+                            elif prevote_choice in ["no", "n"]:
+                                await active_vote.preset_vote(player, 0)
+                                await safe_send(message.author, "Your vote has been preset to NO.")
+                                if global_vars.game is not NULL_GAME:
+                                    backup("current_game.pckl")
+                            elif prevote_choice == "cancel":
                                 await active_vote.cancel_preset(player)
                                 await safe_send(message.author, "Your preset vote has been cancelled.")
-                                backup("current_game.pckl") # Backup for preset cancellation
-                            elif choice.content.lower() in ["no", "n"]:
-                                await safe_send(message.author, "Okay, your preset vote remains active.")
-                            else: # Includes "cancel" or any other input
-                                await safe_send(message.author, "Preset vote cancellation action cancelled. Your preset vote remains active.")
+                                if global_vars.game is not NULL_GAME:
+                                    backup("current_game.pckl")
+                            else:
+                                await safe_send(message.author, "Invalid prevote choice. Prevote not changed.")
                         except asyncio.TimeoutError:
-                            await safe_send(message.author, "Timed out. Your preset vote remains active.")
+                            await safe_send(message.author, "Timed out. Prevote not changed.")
+                        except Exception as e:
+                            logger.error(f"Error during prevote prompt after handdown: {e}")
                     return
 
                 # command == "handup"
@@ -2856,30 +2967,40 @@ async def on_message(message):
                 await global_vars.game.update_seating_order_message()
 
                 if active_vote:
-                    # Ask for prevote confirmation
-                    prompt_msg = await safe_send(message.author, "Would you like to also preset your vote to YES for the current nomination? (yes/no/cancel)")
                     try:
-                        choice = await client.wait_for(
+                        prevote_prompt_msg = await safe_send(message.author, "Preset vote to YES, NO, or CANCEL existing prevote? (yes/no/cancel)")
+                        prevote_choice_msg = await client.wait_for(
                             "message",
-                            check=(lambda x: x.author == message.author and x.channel == prompt_msg.channel),
-                            timeout=200,  # 60 seconds to respond
+                            check=(lambda x: x.author == message.author and x.channel == prevote_prompt_msg.channel),
+                            timeout=200,
                         )
+                        prevote_choice = prevote_choice_msg.content.lower()
 
-                        if choice.content.lower() in ["yes", "y"]:
+                        if prevote_choice in ["yes", "y"]:
                             vt = 1  # Default to 'yes'
                             banshee_ability = the_ability(player.character, Banshee)
                             if banshee_ability and banshee_ability.is_screaming:
                                 vt = 2 # Banshee scream with hand up is a 'yes' vote of 2
-
                             await active_vote.preset_vote(player, vt)
                             await safe_send(message.author, "Your vote has been preset to YES.")
-                            backup("current_game.pckl") # Backup for prevote change
-                        elif choice.content.lower() in ["no", "n"]:
-                            await safe_send(message.author, "Okay, your vote has not been preset.")
-                        else: # Includes "cancel" or any other input
-                            await safe_send(message.author, "Preset vote action cancelled.")
+                            if global_vars.game is not NULL_GAME:
+                                backup("current_game.pckl")
+                        elif prevote_choice in ["no", "n"]:
+                            await active_vote.preset_vote(player, 0)
+                            await safe_send(message.author, "Your vote has been preset to NO.")
+                            if global_vars.game is not NULL_GAME:
+                                backup("current_game.pckl")
+                        elif prevote_choice == "cancel":
+                            await active_vote.cancel_preset(player)
+                            await safe_send(message.author, "Your preset vote has been cancelled.")
+                            if global_vars.game is not NULL_GAME:
+                                backup("current_game.pckl")
+                        else:
+                            await safe_send(message.author, "Invalid prevote choice. Prevote not changed.")
                     except asyncio.TimeoutError:
-                        await safe_send(message.author, "Timed out. Your vote has not been preset.")
+                        await safe_send(message.author, "Timed out. Prevote not changed.")
+                    except Exception as e:
+                        logger.error(f"Error during prevote prompt after handup: {e}")
                 return
 
             # Help dialogue

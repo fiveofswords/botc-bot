@@ -7,6 +7,7 @@ using actual Discord servers or API calls.
 """
 
 import datetime
+import itertools
 from unittest.mock import MagicMock, AsyncMock
 
 import discord
@@ -108,10 +109,11 @@ class MockMember:
 
 
 class MockMessage:
+    _id_counter = itertools.count(1000)  # Start from 1000 or any number you like
     """Mock Discord message for testing."""
 
-    def __init__(self, id, content=None, embed=None, channel=None, author=None, guild=None):
-        self.id = id
+    def __init__(self, id=None, content="", embed=None, channel=None, author=None, guild=None):
+        self.id = id if id is not None else next(MockMessage._id_counter)
         self.content = content
         self.embed = embed
         self.channel = channel
