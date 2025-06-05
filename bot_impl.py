@@ -2338,7 +2338,7 @@ async def on_message(message):
                             hand_up_choice = await client.wait_for(
                                 "message",
                                 check=(lambda x: x.author == message.author and x.channel == hand_up_prompt.channel),
-                                timeout=60.0, # Give them a minute to respond
+                                timeout=200, # Give them a minute to respond
                             )
                             if hand_up_choice.content.lower() in ["yes", "y"]:
                                 person.hand_raised = True
@@ -2378,7 +2378,7 @@ async def on_message(message):
                         hand_up_choice = await client.wait_for(
                             "message",
                             check=(lambda x: x.author == message.author and x.channel == hand_up_prompt.channel),
-                            timeout=60.0, # Give them a minute to respond
+                            timeout=200, # Give them a minute to respond
                         )
                         if hand_up_choice.content.lower() in ["yes", "y"]:
                             the_player.hand_raised = True
@@ -2823,7 +2823,7 @@ async def on_message(message):
                             choice = await client.wait_for(
                                 "message",
                                 check=(lambda x: x.author == message.author and x.channel == prompt_msg.channel),
-                                timeout=60.0,  # 60 seconds to respond
+                                timeout=200,  # 60 seconds to respond
                             )
 
                             if choice.content.lower() in ["yes", "y"]:
@@ -2857,7 +2857,7 @@ async def on_message(message):
                         choice = await client.wait_for(
                             "message",
                             check=(lambda x: x.author == message.author and x.channel == prompt_msg.channel),
-                            timeout=60.0,  # 60 seconds to respond
+                            timeout=200,  # 60 seconds to respond
                         )
 
                         if choice.content.lower() in ["yes", "y"]:
