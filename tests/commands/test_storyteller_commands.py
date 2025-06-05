@@ -250,10 +250,9 @@ async def test_storyteller_execute_command(mock_discord_setup, setup_test_game):
     global_vars.game = setup_test_game['game']
     global_vars.server = mock_discord_setup['guild']
 
-    # Extract fixture data to avoid warnings
     alice_player = setup_test_game['players']['alice']
     game = setup_test_game['game']
-    storyteller = setup_test_game['players']['storyteller']  # noqa: F841
+    storyteller = setup_test_game['players']['storyteller']
 
     # Ensure Alice is alive
     alice_player.is_ghost = False
