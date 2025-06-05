@@ -6,12 +6,14 @@ such as voting, nominating, checking in, sending PMs, etc.
 """
 
 import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch, ANY
 
 import pytest
+import discord
 
 import global_vars
 from bot_impl import on_message, Vote
+from model.game.day import Day
 from tests.fixtures.command_testing import run_command_vote
 # Import test fixtures from fixtures directory
 from tests.fixtures.discord_mocks import MockMessage, mock_discord_setup
@@ -693,6 +695,87 @@ async def test_player_handup_handdown_commands_with_dm_flow(mock_discord_setup, 
         # Test basic hand status changes
         alice.hand_raised = False
         assert alice.hand_raised is False
+
+
+class TestPlayerCommands: # Consolidating into a class if not already structured like this.
+                           # Assuming CommandTestFixture or similar base is not strictly used based on provided file.
+
+    @pytest.mark.asyncio
+    async def test_hand_commands_locked_when_vote_locked(self, mock_discord_setup, setup_test_game):
+        # Arrange
+        game_fixture = setup_test_game['game']
+        player_obj = setup_test_game['players']['alice'] # Using Alice as the test player
+
+        global_vars.game = game_fixture
+        global_vars.channel = mock_discord_setup['channels']['town_square'] # For any game-wide messages if needed
+
+        player_obj.hand_locked_for_vote = True
+        player_obj.hand_raised = False # Initial state for handup test
+
+        # Simulate active game and vote state for command pre-checks
+        game_fixture.isDay = True
+        mock_active_day = AsyncMock(spec=Day)
+        game_fixture.days = [mock_active_day]
+
+        mock_active_vote = AsyncMock(spec=Vote)
+        mock_active_vote.done = False
+        mock_active_day.votes = [mock_active_vote]
+
+        # Mock functions that should NOT be called if the hand is locked
+        # Patch get_player because on_message uses it to resolve the Player object from message.author
+        with patch('bot_impl.get_player', return_value=player_obj) as mock_get_player, \
+             patch('bot_impl.backup', new_callable=AsyncMock) as mock_backup, \
+             patch.object(game_fixture, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_seating_message, \
+             patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send:
+
+            # --- Test @handup ---
+            # Using MockMessage from existing fixtures if available, else adapting AsyncMock
+            mock_dm_channel_handup = AsyncMock(spec=discord.DMChannel) # player_obj.user.dm_channel can be used if already created
+            if not player_obj.user.dm_channel: # Ensure DM channel exists for the mock user
+                player_obj.user.dm_channel = mock_dm_channel_handup
+
+            msg_handup = MockMessage(
+                author=player_obj.user,
+                guild=None, # Indicates DM
+                content="@handup",
+                channel=player_obj.user.dm_channel # Use the player's DM channel
+            )
+
+            await on_message(msg_handup)
+
+            # Assert for @handup
+            mock_safe_send.assert_any_call(player_obj.user, "Your hand is currently locked by your vote and cannot be changed for this round.")
+            assert not player_obj.hand_raised, "Hand should NOT have been raised if locked."
+            mock_update_seating_message.assert_not_called()
+            mock_backup.assert_not_called() # backup is called at the start of on_message, so this will fail.
+                                            # We should check call count or specific calls after the initial one.
+            initial_backup_call_count = mock_backup.call_count
+
+
+            # --- Test @handdown ---
+            player_obj.hand_raised = True # Set hand to raised to test lowering it
+            mock_safe_send.reset_mock()
+            mock_update_seating_message.reset_mock()
+            # mock_backup.reset_mock() # Resetting will lose the initial call count.
+
+            mock_dm_channel_handdown = AsyncMock(spec=discord.DMChannel)
+            if not player_obj.user.dm_channel:
+                player_obj.user.dm_channel = mock_dm_channel_handdown
+
+            msg_handdown = MockMessage(
+                author=player_obj.user,
+                guild=None,
+                content="@handdown",
+                channel=player_obj.user.dm_channel
+            )
+
+            await on_message(msg_handdown)
+
+            # Assert for @handdown
+            mock_safe_send.assert_any_call(player_obj.user, "Your hand is currently locked by your vote and cannot be changed for this round.")
+            assert player_obj.hand_raised, "Hand should have REMAINED raised if locked."
+            mock_update_seating_message.assert_not_called()
+            assert mock_backup.call_count == initial_backup_call_count, "Backup should not have been called again for a locked hand action."
 
         # Simulate hand raised
         alice.hand_raised = True

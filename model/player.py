@@ -67,6 +67,7 @@ class Player:
         self.riot_nominee = False
         self.last_active = datetime.now().timestamp() # Timestamp of last activity
         self.hand_raised = False
+        self.hand_locked_for_vote = False
 
         if global_vars.inactive_role in self.user.roles:
             self.is_inactive = True
@@ -97,6 +98,7 @@ class Player:
         self.has_checked_in = self.is_inactive
         self.riot_nominee = False
         self.hand_raised = False
+        self.hand_locked_for_vote = False
 
     async def kill(self, suppress: bool = False, force: bool = False) -> bool:
         """Kill the player.

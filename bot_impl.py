@@ -2807,6 +2807,10 @@ async def on_message(message):
                     await safe_send(message.author, "You can only raise or lower your hand during an active vote.")
                     return
 
+                if player.hand_locked_for_vote:
+                    await safe_send(message.author, "Your hand is currently locked by your vote and cannot be changed for this round.")
+                    return
+
                 if command == "handdown":
                     player.hand_raised = False
                     await safe_send(message.author, "Your hand is lowered.")
