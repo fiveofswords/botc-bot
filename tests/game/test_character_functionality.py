@@ -13,47 +13,7 @@ from model.characters.base import Character, VoteModifier, NominationModifier, D
 from model.characters.registry import CHARACTER_REGISTRY
 from model.characters.specific import Washerwoman, FortuneTeller, Demon
 from model.player import Player, STORYTELLER_ALIGNMENT
-
-
-# Reuse the MockMember class from the integration tests
-class MockMember:
-    """Mock Discord member for testing."""
-
-    def __init__(self, id, name, display_name=None, roles=None):
-        self.id = id
-        self.name = name
-        self.display_name = display_name or name
-        self.roles = roles or []
-        self.mention = f"<@{id}>"
-
-    async def add_roles(self, *roles):
-        """Mock adding roles to member."""
-        for role in roles:
-            if role not in self.roles:
-                self.roles.append(role)
-
-    async def remove_roles(self, *roles):
-        """Mock removing roles from member."""
-        for role in roles:
-            if role in self.roles:
-                self.roles.remove(role)
-
-
-class MockChannel:
-    """Mock Discord channel for testing."""
-
-    def __init__(self, id, name):
-        self.id = id
-        self.name = name
-        self.messages = []
-
-    async def send(self, content=None, embed=None):
-        """Mock sending a message to the channel."""
-        message = MagicMock()
-        message.content = content
-        message.embed = embed
-        self.messages.append(message)
-        return message
+from tests.fixtures.discord_mocks import MockMember, MockChannel
 
 
 @pytest_asyncio.fixture

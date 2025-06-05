@@ -11,7 +11,8 @@ import global_vars
 from bot_impl import Game, Player, Script
 from model.characters import Character
 from model.game import Day
-from tests.test_bot_integration import mock_discord_setup, setup_test_game, MockChannel
+from tests.fixtures.discord_mocks import mock_discord_setup, MockChannel
+from tests.fixtures.game_fixtures import setup_test_game
 
 
 # Mock interfaces for testing since we can't create multiple inheritance with them

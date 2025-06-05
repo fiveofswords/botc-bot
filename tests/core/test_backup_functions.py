@@ -8,7 +8,7 @@ import pytest
 
 import global_vars
 from bot_impl import backup, load, remove_backup, Game, Script
-from tests.test_bot_integration import mock_discord_setup
+from tests.fixtures.discord_mocks import mock_discord_setup
 
 
 def test_backup():

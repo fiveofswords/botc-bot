@@ -12,10 +12,11 @@ import pytest
 import global_vars
 from bot_impl import on_message
 from model.game import WhisperMode
-# Import test fixtures from existing test files
-from tests.test_bot_integration import (
-    MockChannel, MockMember, MockMessage, mock_discord_setup, setup_test_game
+# Import test fixtures from shared fixtures
+from tests.fixtures.discord_mocks import (
+    MockChannel, MockMember, MockMessage, mock_discord_setup
 )
+from tests.fixtures.game_fixtures import setup_test_game
 
 
 @pytest.mark.asyncio
