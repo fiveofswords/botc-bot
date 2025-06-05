@@ -2788,8 +2788,57 @@ async def on_message(message):
                 await safe_send(message.author, "Successfully created alias {} for command {}.".format(alias_term, command_term))
                 return
 
-            # Hand up / Hand down consolidated logic
-# Removed duplicate `handup`/`handdown` command block to consolidate logic.
+            # Hand up
+            elif command == "handup" or command == "handdown":
+                player = await get_player(message.author)
+                if not player:
+                    await safe_send(message.author, "You are not a player in the game.")
+                    return
+
+                if global_vars.game is NULL_GAME:
+                    await safe_send(message.author, "There's no game right now.")
+                    return
+
+                if not global_vars.game.isDay:
+                    await safe_send(message.author, "It's not day right now.")
+                    return
+
+                if not (global_vars.game.days[-1].votes and not global_vars.game.days[-1].votes[-1].done):
+                    await safe_send(message.author, "You can only raise or lower your hand during an active vote.")
+                    return
+
+                if command == "handdown":
+                    player.hand_raised = False
+                    await safe_send(message.author, "Your hand is lowered.")
+                    backup("current_game.pckl") # Backup for hand_raised change
+                    await global_vars.game.update_seating_order_message()
+
+                    active_vote = None
+                    if global_vars.game.days[-1].votes and not global_vars.game.days[-1].votes[-1].done:
+                        active_vote = global_vars.game.days[-1].votes[-1]
+
+                    if active_vote and player.user.id in active_vote.presetVotes:
+                        prompt_msg = await safe_send(message.author, "Would you like to also cancel your current preset vote? (yes/no/cancel)")
+                        try:
+                            choice = await client.wait_for(
+                                "message",
+                                check=(lambda x: x.author == message.author and x.channel == prompt_msg.channel),
+                                timeout=60.0,  # 60 seconds to respond
+                            )
+
+                            if choice.content.lower() in ["yes", "y"]:
+                                await active_vote.cancel_preset(player)
+                                await safe_send(message.author, "Your preset vote has been cancelled.")
+                                backup("current_game.pckl") # Backup for preset cancellation
+                            elif choice.content.lower() in ["no", "n"]:
+                                await safe_send(message.author, "Okay, your preset vote remains active.")
+                            else: # Includes "cancel" or any other input
+                                await safe_send(message.author, "Preset vote cancellation action cancelled. Your preset vote remains active.")
+                        except asyncio.TimeoutError:
+                            await safe_send(message.author, "Timed out. Your preset vote remains active.")
+                    return
+
+                # command == "handup"
                 active_vote = None
                 if global_vars.game.days[-1].votes and not global_vars.game.days[-1].votes[-1].done:
                     active_vote = global_vars.game.days[-1].votes[-1]
