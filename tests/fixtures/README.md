@@ -34,6 +34,13 @@ Game setup helpers:
 - `start_test_day()`: Starts a day for testing
 - `setup_nomination_flow()`: Sets up a complete nomination flow
 
+**Enhanced helpers for common patterns:**
+
+- `setup_vote_with_preset()`: Create a vote with preset votes for testing
+- `setup_hand_states()`: Set up hand states for multiple players
+- `create_active_vote_scenario()`: Create a complete active vote scenario for testing
+- `setup_storyteller_permissions()`: Set up storyteller permissions for testing
+
 ### Common Patches (`common_patches.py`)
 
 Patch collections:
@@ -55,31 +62,64 @@ Command testing helpers:
 - `run_command_storyteller()`: Tests storyteller commands
 - `run_command_vote()`: Tests voting commands
 
+**Enhanced helpers for common patterns:**
+
+- `execute_command_with_wait_for()`: Execute commands with predefined client.wait_for responses
+
+**Note:** For MockMessage creation, use `MockMessage` directly instead of wrapper functions for better clarity and
+explicitness.
+
 ## Usage
 
 Import the fixtures in your test files:
 
 ```python
 import pytest
+from unittest.mock import patch, AsyncMock
 from tests.fixtures.discord_mocks import mock_discord_setup
-from tests.fixtures.game_fixtures import setup_test_game
-from tests.fixtures.common_patches import common_patches
-from tests.fixtures.command_testing import run_command_player
+from tests.fixtures.game_fixtures import setup_test_game, setup_vote_with_preset, setup_storyteller_permissions
+from tests.fixtures.discord_mocks import MockMessage
+from bot_impl import on_message
 
 
 @pytest.mark.asyncio
 async def test_some_command(mock_discord_setup, setup_test_game):
-    # Test using the fixtures
-    result = await run_command_player(
-        "vote",
-        "yes",
-        setup_test_game['players']['alice'],
-        mock_discord_setup['channels']['town_square'],
-        on_message
+    # Test using the enhanced fixtures
+    game = setup_test_game['game']
+    alice = setup_test_game['players']['alice']
+    storyteller = setup_test_game['players']['storyteller']
+
+    # Set up a vote with preset votes using shared infrastructure
+    vote = setup_vote_with_preset(
+        game=game,
+        nominee=alice,
+        nominator=storyteller,
+        voters=[alice],
+        preset_votes={alice.user.id: 1}
     )
 
-    # Verify results
-    assert result.called
+    # Set up storyteller permissions using shared helper
+    setup_storyteller_permissions(
+        storyteller=storyteller,
+        mock_discord_setup=mock_discord_setup
+    )
+
+    # Create a command message using MockMessage directly
+    msg = MockMessage(
+        content="@vote yes",
+        channel=alice.user.dm_channel,
+        author=alice.user
+    )
+
+    # Test with individual patches (recommended approach)
+    with patch('bot_impl.get_player', return_value=alice),
+            patch('bot_impl.backup') as mock_backup,
+            patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send:
+        await on_message(msg)
+
+        # Verify results
+        assert mock_backup.called
+        assert mock_safe_send.called
 ```
 
 Always use the fixtures to minimize duplication and ensure consistent testing behavior.

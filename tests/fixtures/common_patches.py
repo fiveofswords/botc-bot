@@ -88,6 +88,65 @@ def common_patches():
     return patches
 
 
+def command_execution_patches(mock_discord_setup=None):
+    """Return patches commonly needed for command execution tests."""
+    patches = {
+        'bot_impl.backup': AsyncMock(),
+        'bot_impl.safe_send': AsyncMock(),
+        'utils.message_utils.safe_send': AsyncMock(),
+    }
+
+    if mock_discord_setup:
+        patches['bot_impl.client'] = mock_discord_setup['client']
+
+    return patches
+
+
+def hand_status_patches(game, mock_discord_setup):
+    """Return patches commonly needed for hand status testing."""
+    return {
+        'bot_impl.backup': AsyncMock(),
+        'bot_impl.safe_send': AsyncMock(),
+        'utils.message_utils.safe_send': AsyncMock(),
+        'bot_impl.client': mock_discord_setup['client'],
+        'game.update_seating_order_message': AsyncMock(),
+    }
+
+
+def vote_execution_patches(vote=None, game=None):
+    """Return patches commonly needed for vote execution tests."""
+    patches = {
+        'bot_impl.backup': AsyncMock(),
+        'bot_impl.safe_send': AsyncMock(),
+        'utils.message_utils.safe_send': AsyncMock(),
+    }
+
+    if vote:
+        patches.update({
+            'bot_impl.get_current_vote': vote,
+            'bot_impl.get_active_vote': vote,
+            'bot_impl.get_vote': vote,
+            'bot_impl.find_vote': vote,
+        })
+
+    if game:
+        patches['game.update_seating_order_message'] = AsyncMock()
+
+    return patches
+
+
+def storyteller_command_patches(mock_discord_setup):
+    """Return patches commonly needed for storyteller command tests."""
+    return {
+        'bot_impl.backup': AsyncMock(),
+        'bot_impl.safe_send': AsyncMock(),
+        'utils.message_utils.safe_send': AsyncMock(),
+        'bot_impl.client': mock_discord_setup['client'],
+        'bot_impl.select_player': AsyncMock(),
+        'bot_impl.update_presence': AsyncMock(),
+    }
+
+
 def patch_file_operations():
     """Return patches that disable all file operations."""
     return [

@@ -138,3 +138,55 @@ async def setup_nomination_flow(game, nominee, nominator):
 
     # Return the vote and day objects
     return vote, day
+
+
+def setup_vote_with_preset(game, nominee, nominator, voters, preset_votes=None):
+    """Create a vote with preset votes for testing."""
+    vote = setup_test_vote(game, nominee, nominator, voters)
+
+    if preset_votes:
+        for player_id, vote_value in preset_votes.items():
+            vote.presetVotes[player_id] = vote_value
+
+    return vote
+
+
+def setup_hand_states(players, hand_states):
+    """Set up hand states for multiple players."""
+    for player_name, states in hand_states.items():
+        if player_name in players:
+            player = players[player_name]
+            if 'hand_raised' in states:
+                player.hand_raised = states['hand_raised']
+            if 'hand_locked_for_vote' in states:
+                player.hand_locked_for_vote = states['hand_locked_for_vote']
+
+
+def create_active_vote_scenario(game, nominee, nominator, voters, preset_votes=None, hand_states=None):
+    """Create a complete active vote scenario for testing."""
+    # Ensure day is started
+    if not game.days:
+        from model.game.day import Day
+        day = Day()
+        game.days.append(day)
+        game.isDay = True
+
+    # Create vote
+    vote = setup_vote_with_preset(game, nominee, nominator, voters, preset_votes)
+
+    # Set up hand states if provided
+    if hand_states:
+        setup_hand_states({
+            'alice': game.seatingOrder[0] if len(game.seatingOrder) > 0 else None,
+            'bob': game.seatingOrder[1] if len(game.seatingOrder) > 1 else None,
+            'charlie': game.seatingOrder[2] if len(game.seatingOrder) > 2 else None,
+            **hand_states
+        }, hand_states)
+
+    return vote
+
+
+def setup_storyteller_permissions(storyteller, mock_discord_setup):
+    """Set up storyteller permissions for testing."""
+    storyteller.user.roles = [mock_discord_setup['roles']['gamemaster']]
+    mock_discord_setup['guild'].get_member = lambda user_id: storyteller.user

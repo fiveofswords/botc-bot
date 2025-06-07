@@ -12,10 +12,11 @@ import pytest
 
 import global_vars
 from bot_impl import Vote, on_message
-# Import test fixtures from test_bot_integration.py - they will be available here too
-from tests.test_bot_integration import (
-    MockChannel, MockMessage, mock_discord_setup, setup_test_game
+# Import test fixtures from shared fixtures
+from tests.fixtures.discord_mocks import (
+    MockChannel, MockMessage, mock_discord_setup
 )
+from tests.fixtures.game_fixtures import setup_test_game
 
 
 # Import the custom fixtures from test_commands.py

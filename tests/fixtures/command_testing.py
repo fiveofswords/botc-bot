@@ -6,20 +6,13 @@ functions to simulate command execution for both storyteller
 and player commands.
 """
 
+from contextlib import contextmanager
 from unittest.mock import AsyncMock, patch
 
 from tests.fixtures.discord_mocks import MockMessage
 
 
-async def create_command_message(content, channel, author, guild=None):
-    """Create a message object for command testing."""
-    return MockMessage(
-        id=1000,
-        content=content,
-        channel=channel,
-        author=author,
-        guild=guild
-    )
+# Removed create_command_message - use MockMessage directly with explicit id for better clarity
 
 
 async def execute_command(command_function, message):
@@ -63,7 +56,7 @@ async def run_command_player(command, args, player, channel, command_function):
     if args:
         content = f"{content} {args}"
 
-    message = await create_command_message(
+    message = MockMessage(
         content=content,
         channel=channel,
         author=player.user,
@@ -91,7 +84,7 @@ async def run_command_storyteller(command, args, st_player, channel, command_fun
     if args:
         content = f"{content} {args}"
 
-    message = await create_command_message(
+    message = MockMessage(
         content=content,
         channel=channel,
         author=st_player.user
@@ -121,7 +114,7 @@ async def run_command_vote(vote_type, voter, vote, cmd_function=None):
     cmd_function = cmd_function or on_message
 
     # Create a vote message
-    message = await create_command_message(
+    message = MockMessage(
         content=f"@vote {vote_type}",
         channel=voter.user.guild.get_channel(200),  # town square
         author=voter.user,
@@ -140,3 +133,112 @@ async def run_command_vote(vote_type, voter, vote, cmd_function=None):
 
     # Return the mock for assertion checking
     return vote.vote
+
+
+# Enhanced helper functions for common test patterns
+
+# Removed unnecessary MockMessage wrapper functions - use MockMessage directly for better clarity
+
+
+# Note: Complex patch context managers removed for simplicity
+# Individual patches with shared helper functions work better for now
+
+
+@contextmanager
+def patch_hand_status_testing(game, mock_discord_setup, additional_patches=None):
+    """Context manager for hand status testing patches."""
+    from tests.fixtures.common_patches import hand_status_patches
+
+    patches = hand_status_patches(game, mock_discord_setup)
+    if additional_patches:
+        patches.update(additional_patches)
+
+    with patch.multiple('', **patches) as mocks:
+        # Set up common mock behavior
+        if 'bot_impl.safe_send' in mocks:
+            mock_channel = AsyncMock()
+            mocks['bot_impl.safe_send'].return_value.channel = mock_channel
+
+        yield mocks
+
+
+@contextmanager
+def patch_vote_testing(vote, game, mock_discord_setup, additional_patches=None):
+    """Context manager for vote testing patches."""
+    from tests.fixtures.common_patches import vote_execution_patches
+
+    patches = vote_execution_patches(vote, game)
+    patches['bot_impl.client'] = mock_discord_setup['client']
+
+    if additional_patches:
+        patches.update(additional_patches)
+
+    with patch.multiple('', **patches) as mocks:
+        yield mocks
+
+
+async def execute_command_with_wait_for(command_function, message, mock_discord_setup, wait_for_responses=None):
+    """
+    Execute a command that uses client.wait_for with predefined responses.
+    
+    Args:
+        command_function: The command function to execute
+        message: The MockMessage to send
+        mock_discord_setup: The Discord mock setup
+        wait_for_responses: List of MockMessage objects to return for wait_for calls
+    """
+    if wait_for_responses:
+        if len(wait_for_responses) == 1:
+            mock_discord_setup['client'].wait_for = AsyncMock(return_value=wait_for_responses[0])
+        else:
+            mock_discord_setup['client'].wait_for = AsyncMock(side_effect=wait_for_responses)
+
+    # Use individual patches for command execution
+    with patch('bot_impl.backup', AsyncMock()), \
+            patch('bot_impl.safe_send', AsyncMock()), \
+            patch('utils.message_utils.safe_send', AsyncMock()), \
+            patch('bot_impl.client', mock_discord_setup['client']):
+        await command_function(message)
+
+
+async def test_hand_command(command, player, mock_discord_setup, game,
+                            expected_hand_state, hand_choice=None, prevote_choice=None):
+    """
+    Test a hand command (handup/handdown) with optional prevote interaction.
+    
+    Args:
+        command: The command name ("handup" or "handdown") 
+        player: The player executing the command
+        mock_discord_setup: Discord mock setup
+        game: The game object
+        expected_hand_state: Expected final hand_raised state
+        hand_choice: Choice for hand status prompt ("up"/"down")
+        prevote_choice: Choice for prevote prompt ("yes"/"no"/"cancel")
+    
+    Returns:
+        Dict with mock objects for assertions
+    """
+    # Create the command message
+    message = MockMessage(
+        content=f"@{command}",
+        channel=player.user.dm_channel,
+        author=player.user
+    )
+
+    # Set up wait_for responses
+    responses = []
+    if prevote_choice:
+        responses.append(MockMessage(content=prevote_choice, author=player.user, channel=AsyncMock()))
+    if hand_choice:
+        responses.append(MockMessage(content=hand_choice, author=player.user, channel=AsyncMock()))
+
+    # Execute with proper patching
+    with patch_hand_status_testing(game, mock_discord_setup, {'bot_impl.get_player': player}) as mocks:
+        await execute_command_with_wait_for(
+            command_function=None,  # Will need to import on_message
+            message=message,
+            mock_discord_setup=mock_discord_setup,
+            wait_for_responses=responses
+        )
+
+    return mocks
