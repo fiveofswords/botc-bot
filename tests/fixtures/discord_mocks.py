@@ -7,6 +7,7 @@ using actual Discord servers or API calls.
 """
 
 import datetime
+import itertools
 from unittest.mock import MagicMock, AsyncMock
 
 import discord
@@ -49,7 +50,7 @@ class MockChannel:
     async def send(self, content=None, embed=None):
         """Mock sending a message to the channel."""
         message = MockMessage(
-            message_id=len(self.messages) + 1000,
+            id=len(self.messages) + 1000,
             content=content,
             embed=embed,
             channel=self,
@@ -97,7 +98,7 @@ class MockMember:
     async def send(self, content=None, embed=None):
         """Mock sending a direct message to the user."""
         message = MockMessage(
-            message_id=len(self.dm_channel.messages) + 2000,
+            id=len(self.dm_channel.messages) + 2000,
             content=content,
             embed=embed,
             channel=self.dm_channel,
@@ -108,17 +109,18 @@ class MockMember:
 
 
 class MockMessage:
+    _id_counter = itertools.count(1000)  # Start from 1000 or any number you like
     """Mock Discord message for testing."""
 
-    def __init__(self, message_id, content=None, embed=None, channel=None, author=None, guild=None):
-        self.id = message_id
+    def __init__(self, id=None, content="", embed=None, channel=None, author=None, guild=None):
+        self.id = id if id is not None else next(MockMessage._id_counter)
         self.content = content
         self.embed = embed
         self.channel = channel
         self.author = author
         self.pinned = False
         self.created_at = datetime.datetime.now()
-        self.jump_url = f"https://discord.com/channels/123/{channel.id if channel else 0}/{message_id}"
+        self.jump_url = f"https://discord.com/channels/123/{channel.id if channel else 0}/{id}"
         # For direct messages, guild will be None
         self.guild = guild
 
@@ -267,10 +269,10 @@ async def mock_discord_setup():
     }
 
 
-def create_mock_message(message_id, content, channel, author, guild=None, embed=None):
+def create_mock_message(id, content, channel, author, guild=None, embed=None):
     """Factory function to create a mock message."""
     return MockMessage(
-        message_id=message_id,
+        id=id,
         content=content,
         channel=channel,
         author=author,

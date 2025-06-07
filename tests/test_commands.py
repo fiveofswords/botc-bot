@@ -755,7 +755,7 @@ async def test_history_command(mock_discord_setup, setup_test_game):
 
     # Create a message from Alice in DM
     alice_message = MockMessage(
-        message_id=21,
+        id=21,
         content="@history bob",
         channel=alice_dm_channel,
         author=mock_discord_setup['members']['alice']

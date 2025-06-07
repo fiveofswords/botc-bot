@@ -13,6 +13,7 @@ from model.characters import Character
 from model.game import Day
 from tests.test_bot_integration import mock_discord_setup, setup_test_game, MockChannel
 
+
 # Mock interfaces for testing since we can't create multiple inheritance with them
 class MockSeatingOrderModifier:
     def seating_order_message(self, seating_order):
@@ -84,14 +85,33 @@ async def test_reseat_method(mock_discord_setup, setup_test_game):
     game.seatingOrderMessage = mock_message
 
     # Create a new seating order by shuffling the current one
-    new_order = game.seatingOrder.copy()
+    new_order = game.seatingOrder.copy() # Alice, Bob, Charlie by default
 
-    # Make one player a ghost to test special formatting
-    new_order[0].is_ghost = True
+    # Setup specific player states for testing display:
+    # Player 0 (Alice): Ghost, hand raised, 0 dead votes
+    alice_player = new_order[0]
+    alice_player.is_ghost = True
+    alice_player.hand_raised = True
+    alice_player.dead_votes = 0
+
+    # Player 1 (Bob): Ghost, hand NOT raised, 1 dead vote
+    bob_player = new_order[1]
+    bob_player.is_ghost = True
+    bob_player.hand_raised = False # Explicitly false
+    bob_player.dead_votes = 1
+
+    # Player 2 (Charlie): Alive, hand raised
+    charlie_player = new_order[2]
+    charlie_player.is_ghost = False # Ensure alive, already default
+    charlie_player.hand_raised = True
 
     # Test reseat with new order
+    # reseat now calls game.update_seating_order_message, which in turn calls game.seatingOrderMessage.edit
     with patch('model.game.game.reorder_channels', new_callable=AsyncMock) as mock_reorder:
+        # Don't mock update_seating_order_message to avoid recursion
+        # Let it call the real method which will edit the mock message
         await game.reseat(new_order)
+
         assert mock_reorder.called
 
     # Check positions were updated correctly
@@ -103,10 +123,32 @@ async def test_reseat_method(mock_discord_setup, setup_test_game):
 
     # Check the content of the edited message
     call_args = mock_message.edit.call_args[1]
-    assert "**Seating Order:**" in call_args['content']
+    content = call_args['content'] # Easier to reference
+    assert "**Seating Order:**" in content
 
-    # Verify ghost formatting
-    assert "~~" in call_args['content']
+    # Assertions for Alice (Ghost, hand raised, 0 dead votes)
+    # Expected format: ~~Name~~ X ✋
+    expected_alice_text = f"~~{alice_player.display_name}~~ X ✋"
+    assert expected_alice_text in content, f"Alice's display incorrect. Expected: '{expected_alice_text}' in '{content}'"
+
+    # Assertions for Bob (Ghost, hand NOT raised, 1 dead vote)
+    # Expected format: ~~Name~~ O
+    expected_bob_text = f"~~{bob_player.display_name}~~ O" # 1 dead vote = O
+    assert expected_bob_text in content, f"Bob's display incorrect. Expected: '{expected_bob_text}' in '{content}'"
+    # Also ensure Bob does NOT have hand emoji since hand is not raised
+    # Bob should not have hand emoji before the vote token indicator
+    assert f"~~{bob_player.display_name}~~ O ✋" not in content, f"Bob ({bob_player.display_name}) should not have hand emoji before vote token."
+
+
+    # Assertions for Charlie (Alive, hand raised)
+    # Expected format: Name ✋
+    expected_charlie_text = f"{charlie_player.display_name} ✋"
+    assert expected_charlie_text in content, f"Charlie's display incorrect. Expected: '{expected_charlie_text}' in '{content}'"
+
+    # Verify SeatingOrderModifier is still processed if applicable
+    # This part of the original test logic for reseat should still hold
+    if any(isinstance(p.character, MockSeatingOrderModifier) for p in new_order):
+        assert " (Modified)" in call_args['content']
 
 
 @pytest.mark.asyncio

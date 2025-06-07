@@ -46,6 +46,36 @@ class Game:
         self.show_tally = False
         self.has_automated_life_and_death = False
 
+    async def update_seating_order_message(self):
+        """Updates the pinned seating order message with current hand status."""
+        message_text = "**Seating Order:**"
+        for person in self.seatingOrder:
+            person_display_name = person.display_name
+            if person.is_ghost:
+                if person.dead_votes <= 0:
+                    person_display_name = "~~" + person_display_name + "~~ X"
+                else:
+                    person_display_name = (
+                        "~~" + person_display_name + "~~ " + "O" * person.dead_votes
+                    )
+
+            if person.hand_raised:
+                person_display_name += " ✋"
+
+            message_text += "\n{}".format(person_display_name)
+
+            if isinstance(person.character, SeatingOrderModifier):
+                message_text += person.character.seating_order_message(self.seatingOrder)
+
+        if self.seatingOrderMessage:
+            try:
+                await self.seatingOrderMessage.edit(content=message_text)
+            except discord.errors.NotFound:
+                # The message might have been deleted, handle this case if necessary
+                print(f"Warning: Seating order message (ID: {self.seatingOrderMessage.id}) not found. Could not update.")
+            except Exception as e:
+                print(f"Error updating seating order message: {e}")
+
     async def end(self, winner):
         """Ends the game.
         
@@ -103,27 +133,13 @@ class Game:
         # Seating order
         self.seatingOrder = new_seating_order
 
-        # Seating order message
-        message_text = "**Seating Order:**"
+        # Update player positions
         for index, person in enumerate(self.seatingOrder):
-
-            if person.is_ghost:
-                if person.dead_votes <= 0:
-                    message_text += "\n{}".format("~~" + person.display_name + "~~ X")
-                else:
-                    message_text += "\n{}".format(
-                        "~~" + person.display_name + "~~ " + "O" * person.dead_votes
-                    )
-
-            else:
-                message_text += "\n{}".format(person.display_name)
-
-            if isinstance(person.character, SeatingOrderModifier):
-                message_text += person.character.seating_order_message(self.seatingOrder)
-
             person.position = index
 
-        await self.seatingOrderMessage.edit(content=message_text)
+        # Update the seating order message using the dedicated method
+        await self.update_seating_order_message()
+
         await reorder_channels([x.st_channel for x in self.seatingOrder])
 
     async def add_traveler(self, person):

@@ -14,7 +14,7 @@ from bot_client import client
 from bot_impl import Vote, on_message
 # Import test fixtures from fixtures directory
 from tests.fixtures.command_testing import run_command_storyteller
-from tests.fixtures.discord_mocks import MockChannel, mock_discord_setup
+from tests.fixtures.discord_mocks import MockChannel, MockMessage, mock_discord_setup
 from tests.fixtures.game_fixtures import setup_test_game
 
 
@@ -250,15 +250,16 @@ async def test_storyteller_execute_command(mock_discord_setup, setup_test_game):
     global_vars.game = setup_test_game['game']
     global_vars.server = mock_discord_setup['guild']
 
-    # Get storyteller from fixture
+    alice_player = setup_test_game['players']['alice']
+    game = setup_test_game['game']
     storyteller = setup_test_game['players']['storyteller']
 
     # Ensure Alice is alive
-    setup_test_game['players']['alice'].is_ghost = False
-    setup_test_game['players']['alice'].dead_votes = 0
+    alice_player.is_ghost = False
+    alice_player.dead_votes = 0
 
     # Start a day to make sure the day list exists
-    await setup_test_game['game'].start_day()
+    await game.start_day()
 
     # For test simplicity, let's test execution by checking if the execute function was called
     # Mock update_presence to avoid client.ws.change_presence issues
@@ -266,21 +267,21 @@ async def test_storyteller_execute_command(mock_discord_setup, setup_test_game):
             patch('bot_impl.backup'), \
             patch('utils.message_utils.safe_send', return_value=AsyncMock()):
         # Mock the player selection
-        with patch('bot_impl.select_player', return_value=setup_test_game['players']['alice']):
+        with patch('bot_impl.select_player', return_value=alice_player):
             # Set up the test with mocked flow
             async def custom_execute(user, force=False):
                 # Simulate the execution flow where we say "yes" to dying and "yes" to ending day
-                await setup_test_game['players']['alice'].kill(suppress=True, force=True)
-                setup_test_game['game'].days[-1].isExecutionToday = True
-                await setup_test_game['game'].days[-1].end()
+                await alice_player.kill(suppress=True, force=True)
+                game.days[-1].isExecutionToday = True
+                await game.days[-1].end()
                 return True
 
             # Mock the execute, kill, and end day methods
-            with patch.object(setup_test_game['players']['alice'], 'execute',
+            with patch.object(alice_player, 'execute',
                               side_effect=custom_execute) as mock_execute, \
-                    patch.object(setup_test_game['players']['alice'], 'kill',
+                    patch.object(alice_player, 'kill',
                                  new_callable=AsyncMock) as mock_kill, \
-                    patch.object(setup_test_game['game'].days[-1], 'end',
+                    patch.object(game.days[-1], 'end',
                                  new_callable=AsyncMock) as mock_end_day:
                 # Execute the execute command
                 mock_send = await run_command_storyteller(
@@ -975,3 +976,99 @@ async def test_storyteller_welcome_command_simplified(mock_discord_setup, setup_
         confirmation_call_args = mock_safe_send.call_args_list[1]
         assert confirmation_call_args[0][0] == storyteller.user
         assert f"Welcomed {alice.display_name}" in confirmation_call_args[0][1]
+
+
+@pytest.mark.asyncio
+async def test_info_command_enhancements(mock_discord_setup, setup_test_game):
+    """Test the enhanced @info command for hand status and preset vote status."""
+    game = setup_test_game['game']
+    storyteller = setup_test_game['players']['storyteller']
+    alice = setup_test_game['players']['alice']
+    bob = setup_test_game['players']['bob'] # For nominee
+    charlie = setup_test_game['players']['charlie'] # For nominator
+
+    global_vars.game = game
+    # Ensure the game is in a state where a day exists for game.days[-1] access
+    if not game.days:
+        await game.start_day() # Start a day if no days exist
+    elif not game.isDay: # If a day exists but it's night, start a new day
+        await game.start_day()
+
+    with patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send, \
+            patch('bot_impl.backup') as mock_backup:
+        # Scenario 1: No active vote
+        game.days[-1].votes = []
+        alice.hand_raised = True
+
+        msg_s1 = MockMessage(id=2001, content=f"@info {alice.user.name}", author=storyteller.user,
+                             channel=storyteller.user.dm_channel, guild=None)
+        await on_message(msg_s1)
+
+        mock_safe_send.assert_called_once()
+        sent_content_s1 = mock_safe_send.call_args[0][1]
+        assert "Hand Status: Raised" in sent_content_s1
+        assert "Preset Vote: N/A (No active vote)" in sent_content_s1
+        assert f"Player: {alice.display_name}" in sent_content_s1 # Check original info still there
+        mock_safe_send.reset_mock()
+
+        # Scenario 2: Active vote, player has no preset vote
+        active_vote_s2 = Vote(nominee=bob, nominator=charlie)
+        active_vote_s2.done = False
+        game.days[-1].votes = [active_vote_s2]
+        alice.hand_raised = False
+        if alice.user.id in active_vote_s2.presetVotes:
+            del active_vote_s2.presetVotes[alice.user.id]
+
+        msg_s2 = MockMessage(id=2002, content=f"@info {alice.user.name}", author=storyteller.user,
+                             channel=storyteller.user.dm_channel, guild=None)
+        await on_message(msg_s2)
+
+        mock_safe_send.assert_called_once()
+        sent_content_s2 = mock_safe_send.call_args[0][1]
+        assert "Hand Status: Lowered" in sent_content_s2
+        assert "Preset Vote: None" in sent_content_s2
+        mock_safe_send.reset_mock()
+
+        # Scenario 3: Active vote, player has "yes" preset (value 1)
+        # Active vote from S2 is still current
+        alice.hand_raised = True
+        active_vote_s2.presetVotes[alice.user.id] = 1
+
+        msg_s3 = MockMessage(id=2003, content=f"@info {alice.user.name}", author=storyteller.user,
+                             channel=storyteller.user.dm_channel, guild=None)
+        await on_message(msg_s3)
+
+        mock_safe_send.assert_called_once()
+        sent_content_s3 = mock_safe_send.call_args[0][1]
+        assert "Hand Status: Raised" in sent_content_s3
+        assert "Preset Vote: Yes" in sent_content_s3
+        mock_safe_send.reset_mock()
+
+        # Scenario 4: Active vote, player has "no" preset (value 0)
+        alice.hand_raised = False
+        active_vote_s2.presetVotes[alice.user.id] = 0
+
+        msg_s4 = MockMessage(id=2004, content=f"@info {alice.user.name}", author=storyteller.user,
+                             channel=storyteller.user.dm_channel, guild=None)
+        await on_message(msg_s4)
+
+        mock_safe_send.assert_called_once()
+        sent_content_s4 = mock_safe_send.call_args[0][1]
+        assert "Hand Status: Lowered" in sent_content_s4
+        assert "Preset Vote: No" in sent_content_s4
+        mock_safe_send.reset_mock()
+
+        # Scenario 5: Active vote, player (Banshee) has "yes" preset (value 2)
+        # For simplicity, directly setting value 2. Actual Banshee logic is complex.
+        alice.hand_raised = True
+        active_vote_s2.presetVotes[alice.user.id] = 2
+
+        msg_s5 = MockMessage(id=2005, content=f"@info {alice.user.name}", author=storyteller.user,
+                             channel=storyteller.user.dm_channel, guild=None)
+        await on_message(msg_s5)
+
+        mock_safe_send.assert_called_once()
+        sent_content_s5 = mock_safe_send.call_args[0][1]
+        assert "Hand Status: Raised" in sent_content_s5
+        assert "Preset Vote: Yes (Banshee Scream)" in sent_content_s5 # Or similar based on implementation
+        mock_safe_send.reset_mock()

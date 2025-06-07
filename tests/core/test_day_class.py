@@ -169,7 +169,7 @@ async def test_day_end(mock_discord_setup, setup_test_game):
 
         # Mock message and fetch_message
         mock_message = create_mock_message(
-            message_id=12345,
+            id=12345,
             content="Test message",
             channel=global_vars.channel,
             author=mock_discord_setup['members']['storyteller']
@@ -219,7 +219,7 @@ async def test_day_end_with_execution(mock_discord_setup, setup_test_game):
 
         # Mock message and fetch_message
         mock_message = create_mock_message(
-            message_id=12345,
+            id=12345,
             content="Test message",
             channel=global_vars.channel,
             author=mock_discord_setup['members']['storyteller']

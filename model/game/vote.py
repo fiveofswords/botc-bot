@@ -154,6 +154,16 @@ class Vote:
         # Voter
         voter = self.order[self.position]
 
+        # Manage hand state based on vote
+        if vt == 1:  # Yes vote
+            voter.hand_raised = True
+        else:  # No vote
+            voter.hand_raised = False
+        voter.hand_locked_for_vote = True
+
+        # Update seating order message immediately
+        await global_vars.game.update_seating_order_message()
+
         potential_banshee = the_ability(voter.character, Banshee)
 
         # see if a Voudon is in play
@@ -300,6 +310,14 @@ class Vote:
                 print("Missing message: ", str(msg))
             except discord.errors.DiscordServerError:
                 print("Discord server error: ", str(msg))
+
+        # Lower all hands and reset vote lock
+        for person in global_vars.game.seatingOrder:
+            person.hand_raised = False
+            person.hand_locked_for_vote = False
+
+        # Update seating order message
+        await global_vars.game.update_seating_order_message()
 
         self.done = True
 
