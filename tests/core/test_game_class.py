@@ -3,8 +3,9 @@ Tests for the Game class in bot_impl.py
 """
 
 import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch, Mock
 
+import discord.errors
 import pytest
 
 import global_vars
@@ -27,46 +28,41 @@ class MockDayStartModifier:
 
 
 @pytest.mark.asyncio
-async def test_game_initialization(mock_discord_setup):
+async def test_game_initialization(setup_test_game):
     """Test that Game is properly initialized with the expected attributes."""
-    # Create a basic seating order
-    alice = Player(
-        Character,
-        "good",
-        mock_discord_setup['members']['alice'],
-        mock_discord_setup['channels']['st1'],
-        0
-    )
-    bob = Player(
-        Character,
-        "good",
-        mock_discord_setup['members']['bob'],
-        mock_discord_setup['channels']['st2'],
-        1
-    )
-    seating_order = [alice, bob]
+    game = setup_test_game['game']
+    players = setup_test_game['players']
 
-    # Create a seating order message
-    seating_message = AsyncMock()
-    seating_message.created_at = datetime.datetime.now()
+    # Verify basic game attributes
+    assert game.isDay is False
+    assert game.whisper_mode == "all"
+    assert game.show_tally is False
+    assert game.has_automated_life_and_death is False
 
-    # Mock the gamemaster role and members
-    mock_gamemaster = MagicMock()
-    mock_gamemaster.members = [mock_discord_setup['members']['storyteller']]
+    # Verify seating order contains the expected players
+    assert len(game.seatingOrder) == 3
+    assert players['alice'] in game.seatingOrder
+    assert players['bob'] in game.seatingOrder
+    assert players['charlie'] in game.seatingOrder
 
-    with patch('global_vars.gamemaster_role', mock_gamemaster):
-        # Create a Game instance
-        game = Game(seating_order, seating_message, Script([]))
+    # Verify seating order message exists
+    assert game.seatingOrderMessage is not None
+    assert hasattr(game.seatingOrderMessage, 'created_at')
 
-        # Verify attributes were set correctly
-        assert game.days == []
-        assert game.isDay is False
-        assert game.seatingOrder == seating_order
-        assert game.whisper_mode == "all"
-        assert game.seatingOrderMessage == seating_message
-        assert len(game.storytellers) == 1
-        assert game.show_tally is False
-        assert game.has_automated_life_and_death is False
+    # Verify info channel seating order message exists
+    assert game.info_channel_seating_order_message is not None
+
+    # Verify storytellers list is properly initialized
+    assert len(game.storytellers) == 1
+    assert players['storyteller'] == game.storytellers[0]
+
+    # Verify game has days list (with one day from fixture)
+    assert isinstance(game.days, list)
+    assert len(game.days) == 1
+
+    # Verify script is initialized
+    assert hasattr(game, 'script')
+    assert game.script is not None
 
 
 # test_game_end was removed - functionality is covered by integration tests in 
@@ -244,3 +240,233 @@ async def test_start_day(mock_discord_setup, setup_test_game):
 
     # Verify day count increases
     assert len(game.days) == 2
+
+
+@pytest.mark.asyncio
+@patch('global_vars.info_channel', new_callable=AsyncMock)
+async def test_update_seating_order_message_posts_to_info_channel(mock_info_channel, mock_discord_setup, setup_test_game):
+    """Test that update_seating_order_message correctly posts to and updates the info channel."""
+    game = setup_test_game['game']
+
+    # Mock game.seatingOrderMessage for the main channel
+    game.seatingOrderMessage = AsyncMock()
+    game.seatingOrderMessage.edit = AsyncMock()
+    game.seatingOrderMessage.id = 12345 # Dummy ID for logging
+
+    # --- Scenario 1: First update (no existing message in info channel) ---
+    # Reset the info channel message to None to test creation behavior
+    game.info_channel_seating_order_message = None
+
+    # Mock the message returned by info_channel.send
+    mock_sent_message_scenario1 = AsyncMock()
+    mock_sent_message_scenario1.pin = AsyncMock()
+    mock_sent_message_scenario1.edit = AsyncMock() # For scenario 2
+    # This is the mock for the .send method of mock_info_channel
+    original_send_mock = AsyncMock(return_value=mock_sent_message_scenario1)
+    mock_info_channel.send = original_send_mock
+
+    await game.update_seating_order_message()
+
+    # Expected message text
+    message_text = "**Seating Order:**"
+    for person in game.seatingOrder:
+        person_display_name = person.display_name
+        if person.is_ghost: # Assuming default setup_test_game has no ghosts initially
+            if person.dead_votes <= 0:
+                person_display_name = "~~" + person_display_name + "~~ X"
+            else:
+                person_display_name = "~~" + person_display_name + "~~ " + "O" * person.dead_votes
+        if person.hand_raised: # Assuming no hands raised initially
+            person_display_name += " ✋"
+        message_text += "\n{}".format(person_display_name)
+        # Simplified: assuming no SeatingOrderModifier in default setup for this basic check
+        # if isinstance(person.character, SeatingOrderModifier):
+        #     message_text += person.character.seating_order_message(game.seatingOrder)
+
+
+    mock_info_channel.send.assert_called_once_with(message_text)
+    mock_sent_message_scenario1.pin.assert_called_once()
+    assert game.info_channel_seating_order_message == mock_sent_message_scenario1
+    # Main channel message should also have been edited
+    game.seatingOrderMessage.edit.assert_called_once_with(content=message_text)
+
+
+    # --- Scenario 2: Subsequent update (existing message in info channel) ---
+    # game.info_channel_seating_order_message is now mock_sent_message_scenario1
+    await game.update_seating_order_message()
+
+    mock_sent_message_scenario1.edit.assert_called_once_with(content=message_text)
+    # Send should not be called again
+    assert original_send_mock.call_count == 1 # Still 1 from scenario 1
+    # Pin should not be called again
+    assert mock_sent_message_scenario1.pin.call_count == 1 # Still 1 from scenario 1
+    # Main channel message edit call count should be 2
+    assert game.seatingOrderMessage.edit.call_count == 2
+
+
+    # --- Scenario 3: Message in info channel was deleted ---
+    # game.info_channel_seating_order_message is still mock_sent_message_scenario1
+    # Make its edit method raise NotFound
+    mock_sent_message_scenario1.edit.side_effect = discord.errors.NotFound(Mock(), "Message not found")
+
+    # Mock the new message that will be sent
+    mock_sent_message_scenario3 = AsyncMock()
+    mock_sent_message_scenario3.pin = AsyncMock()
+    # Update info_channel.send to return this new mock for the next call
+    # Instead of replacing mock_info_channel.send, we make the original_send_mock return the new message on its next call
+    original_send_mock.return_value = mock_sent_message_scenario3
+
+
+    await game.update_seating_order_message()
+
+    # send should be called again (total 2 times now on original_send_mock)
+    assert original_send_mock.call_count == 2
+    original_send_mock.assert_called_with(message_text) # Checks the arguments of the last call
+    mock_sent_message_scenario3.pin.assert_called_once()
+    assert game.info_channel_seating_order_message == mock_sent_message_scenario3
+    # Main channel message edit call count should be 3
+    assert game.seatingOrderMessage.edit.call_count == 3
+    # The old message's edit was called, raised error, then new message sent.
+    # So, mock_sent_message_scenario1.edit call count should be 2 (one success, one failure)
+    assert mock_sent_message_scenario1.edit.call_count == 2
+
+
+@pytest.mark.asyncio
+@patch('global_vars.whisper_channel', new_callable=AsyncMock)
+@patch('global_vars.channel', new_callable=AsyncMock)
+@patch('global_vars.info_channel', new_callable=AsyncMock)
+async def test_game_end_cleans_up_info_channel_message(mock_info_channel, mock_main_channel, mock_whisper_channel, mock_discord_setup, setup_test_game):
+    """Test that Game.end correctly unpins and deletes the info channel message."""
+    game = setup_test_game['game']
+
+    # Mock game.seatingOrderMessage (main channel)
+    game.seatingOrderMessage = AsyncMock()
+    game.seatingOrderMessage.created_at = datetime.datetime.now()
+    game.seatingOrderMessage.unpin = AsyncMock()
+
+    # Mock pins for main and whisper channels
+    mock_main_channel.pins = AsyncMock(return_value=[])
+    mock_whisper_channel.pins = AsyncMock(return_value=[]) # Game.end tries to unpin from it
+
+    # Mock the info channel message
+    mock_info_msg = AsyncMock()
+    mock_info_msg.unpin = AsyncMock()
+    mock_info_msg.delete = AsyncMock()
+    game.info_channel_seating_order_message = mock_info_msg
+
+    await game.end(winner='good')
+
+    mock_info_msg.unpin.assert_called_once()
+    mock_info_msg.delete.assert_called_once()
+
+    # --- Scenario: Message already deleted/unpinned during unpin attempt ---
+    mock_info_msg.reset_mock() # Reset call counts etc.
+    mock_info_msg.unpin.side_effect = discord.errors.NotFound(Mock(), "Message not found")
+    # delete should still be an AsyncMock without side_effect here
+
+    await game.end(winner='evil') # Call end again with the modified mock
+
+    mock_info_msg.unpin.assert_called_once() # Attempted unpin
+    mock_info_msg.delete.assert_not_called()  # Delete should NOT be called when unpin raises NotFound
+
+    # --- Scenario: Message already deleted during delete attempt ---
+    mock_info_msg.reset_mock()
+    mock_info_msg.unpin.side_effect = None # Clear side effect from previous scenario
+    mock_info_msg.unpin.return_value = None # Ensure it's a simple AsyncMock again
+    mock_info_msg.delete.side_effect = discord.errors.NotFound(Mock(), "Message not found")
+
+    await game.end(winner='tie')
+
+    mock_info_msg.unpin.assert_called_once() # Unpin should be called
+    mock_info_msg.delete.assert_called_once() # Delete was attempted
+
+
+@pytest.mark.asyncio
+@patch('global_vars.info_channel', new_callable=AsyncMock)
+async def test_game_functions_correctly_with_none_info_channel_message(mock_info_channel, mock_discord_setup):
+    """Test that Game class functions correctly when info_channel_seating_order_message is None."""
+    # Create a Game with None for info_channel_seating_order_message
+    alice = Player(
+        Character,
+        "good",
+        mock_discord_setup['members']['alice'],
+        mock_discord_setup['channels']['st_alice'],
+        0
+    )
+    bob = Player(
+        Character,
+        "good",
+        mock_discord_setup['members']['bob'],
+        mock_discord_setup['channels']['st_bob'],
+        1
+    )
+    seating_order = [alice, bob]
+
+    # Create seating order message for main channel
+    seating_message = await mock_discord_setup['channels']['town_square'].send(
+        "**Seating Order:**\nAlice\nBob")
+
+    # Create Game with None for info channel message
+    game = Game(seating_order, seating_message, None, Script([]))
+
+    # Verify initial state
+    assert game.info_channel_seating_order_message is None
+    assert game.seatingOrder == seating_order
+    assert game.seatingOrderMessage == seating_message
+
+    # Test update_seating_order_message with None info channel message
+    mock_sent_message = AsyncMock()
+    mock_sent_message.pin = AsyncMock()
+    mock_info_channel.send = AsyncMock(return_value=mock_sent_message)
+
+    await game.update_seating_order_message()
+
+    # Should create new info channel message since it was None
+    mock_info_channel.send.assert_called_once()
+    mock_sent_message.pin.assert_called_once()
+    assert game.info_channel_seating_order_message == mock_sent_message
+
+    # Test update_seating_order_message again (should edit existing message)
+    mock_sent_message.edit = AsyncMock()
+    await game.update_seating_order_message()
+
+    mock_sent_message.edit.assert_called_once()
+    # send should not be called again
+    assert mock_info_channel.send.call_count == 1
+
+    # Test reseat method works with info channel message
+    new_seating_order = [bob, alice]  # Swap order
+    with patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update, \
+            patch('model.game.game.reorder_channels', new_callable=AsyncMock) as mock_reorder:
+        await game.reseat(new_seating_order)
+        mock_update.assert_called_once()
+        mock_reorder.assert_called_once()
+
+    assert game.seatingOrder == new_seating_order
+
+    # Test game.end() works correctly with info channel message
+    mock_sent_message.unpin = AsyncMock()
+    mock_sent_message.delete = AsyncMock()
+
+    # Mock the main channel pins for game.end()
+    mock_main_channel = mock_discord_setup['channels']['town_square']
+    mock_main_channel.pins = AsyncMock(return_value=[])
+
+    with patch('global_vars.channel', mock_main_channel), \
+            patch('global_vars.whisper_channel', None), \
+            patch('utils.game_utils.remove_backup'), \
+            patch('utils.game_utils.update_presence'):
+        await game.end(winner='good')
+
+    mock_sent_message.unpin.assert_called_once()
+    mock_sent_message.delete.assert_called_once()
+
+    # Test that game.end() also works when info_channel_seating_order_message is None
+    game.info_channel_seating_order_message = None
+
+    with patch('global_vars.channel', mock_main_channel), \
+            patch('global_vars.whisper_channel', None), \
+            patch('utils.game_utils.remove_backup'), \
+            patch('utils.game_utils.update_presence'):
+        # This should not raise any exceptions
+        await game.end(winner='evil')

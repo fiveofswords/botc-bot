@@ -2,12 +2,13 @@ import discord.errors
 
 import global_vars
 from bot_client import client
+from model.channels.channel_utils import reorder_channels
 from model.characters import Storyteller, SeatingOrderModifier, DayStartModifier
 from model.game.whisper_mode import WhisperMode
 from model.player import Player, STORYTELLER_ALIGNMENT
 from utils.game_utils import update_presence, remove_backup
 from utils.message_utils import safe_send
-from model.channels.channel_utils import reorder_channels
+
 
 class Game:
     """Represents a game of Blood on the Clocktower.
@@ -24,12 +25,14 @@ class Game:
         has_automated_life_and_death: Whether life and death is automated
     """
 
-    def __init__(self, seating_order, seating_order_message, script, skip_storytellers=False):
+    def __init__(self, seating_order, seating_order_message, info_channel_seating_order_message, script,
+                 skip_storytellers=False):
         """Initialize a Game.
         
         Args:
             seating_order: The seating order of players
             seating_order_message: The message with the seating order
+            info_channel_seating_order_message: The info channel seating order message
             script: The script being used
             skip_storytellers: Whether to skip adding storytellers
         """
@@ -39,6 +42,7 @@ class Game:
         self.seatingOrder = seating_order
         self.whisper_mode = WhisperMode.ALL
         self.seatingOrderMessage = seating_order_message
+        self.info_channel_seating_order_message = info_channel_seating_order_message
         self.storytellers = [
             Player(Storyteller, STORYTELLER_ALIGNMENT, person, st_channel=None, position=None)
             for person in global_vars.gamemaster_role.members
@@ -76,6 +80,23 @@ class Game:
             except Exception as e:
                 print(f"Error updating seating order message: {e}")
 
+        if global_vars.info_channel:
+            if self.info_channel_seating_order_message:
+                try:
+                    await self.info_channel_seating_order_message.edit(content=message_text)
+                except discord.errors.NotFound:
+                    self.info_channel_seating_order_message = None  # Reset if not found
+                except Exception as e:
+                    print(f"Error updating info channel seating order message: {e}")
+
+            if not self.info_channel_seating_order_message:  # If message doesn't exist or was reset
+                try:
+                    self.info_channel_seating_order_message = await safe_send(global_vars.info_channel, message_text)
+                    if self.info_channel_seating_order_message: # If message was sent successfully
+                        await self.info_channel_seating_order_message.pin()
+                except Exception as e:
+                    print(f"Error sending or pinning info channel seating order message: {e}")
+
     async def end(self, winner):
         """Ends the game.
         
@@ -95,6 +116,10 @@ class Game:
             if global_vars.whisper_channel:
                 for msg in await global_vars.whisper_channel.pins():
                     await msg.unpin()
+
+            if global_vars.info_channel and self.info_channel_seating_order_message:
+                await self.info_channel_seating_order_message.unpin()
+                await self.info_channel_seating_order_message.delete()
         except discord.errors.NotFound:
             pass
         except discord.errors.DiscordServerError:
@@ -213,4 +238,5 @@ class Game:
 from model.game.day import Day
 
 # Create a null game to use as a placeholder
-NULL_GAME = Game(seating_order=[], seating_order_message=0, script=[], skip_storytellers=True)
+NULL_GAME = Game(seating_order=[], seating_order_message=None, info_channel_seating_order_message=None, script=[],
+                 skip_storytellers=True)

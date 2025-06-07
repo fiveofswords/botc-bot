@@ -3,6 +3,11 @@ Common patches for testing the Blood on the Clocktower Discord bot.
 
 This module provides common patches and patch sets to simplify
 test setup and ensure consistent mocking behavior across tests.
+
+Naming conventions:
+- Functions ending in "_patches" return dictionaries of patches
+- Functions ending in "_patches_combined" return lists of patch objects
+- All patch functions use consistent parameter naming and documentation
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -75,26 +80,24 @@ def disable_backup():
         yield
 
 
+def base_bot_patches():
+    """Return base patches needed for most bot functionality."""
+    return {
+        'bot_impl.backup': AsyncMock(),
+        **discord_message_patches()
+    }
+
+
 def common_patches():
     """Return common patches needed for most tests."""
-    patches = {}
-    for p in backup_patches():
-        if hasattr(p, 'target'):
-            patches[p.target] = p.new
-
-    patches['safe_send'] = AsyncMock()
+    patches = base_bot_patches()
     patches['bot_client.client'] = MagicMock()
-
     return patches
 
 
 def command_execution_patches(mock_discord_setup=None):
-    """Return patches commonly needed for command execution tests."""
-    patches = {
-        'bot_impl.backup': AsyncMock(),
-        'bot_impl.safe_send': AsyncMock(),
-        'utils.message_utils.safe_send': AsyncMock(),
-    }
+    """Return patches for command execution tests."""
+    patches = base_bot_patches()
 
     if mock_discord_setup:
         patches['bot_impl.client'] = mock_discord_setup['client']
@@ -102,24 +105,19 @@ def command_execution_patches(mock_discord_setup=None):
     return patches
 
 
-def hand_status_patches(game, mock_discord_setup):
-    """Return patches commonly needed for hand status testing."""
-    return {
-        'bot_impl.backup': AsyncMock(),
-        'bot_impl.safe_send': AsyncMock(),
-        'utils.message_utils.safe_send': AsyncMock(),
+def hand_status_patches(mock_discord_setup):
+    """Return patches for hand status testing."""
+    patches = base_bot_patches()
+    patches.update({
         'bot_impl.client': mock_discord_setup['client'],
         'game.update_seating_order_message': AsyncMock(),
-    }
+    })
+    return patches
 
 
 def vote_execution_patches(vote=None, game=None):
-    """Return patches commonly needed for vote execution tests."""
-    patches = {
-        'bot_impl.backup': AsyncMock(),
-        'bot_impl.safe_send': AsyncMock(),
-        'utils.message_utils.safe_send': AsyncMock(),
-    }
+    """Return patches for vote execution tests."""
+    patches = base_bot_patches()
 
     if vote:
         patches.update({
@@ -136,18 +134,17 @@ def vote_execution_patches(vote=None, game=None):
 
 
 def storyteller_command_patches(mock_discord_setup):
-    """Return patches commonly needed for storyteller command tests."""
-    return {
-        'bot_impl.backup': AsyncMock(),
-        'bot_impl.safe_send': AsyncMock(),
-        'utils.message_utils.safe_send': AsyncMock(),
+    """Return patches for storyteller command tests."""
+    patches = base_bot_patches()
+    patches.update({
         'bot_impl.client': mock_discord_setup['client'],
         'bot_impl.select_player': AsyncMock(),
         'bot_impl.update_presence': AsyncMock(),
-    }
+    })
+    return patches
 
 
-def patch_file_operations():
+def file_operation_patches_combined():
     """Return patches that disable all file operations."""
     return [
         *backup_patches(),
@@ -155,16 +152,19 @@ def patch_file_operations():
     ]
 
 
-def patch_discord_send():
+def discord_send_patches():
     """Return patches that mock Discord message sending."""
     return discord_message_patches()
 
 
-def patch_discord_reactions():
+def discord_reaction_patches_dict():
     """Return patches that mock Discord reaction handling."""
-    return discord_reaction_patches()
+    return {
+        'discord.Reaction': MagicMock(),
+        'discord.RawReactionActionEvent': MagicMock()
+    }
 
 
-def patch_game_functions():
+def game_function_patches_dict():
     """Return patches for core Game class methods."""
     return game_function_patches()
