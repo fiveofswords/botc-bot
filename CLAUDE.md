@@ -9,7 +9,25 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## Configuration
+
+The bot uses environment-specific configurations in the `bot_configs/` directory:
+
+- Production configs: `George.py`, `Leo.py`, `Quinn.py`, `TipToe.py`
+- Testing configs: `bot_configs/testing/atreys.py`, `bot_configs/testing/dlorant.py`
+
+Each config defines server IDs, channel IDs, role names, and bot-specific settings. See `config.py` for the main
+configuration template.
+
 ## Test Commands
+
+**Prerequisites for running tests:**
+
+- `token.txt` file in root directory (can contain dummy content for testing)
+- `config.py` file in root directory (see Configuration section above)
+
+These files are required for imports to work, but tests use comprehensive mocking so actual values don't matter.
+
 ```bash
 # Run all tests
 python -m pytest
@@ -29,18 +47,67 @@ python -m pytest -v
 python -m pytest -s
 ```
 
+## Docker Deployment
+
+```bash
+# Build the docker image
+docker build -t botc .
+
+# Run with specific bot configuration
+docker run -v $(dirname $(pwd))/preferences.json:/preferences.json -v $(pwd):/app -v $(pwd)/bot_configs/${BOT_NAME}.py:/app/config.py -d --name ${BOT_NAME} botc
+
+# Enter shell for debugging
+docker exec -it ${BOT_NAME} /bin/bash
+```
+
 ## Project Structure
 
 - `model/` - Core game entities (player, characters, settings, channels)
 - `utils/` - Utility functions and helpers
 - `time_utils/` - Time-related utilities
-- `tests/` - Test directory with subdirectories by module
+- `global_vars.py` - Centralized global state management
+- `bot_configs/` - Environment-specific configurations
+- `tests/` - Test directory with comprehensive fixtures and mocks
+
+### Core Modules
+
+- `bot.py` - Main bot entry point
+- `bot_impl.py` - Core bot implementation and command handling
+- `bot_client.py` - Discord client wrapper
+- `global_vars.py` - Global state management for server, channels, roles
+
+### Model Structure
+
+- `model/player.py` - Player class and management
+- `model/characters/` - Character system (base classes, implementations, registry)
+- `model/game/` - Game mechanics (day, vote, script, whisper mode, traveler voting)
+- `model/channels/` - Channel management and utilities
+- `model/settings/` - Game and global settings
+
+### Utility Modules
+
+- `utils/character_utils.py` - Character ability and interaction utilities
+- `utils/game_utils.py` - Game state management and Discord presence updates
+- `utils/message_utils.py` - Safe message sending with error handling and text splitting
+- `utils/player_utils.py` - Player management and search utilities
+- `time_utils/time_utils.py` - Time parsing and deadline management
 
 ### Character System
 
 - Base classes: `model/characters/base.py`
 - Specific implementations: `model/characters/specific.py`
 - Character registry: `model/characters/registry.py`
+
+### Testing Infrastructure
+
+- `tests/fixtures/` - Comprehensive test fixtures and mocks
+  - `discord_mocks.py` - Mock Discord objects (channels, members, messages)
+  - `game_fixtures.py` - Game setup fixtures and helpers
+  - `common_patches.py` - Reusable patch collections
+  - `command_testing.py` - Command testing utilities
+- Organized test structure by functionality (core, discord, game, model, utils)
+- Async test support with pytest-asyncio
+- Mock-based testing to prevent side effects
 
 ## Code Style Guidelines
 

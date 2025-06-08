@@ -1,8 +1,24 @@
 # BOTC-bot
-A bot for playing Blood on the Clocktower.
 
-## config.py
-You'll want a `config.py` file in the root directory with the following variables declared
+A Discord bot for playing Blood on the Clocktower.
+
+## Features
+
+- Full game management (setup, day/night phases, voting, nominations)
+- Character ability automation and tracking
+- Player management and role assignment
+- Whisper mode and private communications
+- Traveler voting system
+- Info channel with seating order updates
+- Comprehensive testing suite with 400+ tests
+- Multiple environment support for different servers
+
+## Configuration
+
+The bot uses environment-specific configurations. You can either:
+
+1. Use one of the existing configs in `bot_configs/` (George.py, Leo.py, Quinn.py, TipToe.py)
+2. Create a custom `config.py` file in the root directory with the following variables:
 ```
 # Guild ID for Game Server
 SERVER_ID = 721446589750706266 # Guild ID for Game Server
@@ -29,6 +45,32 @@ CHANNEL_SUFFIX = 'test'
 PREFIXES = (',', '@')
 ```
 Switch the values for your own server's IDs and names.
+
+## Development Setup
+
+```bash
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Create required files for testing (these are not checked into git)
+echo "dummy_token_for_testing" > token.txt  # Add your actual bot token for production
+cp bot_configs/George.py config.py  # Or create custom config.py as shown above
+
+# Run tests
+python -m pytest
+
+# Run with coverage
+python -m pytest --cov=. --cov-report=term
+```
+
+**Note:** `token.txt` and `config.py` are required for imports but tests use mocking so actual values don't matter for
+testing.
+
+See `CLAUDE.md` for detailed development guidelines and project structure.
 
 ## Building and running using docker
 To build the docker image, run the following command in the root directory of the project. This will make an image with tag name botc.
