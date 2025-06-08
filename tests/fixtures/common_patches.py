@@ -91,7 +91,7 @@ def base_bot_patches():
 def common_patches():
     """Return common patches needed for most tests."""
     patches = base_bot_patches()
-    patches['bot_client.client'] = MagicMock()
+    patches['bot_impl.client'] = MagicMock()
     return patches
 
 
