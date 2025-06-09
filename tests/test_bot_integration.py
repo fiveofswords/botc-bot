@@ -2767,7 +2767,20 @@ async def test_on_ready(mock_discord_setup):
     global_vars.gamemaster_role = None
 
     # Mock the client and constants to point to our test objects
-    with patch_bot_impl_constants(mock_discord_setup):
+    with patch('bot_impl.client', mock_discord_setup['client']):
+        with patch('bot_impl.SERVER_ID', mock_discord_setup['guild'].id):
+            with patch('bot_impl.GAME_CATEGORY_ID', mock_discord_setup['categories']['game'].id):
+                with patch('bot_impl.HANDS_CHANNEL_ID', mock_discord_setup['channels']['hands'].id):
+                    with patch('bot_impl.OBSERVER_CHANNEL_ID', mock_discord_setup['channels']['observer'].id):
+                        with patch('bot_impl.INFO_CHANNEL_ID', mock_discord_setup['channels']['info'].id):
+                            with patch('bot_impl.WHISPER_CHANNEL_ID', mock_discord_setup['channels']['whisper'].id):
+                                with patch('bot_impl.TOWN_SQUARE_CHANNEL_ID',
+                                           mock_discord_setup['channels']['town_square'].id):
+                                    with patch('bot_impl.OUT_OF_PLAY_CATEGORY_ID',
+                                               mock_discord_setup['categories']['out_of_play'].id):
+                                        with patch('bot_impl.CHANNEL_SUFFIX', "test"):
+                                            with patch('bot_impl.PLAYER_ROLE', "Player"):
+                                                with patch('bot_impl.STORYTELLER_ROLE', "Storyteller"):
                                                     with patch('os.path.isfile', return_value=False):
                                                         # Mock the client methods to return our test objects
                                                         mock_discord_setup['client'].get_guild = MagicMock(
