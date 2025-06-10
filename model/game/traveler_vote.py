@@ -4,7 +4,7 @@ import discord
 
 import global_vars
 from model.settings import GlobalSettings
-from utils.message_utils import safe_send
+from utils import message_utils
 
 
 class TravelerVote:
@@ -54,7 +54,7 @@ class TravelerVote:
         if toCall.user.id in self.presetVotes:
             await self.vote(self.presetVotes[toCall.user.id])
             return
-        await safe_send(
+        await message_utils.safe_send(
             global_vars.channel,
             "{}, your vote on {}.".format(
                 toCall.user.mention,
@@ -65,14 +65,14 @@ class TravelerVote:
         default = global_settings.get_default_vote(toCall.user.id)
         if default:
             time = default[1]
-            await safe_send(toCall.user, "Will enter a {} vote in {} minutes.".format(
+            await message_utils.safe_send(toCall.user, "Will enter a {} vote in {} minutes.".format(
                 ["no", "yes"][default[0]], str(int(default[1] / 60))
             ))
             await asyncio.sleep(time)
             if toCall == global_vars.game.days[-1].votes[-1].order[global_vars.game.days[-1].votes[-1].position]:
                 await self.vote(default[0])
             for memb in global_vars.gamemaster_role.members:
-                await safe_send(
+                await message_utils.safe_send(
                     memb,
                     "{}'s vote. Their default is {} in {} minutes.".format(
                         toCall.display_name,
@@ -82,7 +82,7 @@ class TravelerVote:
                 )
         else:
             for memb in global_vars.gamemaster_role.members:
-                await safe_send(
+                await message_utils.safe_send(
                     memb, "{}'s vote. They have no default.".format(toCall.display_name)
                 )
 
@@ -106,7 +106,7 @@ class TravelerVote:
         text = "yes" if vt == 1 else "no"
         self.announcements.append(
             (
-                await safe_send(
+                await message_utils.safe_send(
                     global_vars.channel,
                     "{} votes {}. {} votes.".format(voter.display_name, text, str(self.votes)),
                 )
@@ -132,7 +132,7 @@ class TravelerVote:
         else:
             text = (", ".join([x.display_name for x in self.voted[:-1]]) + ", and " + self.voted[-1].display_name)
         if self.votes >= self.majority:
-            announcement = await safe_send(
+            announcement = await message_utils.safe_send(
                 global_vars.channel,
                 "{} votes on {} (nominated by {}): {}.".format(
                     str(self.votes),
@@ -142,7 +142,7 @@ class TravelerVote:
                 ),
             )
         else:
-            announcement = await safe_send(
+            announcement = await message_utils.safe_send(
                 global_vars.channel,
                 "{} votes on {} (nominated by {}): {}. They are not exiled.".format(
                     str(self.votes),

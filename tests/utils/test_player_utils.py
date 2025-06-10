@@ -95,7 +95,7 @@ async def test_choices_with_number(mock_players):
     mock_choice.channel = mock_reply.channel
 
     # Patch the necessary functions
-    with patch('bot_impl.safe_send', return_value=mock_reply) as mock_safe_send:
+    with patch('utils.message_utils.safe_send', return_value=mock_reply) as mock_safe_send:
         with patch('bot_impl.client') as mock_client:
             # Setup the wait_for mock
             mock_client.wait_for = AsyncMock(return_value=mock_choice)
@@ -131,7 +131,7 @@ async def test_choices_with_cancel(mock_players):
     mock_choice.channel = mock_reply.channel
 
     # Patch the necessary functions
-    with patch('bot_impl.safe_send', return_value=mock_reply) as mock_safe_send:
+    with patch('utils.message_utils.safe_send', return_value=mock_reply) as mock_safe_send:
         with patch('bot_impl.client') as mock_client:
             # Setup the wait_for mock
             mock_client.wait_for = AsyncMock(return_value=mock_choice)
@@ -144,7 +144,7 @@ async def test_choices_with_cancel(mock_players):
 
 
 @pytest.mark.asyncio
-@patch('bot_impl.safe_send')
+@patch('utils.message_utils.safe_send')
 @patch('bot_impl.client.wait_for')
 async def test_choices_with_timeout(mock_wait_for, mock_safe_send, mock_players):
     """Test the choices function when it times out."""
@@ -174,7 +174,7 @@ async def test_select_player_exact_match(mock_players):
 
     # Patch generate_possibilities to return a single player
     with patch('bot_impl.generate_possibilities', new_callable=AsyncMock) as mock_gen_poss:
-        with patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send:
+        with patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
             with patch('bot_impl.choices', new_callable=AsyncMock) as mock_choices:
                 # Mock return value
                 mock_gen_poss.return_value = [mock_players[0]]
@@ -202,7 +202,7 @@ async def test_select_player_no_match():
 
     # Patch generate_possibilities to return empty list
     with patch('bot_impl.generate_possibilities', new_callable=AsyncMock) as mock_gen_poss:
-        with patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send:
+        with patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
             # Mock return value
             mock_gen_poss.return_value = []
 
@@ -262,7 +262,7 @@ async def test_yes_no_with_yes():
     mock_choice.channel = mock_reply.channel
 
     # Patch the necessary functions
-    with patch('bot_impl.safe_send', return_value=mock_reply) as mock_safe_send:
+    with patch('utils.message_utils.safe_send', return_value=mock_reply) as mock_safe_send:
         with patch('bot_impl.client') as mock_client:
             # Setup the wait_for mock
             mock_client.wait_for = AsyncMock(return_value=mock_choice)
@@ -279,7 +279,7 @@ async def test_yes_no_with_yes():
 
 
 @pytest.mark.asyncio
-@patch('bot_impl.safe_send')
+@patch('utils.message_utils.safe_send')
 @patch('bot_impl.client.wait_for')
 async def test_get_player_found(mock_wait_for, mock_safe_send):
     """Test get_player when player is found."""
@@ -300,7 +300,7 @@ async def test_get_player_found(mock_wait_for, mock_safe_send):
 
 
 @pytest.mark.asyncio
-@patch('bot_impl.safe_send')
+@patch('utils.message_utils.safe_send')
 @patch('bot_impl.client.wait_for')
 async def test_get_player_not_found(mock_wait_for, mock_safe_send):
     """Test get_player when player is not found."""
@@ -671,7 +671,7 @@ class TestGetNeighbors:
 class TestCheckAndPrintIfOneOrZeroToCheckIn:
     """Test the check_and_print_if_one_or_zero_to_check_in function."""
 
-    @patch('utils.player_utils.safe_send')
+    @patch('utils.message_utils.safe_send')
     @patch('utils.player_utils.global_vars')
     @pytest.mark.asyncio
     async def test_one_player_left(self, mock_global_vars, mock_safe_send):
@@ -708,7 +708,7 @@ class TestCheckAndPrintIfOneOrZeroToCheckIn:
             call(member2, "Just waiting on Bob to check in.")
         ])
 
-    @patch('utils.player_utils.safe_send')
+    @patch('utils.message_utils.safe_send')
     @patch('utils.player_utils.global_vars')
     @pytest.mark.asyncio
     async def test_zero_players_left(self, mock_global_vars, mock_safe_send):
@@ -735,7 +735,7 @@ class TestCheckAndPrintIfOneOrZeroToCheckIn:
 
         mock_safe_send.assert_called_once_with(member1, "Everyone has checked in!")
 
-    @patch('utils.player_utils.safe_send')
+    @patch('utils.message_utils.safe_send')
     @patch('utils.player_utils.global_vars')
     @pytest.mark.asyncio
     async def test_multiple_players_left(self, mock_global_vars, mock_safe_send):

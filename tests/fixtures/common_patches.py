@@ -35,7 +35,6 @@ def file_operation_patches():
 def discord_message_patches():
     """Return patches that mock Discord message sending."""
     return {
-        'bot_impl.safe_send': AsyncMock(),
         'utils.message_utils.safe_send': AsyncMock(),
         'utils.message_utils.safe_send_dm': AsyncMock()
     }
@@ -92,7 +91,6 @@ def command_execution_patches(mock_discord_setup=None):
     """Return patches commonly needed for command execution tests."""
     patches = {
         'bot_impl.backup': AsyncMock(),
-        'bot_impl.safe_send': AsyncMock(),
         'utils.message_utils.safe_send': AsyncMock(),
     }
 
@@ -106,7 +104,6 @@ def hand_status_patches(game, mock_discord_setup):
     """Return patches commonly needed for hand status testing."""
     return {
         'bot_impl.backup': AsyncMock(),
-        'bot_impl.safe_send': AsyncMock(),
         'utils.message_utils.safe_send': AsyncMock(),
         'bot_impl.client': mock_discord_setup['client'],
         'game.update_seating_order_message': AsyncMock(),
@@ -117,7 +114,6 @@ def vote_execution_patches(vote=None, game=None):
     """Return patches commonly needed for vote execution tests."""
     patches = {
         'bot_impl.backup': AsyncMock(),
-        'bot_impl.safe_send': AsyncMock(),
         'utils.message_utils.safe_send': AsyncMock(),
     }
 
@@ -139,7 +135,6 @@ def storyteller_command_patches(mock_discord_setup):
     """Return patches commonly needed for storyteller command tests."""
     return {
         'bot_impl.backup': AsyncMock(),
-        'bot_impl.safe_send': AsyncMock(),
         'utils.message_utils.safe_send': AsyncMock(),
         'bot_impl.client': mock_discord_setup['client'],
         'bot_impl.select_player': AsyncMock(),

@@ -114,7 +114,7 @@ async def test_some_command(mock_discord_setup, setup_test_game):
     # Test with individual patches (recommended approach)
     with patch('bot_impl.get_player', return_value=alice),
             patch('bot_impl.backup') as mock_backup,
-            patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send:
+            patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
         await on_message(msg)
 
         # Verify results

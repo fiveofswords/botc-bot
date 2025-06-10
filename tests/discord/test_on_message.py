@@ -123,7 +123,7 @@ async def test_on_message_vote_command_no_game(mock_discord_setup):
 
     # Process the message
     with patch('bot_impl.backup') as mock_backup:
-        with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+        with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
             await on_message(alice_message)
 
             # Verify error message was sent
@@ -154,7 +154,7 @@ async def test_on_message_vote_command_nighttime(mock_discord_setup, setup_test_
 
     # Process the message
     with patch('bot_impl.backup') as mock_backup:
-        with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+        with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
             await on_message(alice_message)
 
             # Verify error message was sent
@@ -187,7 +187,7 @@ async def test_on_message_vote_command_no_votes(mock_discord_setup, setup_test_g
 
     # Process the message
     with patch('bot_impl.backup') as mock_backup:
-        with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+        with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
             await on_message(alice_message)
 
             # Verify error message was sent
@@ -221,7 +221,7 @@ async def test_on_message_vote_invalid_format(mock_discord_setup, setup_test_gam
 
     # Process the message
     with patch('bot_impl.backup') as mock_backup:
-        with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+        with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
             await on_message(alice_message)
 
             # Verify error message was sent
@@ -261,7 +261,7 @@ async def test_on_message_vote_not_player_turn(mock_discord_setup, setup_test_ga
 
     # Process the message
     with patch('bot_impl.backup') as mock_backup:
-        with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+        with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
             with patch('bot_impl.get_player', return_value=setup_test_game['players']['alice']):
                 await on_message(alice_message)
 
@@ -396,7 +396,7 @@ async def test_pm_command_during_day(mock_discord_setup, setup_test_game):
         with patch('bot_impl.get_player', return_value=setup_test_game['players']['alice']):
             with patch('bot_impl.select_player', return_value=setup_test_game['players']['bob']):
                 with patch('bot_impl.chose_whisper_candidates', return_value=[setup_test_game['players']['bob']]):
-                    with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+                    with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                         # Create a proper async mock for client.wait_for
                         wait_for_mock = AsyncMock()
                         wait_for_mock.return_value = mock_response
@@ -441,7 +441,7 @@ async def test_pm_command_when_pms_closed(mock_discord_setup, setup_test_game):
     # Process the message
     with patch('bot_impl.backup') as mock_backup:
         with patch('bot_impl.get_player', return_value=setup_test_game['players']['alice']):
-            with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 await on_message(alice_message)
 
                 # Verify error message was sent about PMs being closed
@@ -512,7 +512,7 @@ async def test_openpms_command_from_storyteller(mock_discord_setup, setup_test_g
 
     # Process the message
     with patch('bot_impl.backup') as mock_backup:
-        with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+        with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
             await on_message(st_message)
 
             # Verify open_pms was called
@@ -555,7 +555,7 @@ async def test_whispers_command(mock_discord_setup, setup_test_game):
     # Process the message
     with patch('bot_impl.backup') as mock_backup:
         with patch('bot_impl.get_player', return_value=setup_test_game['players']['alice']):
-            with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 # Create OrderedDict for counts (this is used in the function)
                 with patch('bot_impl.OrderedDict', return_value={}):
                     await on_message(alice_message)
@@ -595,7 +595,7 @@ async def test_makealias_command(mock_discord_setup):
     # Process the message
     with patch('bot_impl.backup') as mock_backup:
         with patch('model.settings.global_settings.GlobalSettings.load', return_value=mock_global_settings):
-            with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 # Execute the message handling function
                 await on_message(alice_message)
 
@@ -637,7 +637,7 @@ async def test_default_vote_command(mock_discord_setup):
     # Process the message
     with patch('bot_impl.backup') as mock_backup:
         with patch('model.settings.global_settings.GlobalSettings.load', return_value=mock_global_settings):
-            with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 # Execute the message handling function
                 await on_message(alice_message)
 
@@ -681,7 +681,7 @@ async def test_history_command(mock_discord_setup, setup_test_game):
     with patch('bot_impl.backup') as mock_backup:
         with patch('bot_impl.get_player', return_value=setup_test_game['players']['alice']):
             with patch('bot_impl.select_player', return_value=setup_test_game['players']['bob']):
-                with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+                with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                     await on_message(alice_message)
 
                     # Verify message was sent with history
@@ -716,7 +716,7 @@ async def test_skip_command(mock_discord_setup, setup_test_game):
     # Process the message
     with patch('bot_impl.backup') as mock_backup:
         with patch('bot_impl.get_player', return_value=setup_test_game['players']['alice']):
-            with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 await on_message(alice_message)
 
                 # We are only testing the basic message processing here, 
@@ -741,7 +741,7 @@ async def test_clear_command(mock_discord_setup):
 
     # Process the message
     with patch('bot_impl.backup') as mock_backup:
-        with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+        with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
             await on_message(alice_message)
 
             # Verify clearing message was sent

@@ -20,7 +20,7 @@ async def execute_command(command_function, message):
     # Patch multiple functions needed for commands to work
     with patch('bot_impl.backup'), \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_utils_safe_send, \
-            patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send:
+            patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
         # Execute the command
         await command_function(message)
 
@@ -127,7 +127,8 @@ async def run_command_vote(vote_type, voter, vote, cmd_function=None):
 
     # Mock get_player function to return the voter
     with patch('bot_impl.get_player', return_value=voter):
-        with patch('bot_impl.backup', return_value=None), patch('bot_impl.safe_send', new_callable=AsyncMock):
+        with patch('bot_impl.backup', return_value=None), patch('utils.message_utils.safe_send',
+                                                                new_callable=AsyncMock):
             # Process the message
             await cmd_function(message)
 
@@ -155,9 +156,9 @@ def patch_hand_status_testing(game, mock_discord_setup, additional_patches=None)
 
     with patch.multiple('', **patches) as mocks:
         # Set up common mock behavior
-        if 'bot_impl.safe_send' in mocks:
+        if 'utils.message_utils.safe_send' in mocks:
             mock_channel = AsyncMock()
-            mocks['bot_impl.safe_send'].return_value.channel = mock_channel
+            mocks['utils.message_utils.safe_send'].return_value.channel = mock_channel
 
         yield mocks
 
@@ -195,7 +196,7 @@ async def execute_command_with_wait_for(command_function, message, mock_discord_
 
     # Use individual patches for command execution
     with patch('bot_impl.backup', AsyncMock()), \
-            patch('bot_impl.safe_send', AsyncMock()), \
+            patch('utils.message_utils.safe_send', AsyncMock()), \
             patch('utils.message_utils.safe_send', AsyncMock()), \
             patch('bot_impl.client', mock_discord_setup['client']):
         await command_function(message)

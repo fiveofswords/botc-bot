@@ -226,7 +226,7 @@ async def test_whisper_mode_transitions():
     # Test that whisper mode changes to NEIGHBORS during a nomination
     with patch('bot_impl.backup'), \
             patch('bot_impl.update_presence'), \
-            patch('bot_impl.safe_send', new_callable=AsyncMock):
+            patch('utils.message_utils.safe_send', new_callable=AsyncMock):
         # Create a vote
         vote = MagicMock(spec=Vote)
         vote.nominee = player1
@@ -246,7 +246,7 @@ async def test_whisper_mode_transitions():
     # Test that whisper mode changes back to ALL when the day ends
     with patch('bot_impl.backup'), \
             patch('bot_impl.update_presence'), \
-            patch('bot_impl.safe_send', new_callable=AsyncMock):
+            patch('utils.message_utils.safe_send', new_callable=AsyncMock):
         # Call end method directly
         game.days[-1].end = AsyncMock()
         await game.days[-1].end()

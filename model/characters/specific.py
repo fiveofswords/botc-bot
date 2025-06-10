@@ -7,8 +7,8 @@ import itertools
 
 import global_vars
 from bot_client import client
+from utils import message_utils
 from utils.character_utils import has_ability
-from utils.message_utils import safe_send
 from .base import (
     AbilityModifier, DayStartModifier, DeathModifier, Demon, Minion,
     NominationModifier, Outsider, Townsfolk, Traveler,
@@ -589,7 +589,7 @@ class Assassin(Minion, DayStartModifier, DeathModifier):
         if self.parent.is_ghost or self.target or len(global_vars.game.days) < 1:
             return True
         else:
-            msg = await safe_send(origin, f"Does {self.parent.display_name} use Assassin ability?")
+            msg = await message_utils.safe_send(origin, f"Does {self.parent.display_name} use Assassin ability?")
             try:
                 choice = await client.wait_for(
                     "message",
@@ -598,19 +598,19 @@ class Assassin(Minion, DayStartModifier, DeathModifier):
                     
                 # Cancel
                 if choice.content.lower() == "cancel":
-                    await safe_send(origin, "Action cancelled!")
+                    await message_utils.safe_send(origin, "Action cancelled!")
                     return False
                     
                 # Yes
                 if choice.content.lower() == "yes" or choice.content.lower() == "y":
-                    msg = await safe_send(origin, "Who is Assassinated?")
+                    msg = await message_utils.safe_send(origin, "Who is Assassinated?")
                     player_choice = await client.wait_for(
                         "message",
                         check=(lambda x: x.author == origin and x.channel == msg.channel),
                         timeout=200)
                     # Cancel
                     if player_choice.content.lower() == "cancel":
-                        await safe_send(origin, "Action cancelled!")
+                        await message_utils.safe_send(origin, "Action cancelled!")
                         return False
                         
                     from bot_impl import select_player
@@ -627,12 +627,12 @@ class Assassin(Minion, DayStartModifier, DeathModifier):
                 elif choice.content.lower() == "no" or choice.content.lower() == "n":
                     return True
                 else:
-                    await safe_send(
+                    await message_utils.safe_send(
                         origin, "Your answer must be 'yes,' 'y,' 'no,' or 'n' exactly."
                     )
                     return False
             except asyncio.TimeoutError:
-                await safe_send(origin, "Message timed out!")
+                await message_utils.safe_send(origin, "Message timed out!")
                 return False
     
     def on_death(self, person, dies):
@@ -673,8 +673,8 @@ class Witch(Minion, NominationModifier, DayStartModifier):
         if self.parent.is_ghost == True or self.parent in kills:
             self.witched = None
             return True
-            
-        msg = await safe_send(origin, "Who is witched?")
+
+        msg = await message_utils.safe_send(origin, "Who is witched?")
         try:
             reply = await client.wait_for(
                 "message",
@@ -682,7 +682,7 @@ class Witch(Minion, NominationModifier, DayStartModifier):
                 timeout=200,
             )
         except asyncio.TimeoutError:
-            await safe_send(origin, "Timed out.")
+            await message_utils.safe_send(origin, "Timed out.")
             return False
             
         from bot_impl import select_player
@@ -995,8 +995,8 @@ class Bureaucrat(Traveler, DayStartModifier, VoteBeginningModifier):
         if self.is_poisoned or self.parent.is_ghost == True or self.parent in kills:
             self.target = None
             return True
-            
-        msg = await safe_send(origin, "Who is bureaucrated?")
+
+        msg = await message_utils.safe_send(origin, "Who is bureaucrated?")
         try:
             reply = await client.wait_for(
                 "message",
@@ -1004,7 +1004,7 @@ class Bureaucrat(Traveler, DayStartModifier, VoteBeginningModifier):
                 timeout=200,
             )
         except asyncio.TimeoutError:
-            await safe_send(origin, "Timed out.")
+            await message_utils.safe_send(origin, "Timed out.")
             return
             
         from bot_impl import select_player
@@ -1034,8 +1034,8 @@ class Thief(Traveler, DayStartModifier, VoteBeginningModifier):
         if self.parent.is_ghost == True or self.parent in kills:
             self.target = None
             return True
-            
-        msg = await safe_send(origin, "Who is thiefed?")
+
+        msg = await message_utils.safe_send(origin, "Who is thiefed?")
         try:
             reply = await client.wait_for(
                 "message",
@@ -1043,7 +1043,7 @@ class Thief(Traveler, DayStartModifier, VoteBeginningModifier):
                 timeout=200,
             )
         except asyncio.TimeoutError:
-            await safe_send(origin, "Timed out.")
+            await message_utils.safe_send(origin, "Timed out.")
             return
             
         from bot_impl import select_player
@@ -1437,8 +1437,8 @@ class Banshee(Townsfolk, DayStartModifier):
             return True
         if self.is_poisoned:
             return True
-            
-        msg = await safe_send(origin, f"Was Banshee {self.parent.display_name} killed by the demon?")
+
+        msg = await message_utils.safe_send(origin, f"Was Banshee {self.parent.display_name} killed by the demon?")
         try:
             choice = await client.wait_for(
                 "message",
@@ -1447,26 +1447,26 @@ class Banshee(Townsfolk, DayStartModifier):
                 
             # Cancel
             if choice.content.lower() == "cancel":
-                await safe_send(origin, "Action cancelled!")
+                await message_utils.safe_send(origin, "Action cancelled!")
                 return False
                 
             # Yes
             if choice.content.lower() == "yes" or choice.content.lower() == "y":
                 self.is_screaming = True
                 self.remaining_nominations = 2
-                scream = await safe_send(global_vars.channel, BANSHEE_SCREAM)
+                scream = await message_utils.safe_send(global_vars.channel, BANSHEE_SCREAM)
                 await scream.pin()
                 return True
             # No
             elif choice.content.lower() == "no" or choice.content.lower() == "n":
                 return True
             else:
-                await safe_send(
+                await message_utils.safe_send(
                     origin, "Your answer must be 'yes,' 'y,' 'no,' or 'n' exactly. Day start cancelled!"
                 )
                 return False
         except asyncio.TimeoutError:
-            await safe_send(origin, "Message timed out!")
+            await message_utils.safe_send(origin, "Message timed out!")
             return False
     
     def extra_info(self):
@@ -1592,7 +1592,7 @@ class OrganGrinder(Minion, NominationModifier):
         if not self.is_poisoned and not self.parent.is_ghost:
             nominee_display_name = nominator.display_name if nominator else "the storytellers"
             nominator_mention = nominee.user.mention if nominee else "the storytellers"
-            announcement = await safe_send(
+            announcement = await message_utils.safe_send(
                 global_vars.channel,
                 f"{global_vars.player_role.mention}, {nominator_mention} has been nominated by {nominee_display_name}. Organ Grinder is in play. Message your votes to the storytellers."
             )
@@ -1635,7 +1635,7 @@ class OrganGrinder(Minion, NominationModifier):
                 else:
                     messageText += "\n> All other pairs: 0"
                     break
-            await safe_send(global_vars.channel, messageText)
+            await message_utils.safe_send(global_vars.channel, messageText)
             return False
         return proceed
 
@@ -1716,8 +1716,8 @@ class Lleech(Demon, DeathModifier, DayStartModifier):
             return True
         if self.hosted or self.parent.is_ghost:
             return True
-            
-        msg = await safe_send(origin, "Who is hosted by the Lleech?")
+
+        msg = await message_utils.safe_send(origin, "Who is hosted by the Lleech?")
         try:
             reply = await client.wait_for(
                 "message",
@@ -1725,7 +1725,7 @@ class Lleech(Demon, DeathModifier, DayStartModifier):
                 timeout=200,
             )
         except asyncio.TimeoutError:
-            await safe_send(origin, "Timed out.")
+            await message_utils.safe_send(origin, "Timed out.")
             return False
             
         from bot_impl import select_player
@@ -1775,7 +1775,7 @@ class Riot(Demon, NominationModifier):
             return proceed
             
         nominee_nick = nominator.display_name if nominator else "the storytellers"
-        announcemnt = await safe_send(
+        announcemnt = await message_utils.safe_send(
             global_vars.channel,
             "{}, {} has been nominated by {}."
             .format(global_vars.player_role.mention, nominee.user.mention, nominee_nick),
@@ -1810,7 +1810,7 @@ class Riot(Demon, NominationModifier):
                 else:
                     messageText += "\n> All other pairs: 0"
                     break
-            await safe_send(global_vars.channel, messageText)
+            await message_utils.safe_send(global_vars.channel, messageText)
             
         this_day.riot_active = True
         
@@ -1837,8 +1837,8 @@ class Riot(Demon, NominationModifier):
         if nominee:
             nominee.riot_nominee = True
             nominee.can_nominate = True
-            
-        msg = await safe_send(
+
+        msg = await message_utils.safe_send(
             global_vars.channel,
             riot_announcement,
         )

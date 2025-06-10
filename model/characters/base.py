@@ -355,9 +355,9 @@ class Traveler(SeatingOrderModifier):
         import asyncio
         from global_vars import channel
         from bot_client import client
-        from utils.message_utils import safe_send
+        from utils import message_utils
 
-        msg = await safe_send(user, "Do they die? yes or no")
+        msg = await message_utils.safe_send(user, "Do they die? yes or no")
 
         try:
             choice = await client.wait_for(
@@ -366,12 +366,12 @@ class Traveler(SeatingOrderModifier):
                 timeout=200,
             )
         except asyncio.TimeoutError:
-            await safe_send(user, "Message timed out!")
+            await message_utils.safe_send(user, "Message timed out!")
             return
 
         # Cancel
         if choice.content.lower() == "cancel":
-            await safe_send(user, "Action cancelled!")
+            await message_utils.safe_send(user, "Action cancelled!")
             return
 
         # Yes
@@ -381,7 +381,7 @@ class Traveler(SeatingOrderModifier):
         elif choice.content.lower() == "no" or choice.content.lower() == "n":
             die = False
         else:
-            await safe_send(
+            await message_utils.safe_send(
                 user, "Your answer must be 'yes,' 'y,' 'no,' or 'n' exactly."
             )
             return
@@ -389,27 +389,28 @@ class Traveler(SeatingOrderModifier):
         if die:
             die = await person.kill(suppress=True)
             if die:
-                announcement = await safe_send(channel, f"{person.user.mention} has been exiled, and dies.")
+                announcement = await message_utils.safe_send(channel,
+                                                             f"{person.user.mention} has been exiled, and dies.")
                 await announcement.pin()
             else:
                 if person.is_ghost:
-                    await safe_send(
+                    await message_utils.safe_send(
                         channel,
                         f"{person.user.mention} has been exiled, but is already dead."
                     )
                 else:
-                    await safe_send(
+                    await message_utils.safe_send(
                         channel,
                         f"{person.user.mention} has been exiled, but does not die."
                     )
         else:
             if person.is_ghost:
-                await safe_send(
+                await message_utils.safe_send(
                     channel,
                     f"{person.user.mention} has been exiled, but is already dead."
                 )
             else:
-                await safe_send(
+                await message_utils.safe_send(
                     channel,
                     f"{person.user.mention} has been exiled, but does not die."
                 )

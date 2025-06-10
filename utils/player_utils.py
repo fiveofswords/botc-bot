@@ -8,7 +8,7 @@ import discord
 
 import global_vars
 from model.player import Player
-from utils.message_utils import safe_send
+from utils import message_utils
 
 
 def is_player(member: discord.Member) -> bool:
@@ -164,10 +164,10 @@ async def check_and_print_if_one_or_zero_to_check_in() -> None:
     
     if len(not_checked_in) == 1:
         for member in global_vars.gamemaster_role.members:
-            await safe_send(
+            await message_utils.safe_send(
                 member, 
                 f"Just waiting on {not_checked_in[0].display_name} to check in."
             )
     elif len(not_checked_in) == 0:
         for member in global_vars.gamemaster_role.members:
-            await safe_send(member, "Everyone has checked in!")
+            await message_utils.safe_send(member, "Everyone has checked in!")
