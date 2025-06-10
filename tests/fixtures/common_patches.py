@@ -40,7 +40,6 @@ def file_operation_patches():
 def discord_message_patches():
     """Return patches that mock Discord message sending."""
     return {
-        'bot_impl.safe_send': AsyncMock(),
         'utils.message_utils.safe_send': AsyncMock(),
         'utils.message_utils.safe_send_dm': AsyncMock()
     }
@@ -90,14 +89,23 @@ def base_bot_patches():
 
 def common_patches():
     """Return common patches needed for most tests."""
-    patches = base_bot_patches()
-    patches['bot_impl.client'] = MagicMock()
+    patches = {}
+    for p in backup_patches():
+        if hasattr(p, 'target'):
+            patches[p.target] = p.new
+
+    patches['safe_send'] = AsyncMock()
+    patches['bot_client.client'] = MagicMock()
+
     return patches
 
 
 def command_execution_patches(mock_discord_setup=None):
-    """Return patches for command execution tests."""
-    patches = base_bot_patches()
+    """Return patches commonly needed for command execution tests."""
+    patches = {
+        'bot_impl.backup': AsyncMock(),
+        'utils.message_utils.safe_send': AsyncMock(),
+    }
 
     if mock_discord_setup:
         patches['bot_impl.client'] = mock_discord_setup['client']
@@ -105,19 +113,22 @@ def command_execution_patches(mock_discord_setup=None):
     return patches
 
 
-def hand_status_patches(mock_discord_setup):
-    """Return patches for hand status testing."""
-    patches = base_bot_patches()
-    patches.update({
+def hand_status_patches(game, mock_discord_setup):
+    """Return patches commonly needed for hand status testing."""
+    return {
+        'bot_impl.backup': AsyncMock(),
+        'utils.message_utils.safe_send': AsyncMock(),
         'bot_impl.client': mock_discord_setup['client'],
         'game.update_seating_order_message': AsyncMock(),
-    })
-    return patches
+    }
 
 
 def vote_execution_patches(vote=None, game=None):
-    """Return patches for vote execution tests."""
-    patches = base_bot_patches()
+    """Return patches commonly needed for vote execution tests."""
+    patches = {
+        'bot_impl.backup': AsyncMock(),
+        'utils.message_utils.safe_send': AsyncMock(),
+    }
 
     if vote:
         patches.update({
@@ -134,17 +145,17 @@ def vote_execution_patches(vote=None, game=None):
 
 
 def storyteller_command_patches(mock_discord_setup):
-    """Return patches for storyteller command tests."""
-    patches = base_bot_patches()
-    patches.update({
+    """Return patches commonly needed for storyteller command tests."""
+    return {
+        'bot_impl.backup': AsyncMock(),
+        'utils.message_utils.safe_send': AsyncMock(),
         'bot_impl.client': mock_discord_setup['client'],
         'bot_impl.select_player': AsyncMock(),
         'bot_impl.update_presence': AsyncMock(),
-    })
-    return patches
+    }
 
 
-def file_operation_patches_combined():
+def patch_file_operations():
     """Return patches that disable all file operations."""
     return [
         *backup_patches(),
@@ -152,19 +163,16 @@ def file_operation_patches_combined():
     ]
 
 
-def discord_send_patches():
+def patch_discord_send():
     """Return patches that mock Discord message sending."""
     return discord_message_patches()
 
 
-def discord_reaction_patches_dict():
+def patch_discord_reactions():
     """Return patches that mock Discord reaction handling."""
-    return {
-        'discord.Reaction': MagicMock(),
-        'discord.RawReactionActionEvent': MagicMock()
-    }
+    return discord_reaction_patches()
 
 
-def game_function_patches_dict():
+def patch_game_functions():
     """Return patches for core Game class methods."""
     return game_function_patches()

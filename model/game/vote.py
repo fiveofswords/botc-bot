@@ -6,8 +6,8 @@ import discord
 import global_vars
 from model.characters import Banshee, VoteBeginningModifier, VoteModifier, Voudon
 from model.settings import GlobalSettings
+from utils import message_utils
 from utils.character_utils import the_ability
-from utils.message_utils import safe_send
 
 
 def in_play_voudon():
@@ -112,7 +112,7 @@ class Vote:
             self.presetVotes[toCall.user.id] -= 1
             await self.vote(int(preset_player_vote > 0))
             return
-        await safe_send(
+        await message_utils.safe_send(
             global_vars.channel,
             "{}, your vote on {}.".format(
                 toCall.user.mention,
@@ -123,11 +123,11 @@ class Vote:
         default = global_settings.get_default_vote(toCall.user.id)
         if default:
             time = default[1]
-            await safe_send(toCall.user, "Will enter a {} vote in {} minutes.".format(
+            await message_utils.safe_send(toCall.user, "Will enter a {} vote in {} minutes.".format(
                 ["no", "yes"][default[0]], str(int(default[1] / 60))
             ))
             for memb in global_vars.gamemaster_role.members:
-                await safe_send(
+                await message_utils.safe_send(
                     memb,
                     "{}'s vote. Their default is {} in {} minutes.".format(
                         toCall.display_name,
@@ -140,7 +140,7 @@ class Vote:
                 await self.vote(default[0])
         else:
             for memb in global_vars.gamemaster_role.members:
-                await safe_send(
+                await message_utils.safe_send(
                     memb, "{}'s vote. They have no default.".format(toCall.display_name)
                 )
 
@@ -173,10 +173,10 @@ class Vote:
         if vt == 1 and voter.is_ghost and voter.dead_votes < 1 and not (
                 player_is_active_banshee and not potential_banshee.is_poisoned) and not voudon_in_play:
             if not operator:
-                await safe_send(voter.user, "You do not have any dead votes. Entering a no vote.")
+                await message_utils.safe_send(voter.user, "You do not have any dead votes. Entering a no vote.")
                 await self.vote(0)
             else:
-                await safe_send(
+                await message_utils.safe_send(
                     operator,
                     "{} does not have any dead votes. They must vote no. If you want them to vote yes, add a dead vote first:\n```\n@givedeadvote [player]\n```".format(
                         voter.display_name
@@ -202,7 +202,7 @@ class Vote:
         text = "yes" if vt == 1 else "no"
         self.announcements.append(
             (
-                await safe_send(
+                await message_utils.safe_send(
                     global_vars.channel,
                     "{} votes {}. {} votes.".format(voter.display_name, text, str(self.votes)),
                 )
@@ -260,7 +260,7 @@ class Vote:
                     content=msg.content[:-31] + " They are not about to be executed."
                 )
             global_vars.game.days[-1].aboutToDie = (self.nominee, self)
-            announcement = await safe_send(
+            announcement = await message_utils.safe_send(
                 global_vars.channel,
                 "{} votes on {} (nominated by {}): {}. They are about to be executed.".format(
                     str(self.votes),
@@ -280,7 +280,7 @@ class Vote:
                     content=msg.content[:-31] + " No one is about to be executed."
                 )
             global_vars.game.days[-1].aboutToDie = (None, self)
-            announcement = await safe_send(
+            announcement = await message_utils.safe_send(
                 global_vars.channel,
                 "{} votes on {} (nominated by {}): {}. No one is about to be executed.".format(
                     str(self.votes),
@@ -290,7 +290,7 @@ class Vote:
                 ),
             )
         else:
-            announcement = await safe_send(
+            announcement = await message_utils.safe_send(
                 global_vars.channel,
                 "{} votes on {} (nominated by {}): {}. They are not about to be executed.".format(
                     str(self.votes),
@@ -337,9 +337,9 @@ class Vote:
         banshee_override = banshee_ability and banshee_ability.is_screaming
         if vt > 0 and person.is_ghost and person.dead_votes < 1 and not banshee_override:
             if not operator:
-                await safe_send(person.user, "You do not have any dead votes. Please vote no.")
+                await message_utils.safe_send(person.user, "You do not have any dead votes. Please vote no.")
             else:
-                await safe_send(
+                await message_utils.safe_send(
                     operator,
                     "{} does not have any dead votes. They must vote no.".format(
                         person.display_name

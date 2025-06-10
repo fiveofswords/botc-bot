@@ -120,7 +120,7 @@ async def test_vote_call_next():
         vote.position = 0
 
         # Mock safe_send for verification
-        with patch('model.game.vote.safe_send', new_callable=AsyncMock) as mock_safe_send:
+        with patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
             # Call the method under test
             await vote.call_next()
 
@@ -134,7 +134,7 @@ async def test_vote_call_next():
 async def test_vote_call_next_with_preset(mock_discord_setup, setup_test_game):
     """Test the call_next method of Vote with a preset vote."""
     # Setup mocks
-    with patch('bot_impl.safe_send') as mock_safe_send:
+    with patch('utils.message_utils.safe_send') as mock_safe_send:
         with patch.object(Vote, 'vote') as mock_vote_method:
             # Set up global variables
             global_vars.channel = mock_discord_setup['channels']['town_square']
@@ -176,7 +176,7 @@ async def test_vote_with_yes(mock_discord_setup, setup_test_game):
     mock_message.pin = AsyncMock()
 
     # Apply patches for Discord message sending
-    with patch('bot_impl.safe_send', return_value=mock_message), \
+    with patch('utils.message_utils.safe_send', return_value=mock_message), \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock), \
             patch.object(mock_discord_setup['channels']['town_square'], 'fetch_message',
                          AsyncMock(return_value=mock_message)):
@@ -219,7 +219,7 @@ async def test_vote_with_no(mock_discord_setup, setup_test_game):
     mock_message.pin = AsyncMock()
 
     # Apply patches for Discord message sending
-    with patch('bot_impl.safe_send', return_value=mock_message), \
+    with patch('utils.message_utils.safe_send', return_value=mock_message), \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock):
         # Set up global variables
         global_vars.channel = mock_discord_setup['channels']['town_square']
@@ -259,7 +259,7 @@ async def test_vote_with_no(mock_discord_setup, setup_test_game):
 async def test_end_vote_not_enough_votes(mock_discord_setup, setup_test_game):
     """Test the end_vote method when there are not enough votes to execute."""
     # Setup mocks
-    with patch('bot_impl.safe_send') as mock_safe_send:
+    with patch('utils.message_utils.safe_send') as mock_safe_send:
         # Create a mock message with pin method that returns an awaitable
         mock_message = MagicMock()
         mock_message.pin = AsyncMock()
@@ -344,7 +344,7 @@ async def test_end_vote_not_enough_votes(mock_discord_setup, setup_test_game):
 async def test_end_vote_enough_votes(mock_discord_setup, setup_test_game):
     """Test the end_vote method when there are enough votes to execute."""
     # Setup mocks
-    with patch('bot_impl.safe_send') as mock_safe_send:
+    with patch('utils.message_utils.safe_send') as mock_safe_send:
         # Create a mock message with pin method that returns an awaitable
         mock_message = MagicMock()
         mock_message.pin = AsyncMock()
@@ -572,7 +572,7 @@ async def test_vote_calculation_with_modifiers(mock_discord_setup, setup_test_ga
 async def test_call_next(mock_discord_setup, setup_test_game):
     """Test the call_next method in Vote."""
     # Set up mocks
-    with patch('bot_impl.safe_send') as mock_safe_send:
+    with patch('utils.message_utils.safe_send') as mock_safe_send:
         # Create a mock message with pin method
         mock_message = MagicMock()
         mock_message.pin = AsyncMock()
@@ -627,6 +627,14 @@ async def test_voting_process(mock_discord_setup, setup_test_game):
 
     # Mock methods
     with patch('utils.message_utils.safe_send') as mock_safe_send:
+        # Create a mock message and add it to the channel's messages
+        mock_message = AsyncMock()
+        mock_message.id = 12345
+        mock_message.pin = AsyncMock()
+        global_vars.channel = mock_discord_setup['channels']['town_square']
+        global_vars.channel.messages.append(mock_message)
+        mock_safe_send.return_value = mock_message
+
         # Create a vote with a single voter
         vote = Vote(nominee, nominator)
         # Add voter to values dictionary to prevent KeyError
@@ -706,7 +714,7 @@ async def test_preset_vote(mock_discord_setup, setup_test_game):
 async def test_vote_with_banshee(mock_discord_setup, setup_test_game):
     """Test voting with Banshee ability in play."""
     # Set up mocks
-    with patch('bot_impl.safe_send') as mock_safe_send:
+    with patch('utils.message_utils.safe_send') as mock_safe_send:
         # Create a mock message with pin method
         mock_message = MagicMock()
         mock_message.pin = AsyncMock()
@@ -789,7 +797,7 @@ async def test_vote_with_banshee(mock_discord_setup, setup_test_game):
 async def test_voudon_in_play(mock_discord_setup, setup_test_game):
     """Test voting when Voudon is in play."""
     # Set up mocks
-    with patch('bot_impl.safe_send') as mock_safe_send:
+    with patch('utils.message_utils.safe_send') as mock_safe_send:
         # Create a mock message
         mock_message = MagicMock()
         mock_message.pin = AsyncMock()
@@ -915,7 +923,7 @@ async def test_end_vote_lowers_hands(mock_discord_setup, setup_test_game):
 
         # Act
         # We need to patch safe_send because end_vote sends messages
-        with patch('model.game.vote.safe_send', new_callable=AsyncMock,
+        with patch('utils.message_utils.safe_send', new_callable=AsyncMock,
                    return_value=create_mock_message(id=111, content="Vote ended",
                                                     channel=mock_discord_setup['channels']['town_square'],
                                                     author=mock_discord_setup['members']['storyteller'])):
@@ -990,8 +998,9 @@ async def test_vote_sets_hand_and_locks(mock_discord_setup, setup_test_game):
 
     # Act for 'yes' vote
     # Patch safe_send used by vote() for announcements
-    with patch('model.game.vote.safe_send', new_callable=AsyncMock, return_value=mock_pinned_message) as mock_safe_send_vote, \
-         patch.object(global_vars.channel, 'fetch_message', AsyncMock(return_value=mock_pinned_message)):
+    with patch('utils.message_utils.safe_send', new_callable=AsyncMock,
+               return_value=mock_pinned_message) as mock_safe_send_vote, \
+            patch.object(global_vars.channel, 'fetch_message', AsyncMock(return_value=mock_pinned_message)):
         await vote_fixture.vote(1) # Simulate a 'yes' vote
 
     # Assert for 'yes' vote
@@ -1013,8 +1022,9 @@ async def test_vote_sets_hand_and_locks(mock_discord_setup, setup_test_game):
     game_fixture.update_seating_order_message.reset_mock()
 
     # Act for 'no' vote
-    with patch('model.game.vote.safe_send', new_callable=AsyncMock, return_value=mock_pinned_message) as mock_safe_send_vote_no, \
-         patch.object(global_vars.channel, 'fetch_message', AsyncMock(return_value=mock_pinned_message)):
+    with patch('utils.message_utils.safe_send', new_callable=AsyncMock,
+               return_value=mock_pinned_message) as mock_safe_send_vote_no, \
+            patch.object(global_vars.channel, 'fetch_message', AsyncMock(return_value=mock_pinned_message)):
         await vote_fixture.vote(0) # Simulate a 'no' vote
 
     # Assert for 'no' vote

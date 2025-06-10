@@ -110,7 +110,7 @@ class Player:
         Returns:
             Whether the player dies
         """
-        from utils.message_utils import safe_send
+        from utils import message_utils
 
         dies = True
         if global_vars.game.has_automated_life_and_death:
@@ -129,7 +129,7 @@ class Player:
         self.dead_votes = 1
 
         if not suppress:
-            announcement = await safe_send(
+            announcement = await message_utils.safe_send(
                 global_vars.channel, "{} has died.".format(self.user.mention)
             )
             await announcement.pin()
@@ -140,7 +140,7 @@ class Player:
         else:
         #     inform storytellers that the player is dead, but that the st channel has not been updated to reflect that
             for user in global_vars.gamemaster_role.members:
-                await safe_send(
+                await message_utils.safe_send(
                     user,
                     f"{self.user.mention} has died, but the ST channel could not be updated to reflect that."
                 )
@@ -155,9 +155,9 @@ class Player:
             user: The user executing the player
             force: Whether to force the kill
         """
-        from utils.message_utils import safe_send
+        from utils import message_utils
 
-        msg = await safe_send(user, "Do they die? yes or no")
+        msg = await message_utils.safe_send(user, "Do they die? yes or no")
 
         try:
             choice = await client.wait_for(
@@ -166,12 +166,12 @@ class Player:
                 timeout=200,
             )
         except asyncio.TimeoutError:
-            await safe_send(user, "Message timed out!")
+            await message_utils.safe_send(user, "Message timed out!")
             return
 
         # Cancel
         if choice.content.lower() == "cancel":
-            await safe_send(user, "Action cancelled!")
+            await message_utils.safe_send(user, "Action cancelled!")
             return
 
         # Yes or No
@@ -180,12 +180,12 @@ class Player:
         elif choice.content.lower() in ["no", "n"]:
             die = False
         else:
-            await safe_send(
+            await message_utils.safe_send(
                 user, "Your answer must be 'yes,' 'y,' 'no,' or 'n' exactly."
             )
             return
 
-        msg = await safe_send(user, "Does the day end? yes or no")
+        msg = await message_utils.safe_send(user, "Does the day end? yes or no")
 
         try:
             choice = await client.wait_for(
@@ -194,12 +194,12 @@ class Player:
                 timeout=200,
             )
         except asyncio.TimeoutError:
-            await safe_send(user, "Message timed out!")
+            await message_utils.safe_send(user, "Message timed out!")
             return
 
         # Cancel
         if choice.content.lower() == "cancel":
-            await safe_send(user, "Action cancelled!")
+            await message_utils.safe_send(user, "Action cancelled!")
             return
 
         # Yes or No
@@ -208,7 +208,7 @@ class Player:
         elif choice.content.lower() in ["no", "n"]:
             end = False
         else:
-            await safe_send(
+            await message_utils.safe_send(
                 user, "Your answer must be 'yes,' 'y,' 'no,' or 'n' exactly."
             )
             return
@@ -217,20 +217,20 @@ class Player:
         if die:
             die = await self.kill(suppress=True, force=force)
             if die:
-                announcement = await safe_send(
+                announcement = await message_utils.safe_send(
                     global_vars.channel, "{} has been executed, and dies.".format(self.user.mention)
                 )
                 await announcement.pin()
             else:
                 if self.is_ghost:
-                    await safe_send(
+                    await message_utils.safe_send(
                         global_vars.channel,
                         "{} has been executed, but is already dead.".format(
                             self.user.mention
                         ),
                     )
                 else:
-                    await safe_send(
+                    await message_utils.safe_send(
                         global_vars.channel,
                         "{} has been executed, but does not die.".format(
                             self.user.mention
@@ -238,14 +238,14 @@ class Player:
                     )
         else:
             if self.is_ghost:
-                await safe_send(
+                await message_utils.safe_send(
                     global_vars.channel,
                     "{} has been executed, but is already dead.".format(
                         self.user.mention
                     ),
                 )
             else:
-                await safe_send(
+                await message_utils.safe_send(
                     global_vars.channel,
                     "{} has been executed, but does not die.".format(self.user.mention),
                 )
@@ -257,12 +257,12 @@ class Player:
 
     async def revive(self) -> None:
         """Revive the player."""
-        from utils.message_utils import safe_send
+        from utils import message_utils
 
         self.is_ghost = False
         self.dead_votes = 0
 
-        announcement = await safe_send(
+        announcement = await message_utils.safe_send(
             global_vars.channel, "{} has come back to life.".format(self.user.mention)
         )
         await announcement.pin()
@@ -274,7 +274,7 @@ class Player:
         else:
             # Inform storytellers that the player is dead, but that the st channel has not been updated to reflect that
             for user in global_vars.gamemaster_role.members:
-                await safe_send(
+                await message_utils.safe_send(
                     user,
                     f"{self.user.mention} has come back to life, but the ST channel could not be updated to reflect that."
                 )
@@ -305,15 +305,15 @@ class Player:
             content: The message content
             jump: The jump URL to the original message
         """
-        from utils.message_utils import safe_send
+        from utils import message_utils
 
         try:
-            message = await safe_send(
+            message = await message_utils.safe_send(
                 self.user,
                 f"Message from {from_player.display_name}: **{content}**"
             )
         except discord.errors.HTTPException as e:
-            await safe_send(
+            await message_utils.safe_send(
                 from_player.user,
                 f"Something went wrong with your message to {self.display_name}! Please try again"
             )
@@ -347,23 +347,23 @@ class Player:
 
         # Send to storytellers
         if global_vars.whisper_channel:
-            await safe_send(
+            await message_utils.safe_send(
                 global_vars.whisper_channel,
                 f"Message from {from_player.display_name} to {self.display_name}: **{content}**"
             )
         else:
             for user in global_vars.gamemaster_role.members:
                 if user != self.user:
-                    await safe_send(
+                    await message_utils.safe_send(
                         user,
                         f"**[**{from_player.display_name} **>** {self.display_name}**]** {content}"
                     )
 
-        await safe_send(from_player.user, "Message sent!")
+        await message_utils.safe_send(from_player.user, "Message sent!")
 
     async def make_inactive(self) -> None:
         """Mark the player as inactive."""
-        from utils.message_utils import safe_send
+        from utils import message_utils
 
         self.is_inactive = True
         await self.user.add_roles(global_vars.inactive_role)
@@ -381,12 +381,12 @@ class Player:
 
             if len(not_active) == 1:
                 for memb in global_vars.gamemaster_role.members:
-                    await safe_send(
+                    await message_utils.safe_send(
                         memb, f"Just waiting on {not_active[0].display_name} to speak."
                     )
             elif len(not_active) == 0:
                 for memb in global_vars.gamemaster_role.members:
-                    await safe_send(memb, "Everyone has spoken!")
+                    await message_utils.safe_send(memb, "Everyone has spoken!")
 
             # Notify storytellers about nominations
             can_nominate = [
@@ -400,13 +400,13 @@ class Player:
 
             if len(can_nominate) == 1:
                 for memb in global_vars.gamemaster_role.members:
-                    await safe_send(
+                    await message_utils.safe_send(
                         memb,
                         f"Just waiting on {can_nominate[0].display_name} to nominate or skip."
                     )
             elif len(can_nominate) == 0:
                 for memb in global_vars.gamemaster_role.members:
-                    await safe_send(memb, "Everyone has nominated or skipped!")
+                    await message_utils.safe_send(memb, "Everyone has nominated or skipped!")
         else:
             # Night phase
             from utils.player_utils import check_and_print_if_one_or_zero_to_check_in
