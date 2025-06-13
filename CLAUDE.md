@@ -141,3 +141,10 @@ docker exec -it ${BOT_NAME} /bin/bash
 - Use Google-style docstrings
 - Document parameters, return values, and exceptions
 - Include examples for complex functions
+
+## Message Sending
+
+- **Never import `safe_send` directly.**  
+  Always use `message_utils.safe_send` when calling or importing this function.  
+  This ensures that patching `safe_send` in tests (e.g., with `patch('utils.message_utils.safe_send')`) works
+  consistently across the codebase.
