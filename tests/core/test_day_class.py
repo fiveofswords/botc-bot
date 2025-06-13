@@ -11,7 +11,7 @@ from bot_client import client
 from model.game.day import Day
 from model.game.whisper_mode import WhisperMode
 # Import fixtures from fixtures directory
-from tests.fixtures.discord_mocks import mock_discord_setup, create_mock_message, MockClient
+from tests.fixtures.discord_mocks import mock_discord_setup, MockMessage, MockClient
 from tests.fixtures.game_fixtures import setup_test_game, setup_nomination_flow
 
 
@@ -168,7 +168,7 @@ async def test_day_end(mock_discord_setup, setup_test_game):
         global_vars.channel = mock_discord_setup['channels']['town_square']
 
         # Mock message and fetch_message
-        mock_message = create_mock_message(
+        mock_message = MockMessage(
             id=12345,
             content="Test message",
             channel=global_vars.channel,
@@ -218,7 +218,7 @@ async def test_day_end_with_execution(mock_discord_setup, setup_test_game):
         global_vars.player_role = mock_discord_setup['roles']['player']
 
         # Mock message and fetch_message
-        mock_message = create_mock_message(
+        mock_message = MockMessage(
             id=12345,
             content="Test message",
             channel=global_vars.channel,

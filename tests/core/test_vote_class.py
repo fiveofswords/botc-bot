@@ -8,7 +8,7 @@ import pytest
 
 import global_vars
 from bot_impl import Vote
-from tests.fixtures.discord_mocks import mock_discord_setup, create_mock_message
+from tests.fixtures.discord_mocks import mock_discord_setup, MockMessage
 from tests.fixtures.game_fixtures import setup_test_game, setup_test_vote
 
 
@@ -167,7 +167,7 @@ async def test_vote_call_next_with_preset(mock_discord_setup, setup_test_game):
 async def test_vote_with_yes(mock_discord_setup, setup_test_game):
     """Test the vote method of Vote with a 'yes' vote."""
     # Create a mock message with pin method
-    mock_message = create_mock_message(
+    mock_message = MockMessage(
         id=123,
         content="Test vote message",
         channel=mock_discord_setup['channels']['town_square'],
@@ -210,7 +210,7 @@ async def test_vote_with_yes(mock_discord_setup, setup_test_game):
 async def test_vote_with_no(mock_discord_setup, setup_test_game):
     """Test the vote method of Vote with a 'no' vote."""
     # Create a mock message with pin method
-    mock_message = create_mock_message(
+    mock_message = MockMessage(
         id=123,
         content="Test vote message",
         channel=mock_discord_setup['channels']['town_square'],
@@ -909,7 +909,7 @@ async def test_end_vote_lowers_hands(mock_discord_setup, setup_test_game):
 
     # Initial update of seating order message (simulating it exists)
     # We need to mock the message object that update_seating_order_message would interact with
-    mock_message = create_mock_message(id=999, content="Initial seating order",
+    mock_message = MockMessage(id=999, content="Initial seating order",
                                        channel=mock_discord_setup['channels']['town_square'],
                                        author=mock_discord_setup['members']['storyteller'])
     game_fixture.seatingOrderMessage = mock_message
@@ -924,7 +924,7 @@ async def test_end_vote_lowers_hands(mock_discord_setup, setup_test_game):
         # Act
         # We need to patch safe_send because end_vote sends messages
         with patch('utils.message_utils.safe_send', new_callable=AsyncMock,
-                   return_value=create_mock_message(id=111, content="Vote ended",
+                   return_value=MockMessage(id=111, content="Vote ended",
                                                     channel=mock_discord_setup['channels']['town_square'],
                                                     author=mock_discord_setup['members']['storyteller'])):
             await vote_fixture.end_vote()
@@ -988,7 +988,7 @@ async def test_vote_sets_hand_and_locks(mock_discord_setup, setup_test_game):
     vote_fixture.end_vote = AsyncMock()
 
     # Mock message fetching for pinning, as vote() tries to pin announcement messages
-    mock_pinned_message = create_mock_message(id=12345, content="Nomination announcement",
+    mock_pinned_message = MockMessage(id=12345, content="Nomination announcement",
                                               channel=mock_discord_setup['channels']['town_square'],
                                               author=mock_discord_setup['members']['storyteller'])
     mock_pinned_message.pin = AsyncMock()

@@ -4,8 +4,12 @@ Common patches for testing the Blood on the Clocktower Discord bot.
 This module provides common patches and patch sets to simplify
 test setup and ensure consistent mocking behavior across tests.
 
+Patch Types:
+- Dictionary patches: Use with patch.multiple('', **patches)
+- List patches: Use with contextlib.ExitStack() or individual context managers
+
 Naming conventions:
-- Functions ending in "_patches" return dictionaries of patches
+- Functions ending in "_patches" return dictionaries for patch.multiple()
 - Functions ending in "_patches_combined" return lists of patch objects
 - All patch functions use consistent parameter naming and documentation
 """
@@ -83,7 +87,8 @@ def base_bot_patches():
     """Return base patches needed for most bot functionality."""
     return {
         'bot_impl.backup': AsyncMock(),
-        **discord_message_patches()
+        'utils.message_utils.safe_send': AsyncMock(),
+        'utils.message_utils.safe_send_dm': AsyncMock()
     }
 
 
@@ -102,33 +107,27 @@ def common_patches():
 
 def command_execution_patches(mock_discord_setup=None):
     """Return patches commonly needed for command execution tests."""
-    patches = {
-        'bot_impl.backup': AsyncMock(),
-        'utils.message_utils.safe_send': AsyncMock(),
-    }
-
+    patches = base_bot_patches().copy()
+    
     if mock_discord_setup:
         patches['bot_impl.client'] = mock_discord_setup['client']
 
     return patches
 
 
-def hand_status_patches(game, mock_discord_setup):
+def hand_status_patches(mock_discord_setup):
     """Return patches commonly needed for hand status testing."""
-    return {
-        'bot_impl.backup': AsyncMock(),
-        'utils.message_utils.safe_send': AsyncMock(),
+    patches = base_bot_patches().copy()
+    patches.update({
         'bot_impl.client': mock_discord_setup['client'],
         'game.update_seating_order_message': AsyncMock(),
-    }
+    })
+    return patches
 
 
 def vote_execution_patches(vote=None, game=None):
     """Return patches commonly needed for vote execution tests."""
-    patches = {
-        'bot_impl.backup': AsyncMock(),
-        'utils.message_utils.safe_send': AsyncMock(),
-    }
+    patches = base_bot_patches().copy()
 
     if vote:
         patches.update({
@@ -146,13 +145,13 @@ def vote_execution_patches(vote=None, game=None):
 
 def storyteller_command_patches(mock_discord_setup):
     """Return patches commonly needed for storyteller command tests."""
-    return {
-        'bot_impl.backup': AsyncMock(),
-        'utils.message_utils.safe_send': AsyncMock(),
+    patches = base_bot_patches().copy()
+    patches.update({
         'bot_impl.client': mock_discord_setup['client'],
         'bot_impl.select_player': AsyncMock(),
         'bot_impl.update_presence': AsyncMock(),
-    }
+    })
+    return patches
 
 
 def file_operations_patches_combined():
@@ -162,17 +161,4 @@ def file_operations_patches_combined():
         *file_operation_patches_combined()
     ]
 
-
-def discord_send_patches():
-    """Return patches that mock Discord message sending."""
-    return discord_message_patches()
-
-
-def discord_reactions_patches_combined():
-    """Return patches that mock Discord reaction handling."""
-    return discord_reaction_patches_combined()
-
-
-def game_functions_patches():
-    """Return patches for core Game class methods."""
-    return game_function_patches()
+# Remove redundant wrapper functions - use the core functions directly

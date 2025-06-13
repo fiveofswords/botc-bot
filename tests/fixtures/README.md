@@ -14,11 +14,8 @@ Mock implementations of Discord objects:
 - `MockGuild`: Discord server (guild) with member/channel lookup
 - `MockRole`: Discord role with member tracking
 
-Factory functions:
-
-- `create_mock_message()`: Creates a mock message
-- `create_mock_channel()`: Creates a mock channel
-- `create_mock_member()`: Creates a mock member
+**Note:** Mock objects should be created directly using their class constructors (e.g., `MockMessage()`,
+`MockChannel()`, `MockMember()`) for better clarity and explicitness.
 
 Fixtures:
 
@@ -48,9 +45,14 @@ Patch collections:
 - `disable_backup()`: Disables backup functionality for tests
 - `common_patches()`: Returns common patches needed for most tests
 - `file_operations_patches_combined()`: Disables all file operations
-- `discord_send_patches()`: Mocks Discord message sending
-- `discord_reactions_patches_combined()`: Mocks Discord reaction handling
-- `game_functions_patches()`: Mocks Game class methods
+- `discord_message_patches()`: Mocks Discord message sending
+- `discord_reaction_patches_combined()`: Mocks Discord reaction handling
+- `game_function_patches()`: Mocks Game class methods
+- `base_bot_patches()`: Core patches for bot functionality
+- `command_execution_patches()`: Patches for command testing
+- `hand_status_patches()`: Patches for hand status testing
+- `vote_execution_patches()`: Patches for vote execution testing
+- `storyteller_command_patches()`: Patches for storyteller command testing
 
 ### Command Testing (`command_testing.py`)
 
@@ -65,9 +67,9 @@ Command testing helpers:
 **Enhanced helpers for common patterns:**
 
 - `execute_command_with_wait_for()`: Execute commands with predefined client.wait_for responses
-
-**Note:** For MockMessage creation, use `MockMessage` directly instead of wrapper functions for better clarity and
-explicitness.
+- `test_hand_command()`: Helper for testing hand commands with prevote interactions
+- `patch_hand_status_testing()`: Context manager for hand status testing patches
+- `patch_vote_testing()`: Context manager for vote testing patches
 
 ## Usage
 
