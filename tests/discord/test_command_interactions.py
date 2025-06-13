@@ -841,7 +841,7 @@ async def test_on_message_handling(mock_discord_setup, setup_test_game):
     st_channel_message = MockMessage(
         id=702,
         content="Message in ST channel",
-        channel=mock_discord_setup['channels']['st1'],  # Use st1 channel from fixture
+        channel=mock_discord_setup['channels']['st_alice'],  # Use st_alice channel from fixture
         author=mock_discord_setup['members']['alice'],
         guild=mock_discord_setup['guild']
     )

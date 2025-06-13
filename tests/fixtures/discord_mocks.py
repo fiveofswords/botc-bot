@@ -19,7 +19,7 @@ import global_vars
 class MockClient:
     """Mock Discord client for testing."""
 
-    def __init__(self):
+    def __init__(self, guild=None):
         self.ws = MagicMock()
         self.ws.change_presence = AsyncMock()
         self.change_presence = AsyncMock()
@@ -27,6 +27,15 @@ class MockClient:
         self.user = MagicMock()
         self.user.id = 999
         self.user.name = "Test Bot"
+        self.guild = guild
+        # Make get_channel a MagicMock so it can be easily mocked in tests
+        self.get_channel = MagicMock(side_effect=self._get_channel)
+
+    def _get_channel(self, channel_id):
+        """Get a channel by ID from the associated guild."""
+        if self.guild:
+            return self.guild.get_channel(channel_id)
+        return None
 
 
 class MockRole:
@@ -42,9 +51,11 @@ class MockRole:
 class MockChannel:
     """Mock Discord channel for testing."""
 
-    def __init__(self, channel_id, name):
+    def __init__(self, channel_id, name, position=0, category=None):
         self.id = channel_id
         self.name = name
+        self.position = position
+        self.category = category
         self.messages = []
 
     async def send(self, content=None, embed=None):
@@ -59,6 +70,12 @@ class MockChannel:
         self.messages.append(message)
         return message
 
+    async def edit(self, **kwargs):
+        """Mock editing a channel."""
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+        return self
+
     async def fetch_message(self, message_id):
         """Mock fetching a message by ID."""
         for message in self.messages:
@@ -69,6 +86,26 @@ class MockChannel:
     async def pins(self):
         """Mock fetching pinned messages."""
         return [msg for msg in self.messages if msg.pinned]
+
+
+class MockCategory(MockChannel):
+    """Mock Discord category for testing."""
+
+    def __init__(self, category_id, name, position=0):
+        super().__init__(category_id, name)
+        self.position = position
+        self.channels = []
+
+    async def create_text_channel(self, name, **kwargs):
+        """Mock creating a text channel in a category."""
+        channel_id = len(self.channels) + 500
+        channel = MockChannel(channel_id, name)
+        channel.category = self
+        channel.position = kwargs.get('position', 0)
+        for key, value in kwargs.items():
+            setattr(channel, key, value)
+        self.channels.append(channel)
+        return channel
 
 
 class MockMember:
@@ -139,16 +176,23 @@ class MockMessage:
         if embed is not None:
             self.embed = embed
 
+    async def delete(self):
+        """Mock deleting a message."""
+        if self.channel and hasattr(self.channel, 'messages'):
+            if self in self.channel.messages:
+                self.channel.messages.remove(self)
+
 
 class MockGuild:
     """Mock Discord guild (server) for testing."""
 
-    def __init__(self, id, name, members=None, roles=None, channels=None):
+    def __init__(self, id, name, members=None, roles=None, channels=None, categories=None):
         self.id = id
         self.name = name
         self.members = members or []
         self.roles = roles or []
         self.channels = channels or []
+        self.categories = categories or []
 
     def get_member(self, member_id):
         """Get a member by ID."""
@@ -168,8 +212,6 @@ class MockGuild:
 @pytest_asyncio.fixture
 async def mock_discord_setup():
     """Set up mock Discord environment for testing."""
-    # Create a mock client and patch the real client
-    mock_client = MockClient()
 
     # Create roles
     player_role = MockRole(100, "Player")
@@ -180,17 +222,23 @@ async def mock_discord_setup():
     inactive_role = MockRole(105, "Inactive")
     observer_role = MockRole(106, "Observer")
 
-    # Create channels
-    town_square_channel = MockChannel(200, "town-square")
-    game_category = MockChannel(201, "game-category")
-    hands_channel = MockChannel(202, "hands")
-    observer_channel = MockChannel(203, "observer")
-    info_channel = MockChannel(204, "info")
-    whisper_channel = MockChannel(205, "whispers")
-    out_of_play_category = MockChannel(206, "out-of-play")
-    st_channel1 = MockChannel(301, "st-alice")
-    st_channel2 = MockChannel(302, "st-bob")
-    st_channel3 = MockChannel(303, "st-charlie")
+    # Create categories
+    game_category = MockCategory(201, "game-category")
+    out_of_play_category = MockCategory(206, "out-of-play")
+
+    # Create channels in game category
+    town_square_channel = MockChannel(200, "town-square", 0, game_category)
+    hands_channel = MockChannel(202, "hands", 1, game_category)
+    observer_channel = MockChannel(203, "observer", 2, game_category)
+    info_channel = MockChannel(204, "info", 3, game_category)
+    whisper_channel = MockChannel(205, "whispers", 4, game_category)
+    game_category.channels = [town_square_channel, hands_channel, observer_channel, info_channel, whisper_channel]
+
+    # Create ST channels in out of play category
+    st_alice_channel = MockChannel(301, "st-alice", 0, out_of_play_category)
+    st_bob_channel = MockChannel(302, "st-bob", 1, out_of_play_category)
+    st_charlie_channel = MockChannel(303, "st-charlie", 2, out_of_play_category)
+    out_of_play_category.channels = [st_alice_channel, st_bob_channel, st_charlie_channel]
 
     # Create guild first
     guild = MockGuild(
@@ -198,7 +246,8 @@ async def mock_discord_setup():
         name="Test Server",
         members=[],
         roles=[],
-        channels=[]
+        channels=[],
+        categories=[]
     )
 
     # Create members with guild reference
@@ -207,16 +256,19 @@ async def mock_discord_setup():
     bob = MockMember(3, "Bob", roles=[player_role], guild=guild)
     charlie = MockMember(4, "Charlie", roles=[player_role], guild=guild)
 
-    # Now update the guild with members, roles, and channels
+    # Now update the guild with members, roles, channels, and categories
     guild.members = [storyteller, alice, bob, charlie]
     guild.roles = [player_role, traveler_role, ghost_role, dead_vote_role, gamemaster_role, inactive_role,
                    observer_role]
-    guild.channels = [town_square_channel, game_category, hands_channel, observer_channel, info_channel,
-                      whisper_channel,
-                      out_of_play_category, st_channel1, st_channel2, st_channel3]
+    guild.channels = [town_square_channel, hands_channel, observer_channel, info_channel, whisper_channel,
+                      st_alice_channel, st_bob_channel, st_charlie_channel]
+    guild.categories = [game_category, out_of_play_category]
 
     # Add storyteller to the gamemaster role members list
     gamemaster_role.members = [storyteller]
+
+    # Create mock client with guild access
+    mock_client = MockClient(guild)
 
     # Set up global variables
     global_vars.server = guild
@@ -250,15 +302,17 @@ async def mock_discord_setup():
         },
         'channels': {
             'town_square': town_square_channel,
-            'game_category': game_category,
             'hands': hands_channel,
             'observer': observer_channel,
             'info': info_channel,
             'whisper': whisper_channel,
-            'out_of_play': out_of_play_category,
-            'st1': st_channel1,
-            'st2': st_channel2,
-            'st3': st_channel3
+            'st_alice': st_alice_channel,
+            'st_bob': st_bob_channel,
+            'st_charlie': st_charlie_channel
+        },
+        'categories': {
+            'game': game_category,
+            'out_of_play': out_of_play_category
         },
         'members': {
             'storyteller': storyteller,

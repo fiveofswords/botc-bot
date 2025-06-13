@@ -2,5 +2,7 @@
 
 Tests for game mechanics:
 
-- Character functionality tests
-- Whisper mode tests
+- **test_character_functionality.py** - Character abilities, interactions, and game effects
+- **test_whisper_mode.py** - Whisper mode functionality and state management
+
+Tests Blood on the Clocktower specific game mechanics and rules implementation.

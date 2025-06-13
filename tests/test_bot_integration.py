@@ -39,7 +39,7 @@ async def setup_test_game(mock_discord_setup):
         Character,
         "good",
         mock_discord_setup['members']['alice'],  # type: ignore
-        mock_discord_setup['channels']['st1'],  # type: ignore
+        mock_discord_setup['channels']['st_alice'],  # type: ignore
         0
     )
 
@@ -47,7 +47,7 @@ async def setup_test_game(mock_discord_setup):
         Character,
         "good",
         mock_discord_setup['members']['bob'],  # type: ignore
-        mock_discord_setup['channels']['st2'],  # type: ignore
+        mock_discord_setup['channels']['st_bob'],  # type: ignore
         1
     )
 
@@ -55,7 +55,7 @@ async def setup_test_game(mock_discord_setup):
         Character,
         "evil",
         mock_discord_setup['members']['charlie'],  # type: ignore
-        mock_discord_setup['channels']['st3'],  # type: ignore
+        mock_discord_setup['channels']['st_charlie'],  # type: ignore
         2
     )
 
@@ -71,14 +71,15 @@ async def setup_test_game(mock_discord_setup):
     seating_message = await mock_discord_setup['channels']['town_square'].send(
         "**Seating Order:**\nAlice\nBob\nCharlie")
 
+    # Create info channel seating order message
+    info_channel_seating_message = await mock_discord_setup['channels']['info'].send(
+        "**Seating Order:**\nAlice\nBob\nCharlie")
+
     # Mock the start_day and end methods to avoid Discord API calls
     with patch('bot_impl.update_presence'):
         # Create game object with patched methods
-        game = Game(
-            seating_order=[alice_player, bob_player, charlie_player],
-            seating_order_message=seating_message,
-            script=Script([])
-        )
+        game = Game(seating_order=[alice_player, bob_player, charlie_player], seating_order_message=seating_message,
+                    info_channel_seating_order_message=info_channel_seating_message, script=Script([]))
 
         # Create a Day object with mocked methods to avoid Discord API calls
         day = Day()
@@ -1059,7 +1060,7 @@ async def test_on_member_update_role_change_storyteller_added(mock_discord_setup
         Character,
         "good",
         before_member,  # type: ignore
-        mock_discord_setup['channels']['st1'],  # type: ignore
+        mock_discord_setup['channels']['st_alice'],  # type: ignore
         3  # Position after Charlie
     )
 
@@ -2756,56 +2757,130 @@ async def test_lastactive_command(mock_discord_setup, setup_test_game):
 
 @pytest.mark.asyncio
 async def test_on_ready(mock_discord_setup):
-    """Test the on_ready event handler with a mock implementation."""
-    # Instead of calling the real on_ready function, we'll mock it and test the effects directly
+    """Test the on_ready function initialization behavior."""
+    from bot_impl import on_ready
 
-    # Reset global vars
+    # Clear global variables to start fresh
     global_vars.game = None
-    global_vars.observer_role = None
+    global_vars.server = None
+    global_vars.player_role = None
+    global_vars.gamemaster_role = None
 
-    # Directly set the global variables with our mock objects
-    global_vars.server = mock_discord_setup['guild']
-    global_vars.game_category = mock_discord_setup['channels']['game_category']
-    global_vars.hands_channel = mock_discord_setup['channels']['hands']
-    global_vars.observer_channel = mock_discord_setup['channels']['observer']
-    global_vars.info_channel = mock_discord_setup['channels']['info']
-    global_vars.whisper_channel = mock_discord_setup['channels']['whisper']
-    global_vars.channel = mock_discord_setup['channels']['town_square']
-    global_vars.out_of_play_category = mock_discord_setup['channels']['out_of_play']
-    global_vars.channel_suffix = ""
+    # Mock the client and constants to point to our test objects
+    with patch('bot_impl.client', mock_discord_setup['client']):
+        with patch('bot_impl.SERVER_ID', mock_discord_setup['guild'].id):
+            with patch('bot_impl.GAME_CATEGORY_ID', mock_discord_setup['categories']['game'].id):
+                with patch('bot_impl.HANDS_CHANNEL_ID', mock_discord_setup['channels']['hands'].id):
+                    with patch('bot_impl.OBSERVER_CHANNEL_ID', mock_discord_setup['channels']['observer'].id):
+                        with patch('bot_impl.INFO_CHANNEL_ID', mock_discord_setup['channels']['info'].id):
+                            with patch('bot_impl.WHISPER_CHANNEL_ID', mock_discord_setup['channels']['whisper'].id):
+                                with patch('bot_impl.TOWN_SQUARE_CHANNEL_ID',
+                                           mock_discord_setup['channels']['town_square'].id):
+                                    with patch('bot_impl.OUT_OF_PLAY_CATEGORY_ID',
+                                               mock_discord_setup['categories']['out_of_play'].id):
+                                        with patch('bot_impl.CHANNEL_SUFFIX', "test"):
+                                            with patch('bot_impl.PLAYER_ROLE', "Player"):
+                                                with patch('bot_impl.STORYTELLER_ROLE', "Storyteller"):
+                                                    with patch('os.path.isfile', return_value=False):
+                                                        # Mock the client methods to return our test objects
+                                                        mock_discord_setup['client'].get_guild = MagicMock(
+                                                            return_value=mock_discord_setup['guild'])
+                                                        mock_discord_setup['client'].get_channel = MagicMock(
+                                                            side_effect=lambda id: {
+                                                                mock_discord_setup['categories']['game'].id:
+                                                                    mock_discord_setup['categories']['game'],
+                                                                mock_discord_setup['channels']['hands'].id:
+                                                                    mock_discord_setup['channels']['hands'],
+                                                                mock_discord_setup['channels']['observer'].id:
+                                                                    mock_discord_setup['channels']['observer'],
+                                                                mock_discord_setup['channels']['info'].id:
+                                                                    mock_discord_setup['channels']['info'],
+                                                                mock_discord_setup['channels']['whisper'].id:
+                                                                    mock_discord_setup['channels']['whisper'],
+                                                                mock_discord_setup['channels']['town_square'].id:
+                                                                    mock_discord_setup['channels']['town_square'],
+                                                                mock_discord_setup['categories']['out_of_play'].id:
+                                                                    mock_discord_setup['categories']['out_of_play'],
+                                                            }.get(id))
 
-    # Set roles
-    global_vars.player_role = mock_discord_setup['roles']['player']
-    global_vars.traveler_role = mock_discord_setup['roles']['traveler']
-    global_vars.ghost_role = mock_discord_setup['roles']['ghost']
-    global_vars.dead_vote_role = mock_discord_setup['roles']['dead_vote']
-    global_vars.gamemaster_role = mock_discord_setup['roles']['gamemaster']
-    global_vars.inactive_role = mock_discord_setup['roles']['inactive']
-    global_vars.observer_role = mock_discord_setup['roles']['observer']
+                                                        # Call the actual on_ready function
+                                                        await on_ready()
 
-    # Set game to NULL_GAME
-    global_vars.game = NULL_GAME
-
-    # Verify game was set to NULL_GAME
+    # Verify the function correctly initialized global variables
     assert global_vars.game is NULL_GAME
-
-    # Verify roles were set up correctly
-    assert global_vars.player_role == mock_discord_setup['roles']['player']
-    assert global_vars.traveler_role == mock_discord_setup['roles']['traveler']
-    assert global_vars.ghost_role == mock_discord_setup['roles']['ghost']
-    assert global_vars.dead_vote_role == mock_discord_setup['roles']['dead_vote']
-    assert global_vars.gamemaster_role == mock_discord_setup['roles']['gamemaster']
-    assert global_vars.inactive_role == mock_discord_setup['roles']['inactive']
-    assert global_vars.observer_role == mock_discord_setup['roles']['observer']
-
-    # Verify channels were set up correctly
-    assert global_vars.channel == mock_discord_setup['channels']['town_square']
-    assert global_vars.game_category == mock_discord_setup['channels']['game_category']
+    assert global_vars.server == mock_discord_setup['guild']
+    assert global_vars.game_category == mock_discord_setup['categories']['game']
     assert global_vars.hands_channel == mock_discord_setup['channels']['hands']
     assert global_vars.observer_channel == mock_discord_setup['channels']['observer']
     assert global_vars.info_channel == mock_discord_setup['channels']['info']
     assert global_vars.whisper_channel == mock_discord_setup['channels']['whisper']
-    assert global_vars.out_of_play_category == mock_discord_setup['channels']['out_of_play']
+    assert global_vars.channel == mock_discord_setup['channels']['town_square']
+    assert global_vars.out_of_play_category == mock_discord_setup['categories']['out_of_play']
+    assert global_vars.channel_suffix == "test"
+
+    # Verify roles were found and assigned correctly
+    assert global_vars.player_role == mock_discord_setup['roles']['player']
+    assert global_vars.gamemaster_role == mock_discord_setup['roles']['gamemaster']
+
+
+@pytest.mark.asyncio
+async def test_on_ready_with_backup_file(mock_discord_setup, setup_test_game):
+    """Test the on_ready function when a backup file exists."""
+    from bot_impl import on_ready
+
+    # Clear global variables to start fresh
+    global_vars.game = None
+    global_vars.server = None
+
+    # Mock the client and constants to point to our test objects
+    with patch('bot_impl.client', mock_discord_setup['client']):
+        with patch('bot_impl.SERVER_ID', mock_discord_setup['guild'].id):
+            with patch('bot_impl.GAME_CATEGORY_ID', mock_discord_setup['categories']['game'].id):
+                with patch('bot_impl.HANDS_CHANNEL_ID', mock_discord_setup['channels']['hands'].id):
+                    with patch('bot_impl.OBSERVER_CHANNEL_ID', mock_discord_setup['channels']['observer'].id):
+                        with patch('bot_impl.INFO_CHANNEL_ID', mock_discord_setup['channels']['info'].id):
+                            with patch('bot_impl.WHISPER_CHANNEL_ID', mock_discord_setup['channels']['whisper'].id):
+                                with patch('bot_impl.TOWN_SQUARE_CHANNEL_ID',
+                                           mock_discord_setup['channels']['town_square'].id):
+                                    with patch('bot_impl.OUT_OF_PLAY_CATEGORY_ID',
+                                               mock_discord_setup['categories']['out_of_play'].id):
+                                        with patch('bot_impl.CHANNEL_SUFFIX', "test"):
+                                            with patch('bot_impl.PLAYER_ROLE', "Player"):
+                                                with patch('bot_impl.STORYTELLER_ROLE', "Storyteller"):
+                                                    # Mock that backup file exists and load function
+                                                    with patch('os.path.isfile', return_value=True):
+                                                        with patch('bot_impl.load',
+                                                                   return_value=setup_test_game['game']) as mock_load:
+                                                            # Mock the client methods to return our test objects
+                                                            mock_discord_setup['client'].get_guild = MagicMock(
+                                                                return_value=mock_discord_setup['guild'])
+                                                            mock_discord_setup['client'].get_channel = MagicMock(
+                                                                side_effect=lambda id: {
+                                                                    mock_discord_setup['categories']['game'].id:
+                                                                        mock_discord_setup['categories']['game'],
+                                                                    mock_discord_setup['channels']['hands'].id:
+                                                                        mock_discord_setup['channels']['hands'],
+                                                                    mock_discord_setup['channels']['observer'].id:
+                                                                        mock_discord_setup['channels']['observer'],
+                                                                    mock_discord_setup['channels']['info'].id:
+                                                                        mock_discord_setup['channels']['info'],
+                                                                    mock_discord_setup['channels']['whisper'].id:
+                                                                        mock_discord_setup['channels']['whisper'],
+                                                                    mock_discord_setup['channels']['town_square'].id:
+                                                                        mock_discord_setup['channels']['town_square'],
+                                                                    mock_discord_setup['categories']['out_of_play'].id:
+                                                                        mock_discord_setup['categories']['out_of_play'],
+                                                                }.get(id))
+
+                                                            # Call the actual on_ready function
+                                                            await on_ready()
+
+                                                            # Verify the backup was loaded
+                                                            mock_load.assert_called_once_with("current_game.pckl")
+
+    # Verify the function loaded the game from backup instead of NULL_GAME
+    assert global_vars.game == setup_test_game['game']
+    assert global_vars.server == mock_discord_setup['guild']
 
 
 @pytest.mark.asyncio

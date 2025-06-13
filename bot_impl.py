@@ -270,6 +270,12 @@ def backup(fileName):
         with open(obj + "_" + fileName, "wb") as file:
             if obj == "seatingOrderMessage":
                 dill.dump(getattr(global_vars.game, obj).id, file)
+            elif obj == "info_channel_seating_order_message":
+                msg = getattr(global_vars.game, obj)
+                if msg is not None:
+                    dill.dump(msg.id, file)
+                else:
+                    dill.dump(None, file)
             else:
                 dill.dump(getattr(global_vars.game, obj), file)
 
@@ -282,7 +288,7 @@ async def load(fileName):
     with open(fileName, "rb") as file:
         objects = dill.load(file)
 
-    game = Game([], None, Script([]))
+    game = Game([], None, None, Script([]))
     for obj in objects:
         if not os.path.isfile(obj + "_" + fileName):
             print("Incomplete backup found.")
@@ -292,6 +298,17 @@ async def load(fileName):
                 id = dill.load(file)
                 msg = await global_vars.channel.fetch_message(id)
                 setattr(game, obj, msg)
+            elif obj == "info_channel_seating_order_message":
+                id = dill.load(file)
+                if id is not None and global_vars.info_channel:
+                    try:
+                        msg = await global_vars.info_channel.fetch_message(id)
+                        setattr(game, obj, msg)
+                    except:
+                        # Message may have been deleted or channel may not exist
+                        setattr(game, obj, None)
+                else:
+                    setattr(game, obj, None)
             else:
                 setattr(game, obj, dill.load(file))
 
@@ -872,7 +889,17 @@ async def on_message(message):
                 )
                 await msg.pin()
 
-                global_vars.game = Game(seating_order, seating_order_message, script)
+                # Create info channel seating order message if info channel exists
+                info_channel_message = None
+                if global_vars.info_channel:
+                    try:
+                        info_channel_message = await safe_send(global_vars.info_channel, message_text)
+                        if info_channel_message:
+                            await info_channel_message.pin()
+                    except Exception as e:
+                        print(f"Error creating info channel seating order message: {e}")
+
+                global_vars.game = Game(seating_order, seating_order_message, info_channel_message, script)
 
                 backup("current_game.pckl")
                 await update_presence(client)

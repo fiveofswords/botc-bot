@@ -83,13 +83,13 @@ async def test_on_message_storyteller_channel(mock_discord_setup, setup_test_gam
 
     # Create a mock GameSettings object
     mock_game_settings = MagicMock()
-    mock_game_settings.get_st_channel.return_value = mock_discord_setup['channels']['st1'].id
+    mock_game_settings.get_st_channel.return_value = mock_discord_setup['channels']['st_alice'].id
 
     # Create a message from Alice in her ST channel
     alice_message = MockMessage(
         id=3,
         content="Hello Storyteller!",
-        channel=mock_discord_setup['channels']['st1'],  # Alice's ST channel
+        channel=mock_discord_setup['channels']['st_alice'],  # Alice's ST channel
         author=mock_discord_setup['members']['alice'],
         guild=mock_discord_setup['guild']
     )
