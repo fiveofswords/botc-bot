@@ -9,6 +9,7 @@ from model.player import Player, STORYTELLER_ALIGNMENT
 from utils import message_utils
 from utils.game_utils import update_presence, remove_backup
 
+
 class Game:
     """Represents a game of Blood on the Clocktower.
     
