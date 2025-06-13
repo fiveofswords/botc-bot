@@ -14,7 +14,7 @@ import pytest
 import global_vars
 from bot_impl import on_message, Vote
 from tests.fixtures.common_patches import (
-    file_operation_patches
+    file_operation_patches_combined
 )
 # Import fixtures from fixtures directory
 from tests.fixtures.discord_mocks import mock_discord_setup, MockChannel, MockMessage
@@ -27,7 +27,7 @@ def disable_file_operations():
     """Disable all file operations that might occur during tests.
     This ensures we don't create unwanted files or modify existing ones."""
     # Get patches for file operations
-    patches = file_operation_patches()
+    patches = file_operation_patches_combined()
 
     # Mock Game Settings
     mock_game_settings = MagicMock()

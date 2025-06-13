@@ -91,7 +91,8 @@ class Game:
 
             if not self.info_channel_seating_order_message:  # If message doesn't exist or was reset
                 try:
-                    self.info_channel_seating_order_message = await safe_send(global_vars.info_channel, message_text)
+                    self.info_channel_seating_order_message = await message_utils.safe_send(global_vars.info_channel,
+                                                                                            message_text)
                     if self.info_channel_seating_order_message: # If message was sent successfully
                         await self.info_channel_seating_order_message.pin()
                 except Exception as e:

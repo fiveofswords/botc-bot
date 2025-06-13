@@ -47,10 +47,10 @@ Patch collections:
 
 - `disable_backup()`: Disables backup functionality for tests
 - `common_patches()`: Returns common patches needed for most tests
-- `patch_file_operations()`: Disables all file operations
-- `patch_discord_send()`: Mocks Discord message sending
-- `patch_discord_reactions()`: Mocks Discord reaction handling
-- `patch_game_functions()`: Mocks Game class methods
+- `file_operations_patches_combined()`: Disables all file operations
+- `discord_send_patches()`: Mocks Discord message sending
+- `discord_reactions_patches_combined()`: Mocks Discord reaction handling
+- `game_functions_patches()`: Mocks Game class methods
 
 ### Command Testing (`command_testing.py`)
 
