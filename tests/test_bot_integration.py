@@ -2782,19 +2782,20 @@ async def test_on_ready(mock_discord_setup):
 
     # Mock the client and constants to point to our test objects
     with patch('bot_impl.client', mock_discord_setup['client']):
-        with patch('bot_impl.SERVER_ID', mock_discord_setup['guild'].id):
-            with patch('bot_impl.GAME_CATEGORY_ID', mock_discord_setup['categories']['game'].id):
-                with patch('bot_impl.HANDS_CHANNEL_ID', mock_discord_setup['channels']['hands'].id):
-                    with patch('bot_impl.OBSERVER_CHANNEL_ID', mock_discord_setup['channels']['observer'].id):
-                        with patch('bot_impl.INFO_CHANNEL_ID', mock_discord_setup['channels']['info'].id):
-                            with patch('bot_impl.WHISPER_CHANNEL_ID', mock_discord_setup['channels']['whisper'].id):
-                                with patch('bot_impl.TOWN_SQUARE_CHANNEL_ID',
+        with patch('bot_impl.config.SERVER_ID', mock_discord_setup['guild'].id):
+            with patch('bot_impl.config.GAME_CATEGORY_ID', mock_discord_setup['categories']['game'].id):
+                with patch('bot_impl.config.HANDS_CHANNEL_ID', mock_discord_setup['channels']['hands'].id):
+                    with patch('bot_impl.config.OBSERVER_CHANNEL_ID', mock_discord_setup['channels']['observer'].id):
+                        with patch('bot_impl.config.INFO_CHANNEL_ID', mock_discord_setup['channels']['info'].id):
+                            with patch('bot_impl.config.WHISPER_CHANNEL_ID',
+                                       mock_discord_setup['channels']['whisper'].id):
+                                with patch('bot_impl.config.TOWN_SQUARE_CHANNEL_ID',
                                            mock_discord_setup['channels']['town_square'].id):
-                                    with patch('bot_impl.OUT_OF_PLAY_CATEGORY_ID',
+                                    with patch('bot_impl.config.OUT_OF_PLAY_CATEGORY_ID',
                                                mock_discord_setup['categories']['out_of_play'].id):
-                                        with patch('bot_impl.CHANNEL_SUFFIX', "test"):
-                                            with patch('bot_impl.PLAYER_ROLE', "Player"):
-                                                with patch('bot_impl.STORYTELLER_ROLE', "Storyteller"):
+                                        with patch('bot_impl.config.CHANNEL_SUFFIX', "test"):
+                                            with patch('bot_impl.config.PLAYER_ROLE', "Player"):
+                                                with patch('bot_impl.config.STORYTELLER_ROLE', "Storyteller"):
                                                     with patch('os.path.isfile', return_value=False):
                                                         # Mock the client methods to return our test objects
                                                         mock_discord_setup['client'].get_guild = MagicMock(
@@ -2848,19 +2849,20 @@ async def test_on_ready_with_backup_file(mock_discord_setup, setup_test_game):
 
     # Mock the client and constants to point to our test objects
     with patch('bot_impl.client', mock_discord_setup['client']):
-        with patch('bot_impl.SERVER_ID', mock_discord_setup['guild'].id):
-            with patch('bot_impl.GAME_CATEGORY_ID', mock_discord_setup['categories']['game'].id):
-                with patch('bot_impl.HANDS_CHANNEL_ID', mock_discord_setup['channels']['hands'].id):
-                    with patch('bot_impl.OBSERVER_CHANNEL_ID', mock_discord_setup['channels']['observer'].id):
-                        with patch('bot_impl.INFO_CHANNEL_ID', mock_discord_setup['channels']['info'].id):
-                            with patch('bot_impl.WHISPER_CHANNEL_ID', mock_discord_setup['channels']['whisper'].id):
-                                with patch('bot_impl.TOWN_SQUARE_CHANNEL_ID',
+        with patch('bot_impl.config.SERVER_ID', mock_discord_setup['guild'].id):
+            with patch('bot_impl.config.GAME_CATEGORY_ID', mock_discord_setup['categories']['game'].id):
+                with patch('bot_impl.config.HANDS_CHANNEL_ID', mock_discord_setup['channels']['hands'].id):
+                    with patch('bot_impl.config.OBSERVER_CHANNEL_ID', mock_discord_setup['channels']['observer'].id):
+                        with patch('bot_impl.config.INFO_CHANNEL_ID', mock_discord_setup['channels']['info'].id):
+                            with patch('bot_impl.config.WHISPER_CHANNEL_ID',
+                                       mock_discord_setup['channels']['whisper'].id):
+                                with patch('bot_impl.config.TOWN_SQUARE_CHANNEL_ID',
                                            mock_discord_setup['channels']['town_square'].id):
-                                    with patch('bot_impl.OUT_OF_PLAY_CATEGORY_ID',
+                                    with patch('bot_impl.config.OUT_OF_PLAY_CATEGORY_ID',
                                                mock_discord_setup['categories']['out_of_play'].id):
-                                        with patch('bot_impl.CHANNEL_SUFFIX', "test"):
-                                            with patch('bot_impl.PLAYER_ROLE', "Player"):
-                                                with patch('bot_impl.STORYTELLER_ROLE', "Storyteller"):
+                                        with patch('bot_impl.config.CHANNEL_SUFFIX', "test"):
+                                            with patch('bot_impl.config.PLAYER_ROLE', "Player"):
+                                                with patch('bot_impl.config.STORYTELLER_ROLE', "Storyteller"):
                                                     # Mock that backup file exists and load function
                                                     with patch('os.path.isfile', return_value=True):
                                                         with patch('bot_impl.load',
@@ -2920,9 +2922,9 @@ async def test_on_message_startgame_hand_raised_display(mock_discord_setup):
             patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send, \
             patch('model.player.Player.__init__') as mock_player_init, \
             patch('bot_impl.backup') as mock_backup, \
-         patch('bot_impl.update_presence'), \
-         patch('model.channels.channel_utils.reorder_channels'), \
-         patch('model.channels.ChannelManager.remove_ghost'):
+            patch('bot_impl.update_presence'), \
+            patch('model.channels.channel_utils.reorder_channels'), \
+            patch('model.channels.ChannelManager.remove_ghost'):
 
         mock_wait_for.side_effect = [
             mock_order_message,  # Seating order
@@ -2935,14 +2937,16 @@ async def test_on_message_startgame_hand_raised_display(mock_discord_setup):
         # We'll patch Player.__init__ to grab the created players, then modify one.
         created_players = []
         original_player_init = Player.__init__
+
         def side_effect_player_init(self, character_class, alignment, user, st_channel, position):
             original_player_init(self, character_class, alignment, user, st_channel, position)
             # IMPORTANT: Set hand_raised based on a known player for assertion
             if user.name == "Alice":
                 self.hand_raised = True
             else:
-                self.hand_raised = False # Ensure others are False
+                self.hand_raised = False  # Ensure others are False
             created_players.append(self)
+
         mock_player_init.side_effect = side_effect_player_init
 
         # Simulate the @startgame command
@@ -2950,7 +2954,7 @@ async def test_on_message_startgame_hand_raised_display(mock_discord_setup):
             id=3004,
             content="@startgame",
             author=mock_discord_setup['members']['storyteller'],
-            channel=storyteller_dm_channel, # DM channel
+            channel=storyteller_dm_channel,  # DM channel
             guild=None
         )
         await on_message(startgame_msg)

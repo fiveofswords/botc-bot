@@ -116,6 +116,9 @@ docker exec -it ${BOT_NAME} /bin/bash
 - Sort alphabetically within groups
 - Use absolute imports instead of relative
 - Avoid wildcard imports
+- Prefer Module imports over direct imports for clarity
+
+```python
 
 ### Type Hints
 
