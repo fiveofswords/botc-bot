@@ -14,6 +14,32 @@ from discord import User, Member, TextChannel
 
 import global_vars
 from bot_client import client, logger
+
+# Try to import config, create a mock config module if not available
+try:
+    import config
+except ImportError:
+    # Create a mock config module with default values for testing
+    import types
+
+    config = types.ModuleType('config')
+    config.SERVER_ID = 1
+    config.GAME_CATEGORY_ID = 2
+    config.HANDS_CHANNEL_ID = 3
+    config.OBSERVER_CHANNEL_ID = 4
+    config.INFO_CHANNEL_ID = 5
+    config.WHISPER_CHANNEL_ID = 6
+    config.TOWN_SQUARE_CHANNEL_ID = 7
+    config.OUT_OF_PLAY_CATEGORY_ID = 8
+    config.PLAYER_ROLE = "player"
+    config.TRAVELER_ROLE = "traveler"
+    config.GHOST_ROLE = "ghost"
+    config.DEAD_VOTE_ROLE = "deadVote"
+    config.STORYTELLER_ROLE = "storyteller"
+    config.INACTIVE_ROLE = "inactive"
+    config.OBSERVER_ROLE = "observer"
+    config.CHANNEL_SUFFIX = 'test'
+    config.PREFIXES = (',', '@')
 from commands.loader import load_all_commands
 from commands.registry import registry
 from config import *
@@ -351,15 +377,15 @@ async def on_ready():
     global_vars.game = NULL_GAME
     global_vars.observer_role = None
 
-    global_vars.server = client.get_guild(SERVER_ID)
-    global_vars.game_category = client.get_channel(GAME_CATEGORY_ID)
-    global_vars.hands_channel = client.get_channel(HANDS_CHANNEL_ID)
-    global_vars.observer_channel = client.get_channel(OBSERVER_CHANNEL_ID)
-    global_vars.info_channel = client.get_channel(INFO_CHANNEL_ID)
-    global_vars.whisper_channel = client.get_channel(WHISPER_CHANNEL_ID)
-    global_vars.channel = client.get_channel(TOWN_SQUARE_CHANNEL_ID)
-    global_vars.out_of_play_category = client.get_channel(OUT_OF_PLAY_CATEGORY_ID)
-    global_vars.channel_suffix = CHANNEL_SUFFIX
+    global_vars.server = client.get_guild(config.SERVER_ID)
+    global_vars.game_category = client.get_channel(config.GAME_CATEGORY_ID)
+    global_vars.hands_channel = client.get_channel(config.HANDS_CHANNEL_ID)
+    global_vars.observer_channel = client.get_channel(config.OBSERVER_CHANNEL_ID)
+    global_vars.info_channel = client.get_channel(config.INFO_CHANNEL_ID)
+    global_vars.whisper_channel = client.get_channel(config.WHISPER_CHANNEL_ID)
+    global_vars.channel = client.get_channel(config.TOWN_SQUARE_CHANNEL_ID)
+    global_vars.out_of_play_category = client.get_channel(config.OUT_OF_PLAY_CATEGORY_ID)
+    global_vars.channel_suffix = config.CHANNEL_SUFFIX
     logger.info(
         f"server: {global_vars.server.name}, "
         f"game_category: {global_vars.game_category.name if global_vars.game_category else None}, "
@@ -372,19 +398,19 @@ async def on_ready():
     )
 
     for role in global_vars.server.roles:
-        if role.name == PLAYER_ROLE:
+        if role.name == config.PLAYER_ROLE:
             global_vars.player_role = role
-        elif role.name == TRAVELER_ROLE:
+        elif role.name == config.TRAVELER_ROLE:
             global_vars.traveler_role = role
-        elif role.name == GHOST_ROLE:
+        elif role.name == config.GHOST_ROLE:
             global_vars.ghost_role = role
-        elif role.name == DEAD_VOTE_ROLE:
+        elif role.name == config.DEAD_VOTE_ROLE:
             global_vars.dead_vote_role = role
-        elif role.name == STORYTELLER_ROLE:
+        elif role.name == config.STORYTELLER_ROLE:
             global_vars.gamemaster_role = role
-        elif role.name == INACTIVE_ROLE:
+        elif role.name == config.INACTIVE_ROLE:
             global_vars.inactive_role = role
-        elif role.name == OBSERVER_ROLE:
+        elif role.name == config.OBSERVER_ROLE:
             global_vars.observer_role = role
 
     if os.path.isfile("current_game.pckl"):
@@ -422,7 +448,7 @@ async def on_message(message):
             backup("current_game.pckl")
 
         # Votes
-        if message.content.startswith(PREFIXES):
+        if message.content.startswith(config.PREFIXES):
 
             if " " in message.content:
                 command = message.content[1: message.content.index(" ")].lower()
@@ -495,7 +521,7 @@ async def on_message(message):
     if message.guild is None:
 
         # Check if command
-        if message.content.startswith(PREFIXES):
+        if message.content.startswith(config.PREFIXES):
 
             # Generate command and arguments
             if " " in message.content:
@@ -3136,7 +3162,7 @@ async def on_message(message):
                         embed.add_field(
                             name="Formatting commands",
                             value="Prefixes on this server are {}; any multiple arguments are space-separated".format(
-                                "'" + "".join(list(PREFIXES)) + "'"
+                                "'" + "".join(list(config.PREFIXES)) + "'"
                             ),
                         )
                         embed.add_field(
@@ -3502,7 +3528,7 @@ async def on_message(message):
                 embed.add_field(
                     name="Formatting commands",
                     value="Prefixes on this server are {}; any multiple arguments are space-separated".format(
-                        "'" + "".join(list(PREFIXES)) + "'"
+                        "'" + "".join(list(config.PREFIXES)) + "'"
                     ),
                 )
                 embed.add_field(

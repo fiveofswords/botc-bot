@@ -23,10 +23,10 @@ configuration template.
 
 **Prerequisites for running tests:**
 
-- `token.txt` file in root directory (can contain dummy content for testing)
-- `config.py` file in root directory (see Configuration section above)
+- None! Tests automatically handle missing configuration files with fallback defaults.
 
-These files are required for imports to work, but tests use comprehensive mocking so actual values don't matter.
+The codebase uses lazy loading for `token.txt` and graceful fallback for `config.py`, so tests run without requiring any
+additional setup files.
 
 ```bash
 # Run all tests
@@ -101,13 +101,15 @@ docker exec -it ${BOT_NAME} /bin/bash
 ### Testing Infrastructure
 
 - `tests/fixtures/` - Comprehensive test fixtures and mocks
-  - `discord_mocks.py` - Mock Discord objects (channels, members, messages)
+  - `discord_mocks.py` - Mock Discord objects with automatic client behavior
   - `game_fixtures.py` - Game setup fixtures and helpers
-  - `common_patches.py` - Reusable patch collections
+  - `common_patches.py` - Reusable patch collections with ExitStack support
   - `command_testing.py` - Command testing utilities
 - Organized test structure by functionality (core, discord, game, model, utils)
 - Async test support with pytest-asyncio
 - Mock-based testing to prevent side effects
+- Automatic configuration fallback for missing files
+- Enhanced MockClient with built-in guild and channel lookup
 
 ## Code Style Guidelines
 
@@ -116,6 +118,9 @@ docker exec -it ${BOT_NAME} /bin/bash
 - Sort alphabetically within groups
 - Use absolute imports instead of relative
 - Avoid wildcard imports
+- Prefer Module imports over direct imports for clarity
+
+```python
 
 ### Type Hints
 
