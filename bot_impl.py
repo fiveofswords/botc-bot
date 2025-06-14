@@ -40,9 +40,9 @@ except ImportError:
     config.OBSERVER_ROLE = "observer"
     config.CHANNEL_SUFFIX = 'test'
     config.PREFIXES = (',', '@')
+
 from commands.loader import load_all_commands
 from commands.registry import registry
-from config import *
 from model.channels import ChannelManager
 from model.channels.channel_utils import reorder_channels
 from model.characters import Character, AbilityModifier, Amnesiac, Minion, Demon, Outsider, Townsfolk, \
