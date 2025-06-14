@@ -5,15 +5,17 @@ This module provides common patches and patch sets to simplify
 test setup and ensure consistent mocking behavior across tests.
 
 Patch Types:
-- Dictionary patches: Use with patch.multiple('', **patches)
-- List patches: Use with contextlib.ExitStack() or individual context managers
+- Functions ending in "_patches" return dictionaries for manual patching
+- Functions ending in "_patches_combined" return lists of patch objects for ExitStack
+- Full setup functions for complete bot initialization scenarios
 
 Naming conventions:
-- Functions ending in "_patches" return dictionaries for patch.multiple()
-- Functions ending in "_patches_combined" return lists of patch objects
+- Use ExitStack with _patches_combined functions for multiple patches
+- Dictionary patches are for specific targeted mocking scenarios
 - All patch functions use consistent parameter naming and documentation
 """
 
+from contextlib import ExitStack
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -79,7 +81,9 @@ def game_function_patches():
 def disable_backup():
     """Automatically disables backup functionality for all tests."""
     patches = backup_patches_combined()
-    with patch.multiple('', **{p.target: p.new for p in patches}):
+    with ExitStack() as stack:
+        for p in patches:
+            stack.enter_context(p)
         yield
 
 
@@ -92,17 +96,7 @@ def base_bot_patches():
     }
 
 
-def common_patches():
-    """Return common patches needed for most tests."""
-    patches = {}
-    for p in backup_patches_combined():
-        if hasattr(p, 'target'):
-            patches[p.target] = p.new
-
-    patches['safe_send'] = AsyncMock()
-    patches['bot_client.client'] = MagicMock()
-
-    return patches
+# Removed redundant common_patches() - use specific patch functions instead
 
 
 def command_execution_patches(mock_discord_setup=None):
@@ -161,4 +155,60 @@ def file_operations_patches_combined():
         *file_operation_patches_combined()
     ]
 
-# Remove redundant wrapper functions - use the core functions directly
+
+def config_patches(mock_discord_setup):
+    """Return patches for bot_impl.config values using mock Discord objects."""
+    return {
+        'bot_impl.config.SERVER_ID': mock_discord_setup['guild'].id,
+        'bot_impl.config.GAME_CATEGORY_ID': mock_discord_setup['categories']['game'].id,
+        'bot_impl.config.HANDS_CHANNEL_ID': mock_discord_setup['channels']['hands'].id,
+        'bot_impl.config.OBSERVER_CHANNEL_ID': mock_discord_setup['channels']['observer'].id,
+        'bot_impl.config.INFO_CHANNEL_ID': mock_discord_setup['channels']['info'].id,
+        'bot_impl.config.WHISPER_CHANNEL_ID': mock_discord_setup['channels']['whisper'].id,
+        'bot_impl.config.TOWN_SQUARE_CHANNEL_ID': mock_discord_setup['channels']['town_square'].id,
+        'bot_impl.config.OUT_OF_PLAY_CATEGORY_ID': mock_discord_setup['categories']['out_of_play'].id,
+        'bot_impl.config.CHANNEL_SUFFIX': "test",
+        'bot_impl.config.PLAYER_ROLE': "Player",
+        'bot_impl.config.STORYTELLER_ROLE': "Storyteller"
+    }
+
+
+def full_bot_setup_patches_combined(mock_discord_setup, with_backup=False, backup_game=None):
+    """Return complete list of patches needed for bot initialization tests."""
+    patches = []
+
+    # Base patches
+    patches.extend(backup_patches_combined())
+    patches.extend([
+        patch('utils.message_utils.safe_send', AsyncMock()),
+        patch('utils.message_utils.safe_send_dm', AsyncMock()),
+        patch('bot_impl.client', mock_discord_setup['client']),
+    ])
+
+    # Config patches
+    patches.extend([
+        patch('bot_impl.config.SERVER_ID', mock_discord_setup['guild'].id),
+        patch('bot_impl.config.GAME_CATEGORY_ID', mock_discord_setup['categories']['game'].id),
+        patch('bot_impl.config.HANDS_CHANNEL_ID', mock_discord_setup['channels']['hands'].id),
+        patch('bot_impl.config.OBSERVER_CHANNEL_ID', mock_discord_setup['channels']['observer'].id),
+        patch('bot_impl.config.INFO_CHANNEL_ID', mock_discord_setup['channels']['info'].id),
+        patch('bot_impl.config.WHISPER_CHANNEL_ID', mock_discord_setup['channels']['whisper'].id),
+        patch('bot_impl.config.TOWN_SQUARE_CHANNEL_ID', mock_discord_setup['channels']['town_square'].id),
+        patch('bot_impl.config.OUT_OF_PLAY_CATEGORY_ID', mock_discord_setup['categories']['out_of_play'].id),
+        patch('bot_impl.config.CHANNEL_SUFFIX', "test"),
+        patch('bot_impl.config.PLAYER_ROLE', "Player"),
+        patch('bot_impl.config.STORYTELLER_ROLE', "Storyteller"),
+    ])
+
+    # Backup file handling
+    if with_backup:
+        patches.extend([
+            patch('os.path.isfile', return_value=True),
+            patch('bot_impl.load', return_value=backup_game)
+        ])
+    else:
+        patches.append(patch('os.path.isfile', return_value=False))
+
+    return patches
+
+# Removed unused full_bot_setup_context fixture - use full_bot_setup_patches_combined directly with ExitStack

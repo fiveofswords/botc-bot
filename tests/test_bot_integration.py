@@ -5,6 +5,7 @@ These tests focus on command handling in the on_message function.
 """
 
 import datetime
+from contextlib import ExitStack
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -18,6 +19,7 @@ from model.game.game import NULL_GAME, Game
 from model.game.script import Script
 from model.game.vote import Vote
 from model.player import STORYTELLER_ALIGNMENT, Player
+from tests.fixtures.common_patches import full_bot_setup_patches_combined
 from tests.fixtures.discord_mocks import mock_discord_setup, MockChannel, MockMember, MockMessage
 from tests.fixtures.game_fixtures import setup_test_game
 
@@ -2780,46 +2782,14 @@ async def test_on_ready(mock_discord_setup):
     global_vars.player_role = None
     global_vars.gamemaster_role = None
 
-    # Mock the client and constants to point to our test objects
-    with patch('bot_impl.client', mock_discord_setup['client']):
-        with patch('bot_impl.config.SERVER_ID', mock_discord_setup['guild'].id):
-            with patch('bot_impl.config.GAME_CATEGORY_ID', mock_discord_setup['categories']['game'].id):
-                with patch('bot_impl.config.HANDS_CHANNEL_ID', mock_discord_setup['channels']['hands'].id):
-                    with patch('bot_impl.config.OBSERVER_CHANNEL_ID', mock_discord_setup['channels']['observer'].id):
-                        with patch('bot_impl.config.INFO_CHANNEL_ID', mock_discord_setup['channels']['info'].id):
-                            with patch('bot_impl.config.WHISPER_CHANNEL_ID',
-                                       mock_discord_setup['channels']['whisper'].id):
-                                with patch('bot_impl.config.TOWN_SQUARE_CHANNEL_ID',
-                                           mock_discord_setup['channels']['town_square'].id):
-                                    with patch('bot_impl.config.OUT_OF_PLAY_CATEGORY_ID',
-                                               mock_discord_setup['categories']['out_of_play'].id):
-                                        with patch('bot_impl.config.CHANNEL_SUFFIX', "test"):
-                                            with patch('bot_impl.config.PLAYER_ROLE', "Player"):
-                                                with patch('bot_impl.config.STORYTELLER_ROLE', "Storyteller"):
-                                                    with patch('os.path.isfile', return_value=False):
-                                                        # Mock the client methods to return our test objects
-                                                        mock_discord_setup['client'].get_guild = MagicMock(
-                                                            return_value=mock_discord_setup['guild'])
-                                                        mock_discord_setup['client'].get_channel = MagicMock(
-                                                            side_effect=lambda id: {
-                                                                mock_discord_setup['categories']['game'].id:
-                                                                    mock_discord_setup['categories']['game'],
-                                                                mock_discord_setup['channels']['hands'].id:
-                                                                    mock_discord_setup['channels']['hands'],
-                                                                mock_discord_setup['channels']['observer'].id:
-                                                                    mock_discord_setup['channels']['observer'],
-                                                                mock_discord_setup['channels']['info'].id:
-                                                                    mock_discord_setup['channels']['info'],
-                                                                mock_discord_setup['channels']['whisper'].id:
-                                                                    mock_discord_setup['channels']['whisper'],
-                                                                mock_discord_setup['channels']['town_square'].id:
-                                                                    mock_discord_setup['channels']['town_square'],
-                                                                mock_discord_setup['categories']['out_of_play'].id:
-                                                                    mock_discord_setup['categories']['out_of_play'],
-                                                            }.get(id))
+    # Use the full bot setup patches
+    patches = full_bot_setup_patches_combined(mock_discord_setup)
+    with ExitStack() as stack:
+        for p in patches:
+            stack.enter_context(p)
 
-                                                        # Call the actual on_ready function
-                                                        await on_ready()
+        # Call the actual on_ready function
+        await on_ready()
 
     # Verify the function correctly initialized global variables
     assert global_vars.game is NULL_GAME
@@ -2847,52 +2817,20 @@ async def test_on_ready_with_backup_file(mock_discord_setup, setup_test_game):
     global_vars.game = None
     global_vars.server = None
 
-    # Mock the client and constants to point to our test objects
-    with patch('bot_impl.client', mock_discord_setup['client']):
-        with patch('bot_impl.config.SERVER_ID', mock_discord_setup['guild'].id):
-            with patch('bot_impl.config.GAME_CATEGORY_ID', mock_discord_setup['categories']['game'].id):
-                with patch('bot_impl.config.HANDS_CHANNEL_ID', mock_discord_setup['channels']['hands'].id):
-                    with patch('bot_impl.config.OBSERVER_CHANNEL_ID', mock_discord_setup['channels']['observer'].id):
-                        with patch('bot_impl.config.INFO_CHANNEL_ID', mock_discord_setup['channels']['info'].id):
-                            with patch('bot_impl.config.WHISPER_CHANNEL_ID',
-                                       mock_discord_setup['channels']['whisper'].id):
-                                with patch('bot_impl.config.TOWN_SQUARE_CHANNEL_ID',
-                                           mock_discord_setup['channels']['town_square'].id):
-                                    with patch('bot_impl.config.OUT_OF_PLAY_CATEGORY_ID',
-                                               mock_discord_setup['categories']['out_of_play'].id):
-                                        with patch('bot_impl.config.CHANNEL_SUFFIX', "test"):
-                                            with patch('bot_impl.config.PLAYER_ROLE', "Player"):
-                                                with patch('bot_impl.config.STORYTELLER_ROLE', "Storyteller"):
-                                                    # Mock that backup file exists and load function
-                                                    with patch('os.path.isfile', return_value=True):
-                                                        with patch('bot_impl.load',
-                                                                   return_value=setup_test_game['game']) as mock_load:
-                                                            # Mock the client methods to return our test objects
-                                                            mock_discord_setup['client'].get_guild = MagicMock(
-                                                                return_value=mock_discord_setup['guild'])
-                                                            mock_discord_setup['client'].get_channel = MagicMock(
-                                                                side_effect=lambda id: {
-                                                                    mock_discord_setup['categories']['game'].id:
-                                                                        mock_discord_setup['categories']['game'],
-                                                                    mock_discord_setup['channels']['hands'].id:
-                                                                        mock_discord_setup['channels']['hands'],
-                                                                    mock_discord_setup['channels']['observer'].id:
-                                                                        mock_discord_setup['channels']['observer'],
-                                                                    mock_discord_setup['channels']['info'].id:
-                                                                        mock_discord_setup['channels']['info'],
-                                                                    mock_discord_setup['channels']['whisper'].id:
-                                                                        mock_discord_setup['channels']['whisper'],
-                                                                    mock_discord_setup['channels']['town_square'].id:
-                                                                        mock_discord_setup['channels']['town_square'],
-                                                                    mock_discord_setup['categories']['out_of_play'].id:
-                                                                        mock_discord_setup['categories']['out_of_play'],
-                                                                }.get(id))
+    # Use the full bot setup patches with backup loading
+    patches = full_bot_setup_patches_combined(mock_discord_setup, with_backup=True, backup_game=setup_test_game['game'])
+    with ExitStack() as stack:
+        mock_load = None
+        for p in patches:
+            mock = stack.enter_context(p)
+            if hasattr(p, 'attribute') and p.attribute == 'load':
+                mock_load = mock
 
-                                                            # Call the actual on_ready function
-                                                            await on_ready()
+        # Call the actual on_ready function
+        await on_ready()
 
-                                                            # Verify the backup was loaded
-                                                            mock_load.assert_called_once_with("current_game.pckl")
+        # Verify the backup was loaded
+        mock_load.assert_called_once_with("current_game.pckl")
 
     # Verify the function loaded the game from backup instead of NULL_GAME
     assert global_vars.game == setup_test_game['game']

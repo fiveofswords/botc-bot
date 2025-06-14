@@ -56,19 +56,19 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Create required files for testing (these are not checked into git)
-echo "dummy_token_for_testing" > token.txt  # Add your actual bot token for production
-cp bot_configs/George.py config.py  # Or create custom config.py as shown above
-
-# Run tests
+# Run tests (no additional files required)
 python -m pytest
 
 # Run with coverage
 python -m pytest --cov=. --cov-report=term
+
+# For production deployment, create these files:
+echo "your_actual_bot_token" > token.txt  # Add your Discord bot token
+cp bot_configs/George.py config.py  # Or create custom config.py as shown above
 ```
 
-**Note:** `token.txt` and `config.py` are required for imports but tests use mocking so actual values don't matter for
-testing.
+**Note:** Tests automatically handle missing `token.txt` and `config.py` files using fallback defaults. These files are
+only required for production deployment.
 
 See `CLAUDE.md` for detailed development guidelines and project structure.
 
