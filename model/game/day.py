@@ -7,8 +7,8 @@ import global_vars
 from bot_client import client
 from model.characters import NomsCalledModifier, NominationModifier, DayEndModifier, Traveler
 from model.game.whisper_mode import WhisperMode
+from utils import message_utils
 from utils.game_utils import update_presence
-from utils.message_utils import safe_send
 
 
 class Day:
@@ -44,7 +44,7 @@ class Day:
         """Opens PMs."""
         self.isPms = True
         for memb in global_vars.gamemaster_role.members:
-            await safe_send(memb, "PMs are now open.")
+            await message_utils.safe_send(memb, "PMs are now open.")
 
         await update_presence(client)
 
@@ -56,7 +56,7 @@ class Day:
                 if isinstance(person.character, NomsCalledModifier):
                     person.character.on_noms_called()
         for memb in global_vars.gamemaster_role.members:
-            await safe_send(memb, "Nominations are now open.")
+            await message_utils.safe_send(memb, "Nominations are now open.")
 
         await update_presence(client)
 
@@ -64,7 +64,7 @@ class Day:
         """Closes PMs."""
         self.isPms = False
         for memb in global_vars.gamemaster_role.members:
-            await safe_send(memb, "PMs are now closed.")
+            await message_utils.safe_send(memb, "PMs are now closed.")
 
         await update_presence(client)
 
@@ -72,7 +72,7 @@ class Day:
         """Closes nominations."""
         self.isNoms = False
         for memb in global_vars.gamemaster_role.members:
-            await safe_send(memb, "Nominations are now closed.")
+            await message_utils.safe_send(memb, "Nominations are now closed.")
 
         await update_presence(client)
 
@@ -91,7 +91,7 @@ class Day:
         if not nominee:
             self.votes.append(Vote(nominee, nominator))
             if self.aboutToDie is not None:
-                announcement = await safe_send(
+                announcement = await message_utils.safe_send(
                     global_vars.channel,
                     "{}, the storytellers have been nominated by {}. {} to tie, {} to execute.".format(
                         global_vars.player_role.mention,
@@ -110,7 +110,7 @@ class Day:
                     ),
                 )
             else:
-                announcement = await safe_send(
+                announcement = await message_utils.safe_send(
                     global_vars.channel,
                     "{}, the storytellers have been nominated by {}. {} to execute.".format(
                         global_vars.player_role.mention,
@@ -136,7 +136,7 @@ class Day:
         elif isinstance(nominee.character, Traveler):
             nominee.can_be_nominated = False
             self.votes.append(TravelerVote(nominee, nominator))
-            announcement = await safe_send(
+            announcement = await message_utils.safe_send(
                 global_vars.channel,
                 "{}, {} has called for {}'s exile. {} to exile.".format(
                     global_vars.player_role.mention,
@@ -162,7 +162,7 @@ class Day:
                 # do not proceed with collecting votes
                 return
             if self.aboutToDie is not None:
-                announcement = await safe_send(
+                announcement = await message_utils.safe_send(
                     global_vars.channel,
                     "{}, {} has been nominated by {}. {} to tie, {} to execute.".format(
                         global_vars.player_role.mention,
@@ -184,7 +184,7 @@ class Day:
                     ),
                 )
             else:
-                announcement = await safe_send(
+                announcement = await message_utils.safe_send(
                     global_vars.channel,
                     "{}, {} has been nominated by {}. {} to execute.".format(
                         global_vars.player_role.mention,
@@ -247,7 +247,7 @@ class Day:
                 else:
                     messageText += "\n> All other pairs: 0"
                     break
-            await safe_send(global_vars.channel, messageText)
+            await message_utils.safe_send(global_vars.channel, messageText)
 
         self.votes[-1].announcements.append(announcement.id)
         await self.votes[-1].call_next()
@@ -288,9 +288,9 @@ class Day:
         self.isPms = False
 
         if not self.isExecutionToday:
-            await safe_send(global_vars.channel, "No one was executed.")
+            await message_utils.safe_send(global_vars.channel, "No one was executed.")
 
-        await safe_send(global_vars.channel, "{}, go to sleep!".format(global_vars.player_role.mention))
+        await message_utils.safe_send(global_vars.channel, "{}, go to sleep!".format(global_vars.player_role.mention))
 
         if not global_vars.game.days[-1].riot_active:
             if global_vars.game.show_tally:
@@ -331,7 +331,7 @@ class Day:
                     else:
                         messageText += "\n> All other pairs: 0"
                         break
-                await safe_send(global_vars.channel, messageText)
+                await message_utils.safe_send(global_vars.channel, messageText)
 
         await update_presence(client)
 

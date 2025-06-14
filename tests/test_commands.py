@@ -14,7 +14,7 @@ import pytest
 import global_vars
 from bot_impl import on_message, Vote
 from tests.fixtures.common_patches import (
-    file_operation_patches
+    file_operation_patches_combined
 )
 # Import fixtures from fixtures directory
 from tests.fixtures.discord_mocks import mock_discord_setup, MockChannel, MockMessage
@@ -27,7 +27,7 @@ def disable_file_operations():
     """Disable all file operations that might occur during tests.
     This ensures we don't create unwanted files or modify existing ones."""
     # Get patches for file operations
-    patches = file_operation_patches()
+    patches = file_operation_patches_combined()
 
     # Mock Game Settings
     mock_game_settings = MagicMock()
@@ -72,7 +72,7 @@ async def test_startday_command(mock_discord_setup, setup_test_game):
     storyteller = setup_test_game['players']['storyteller']
 
     # Test the start_day method directly with mocks for Discord API calls
-    with patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send, \
+    with patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send, \
             patch('bot_impl.update_presence') as mock_update_presence:
         # Make sure there's a valid seatingOrder for start_day
         # Add implementation for setup needed by the start_day method
@@ -108,7 +108,7 @@ async def test_all_core_commands_execute(mock_discord_setup, setup_test_game):
     day = await start_test_day(setup_test_game['game'])
 
     # Patch all Discord and file interactions to avoid side effects
-    with patch('bot_impl.safe_send', new_callable=AsyncMock), \
+    with patch('utils.message_utils.safe_send', new_callable=AsyncMock), \
             patch('bot_impl.update_presence'), \
             patch('bot_impl.backup'), \
             patch('bot_impl.remove_backup'):
@@ -148,7 +148,7 @@ async def test_day_phase_commands(mock_discord_setup, setup_test_game):
     test_timestamp = 1735693200  # Mock timestamp for 8:00pm
 
     # Patch all Discord and file interactions to avoid side effects
-    with patch('bot_impl.safe_send', new_callable=AsyncMock), \
+    with patch('utils.message_utils.safe_send', new_callable=AsyncMock), \
             patch('bot_impl.update_presence'), \
             patch('bot_impl.backup'), \
             patch('time_utils.time_utils.parse_deadline', return_value=test_timestamp):
@@ -311,7 +311,7 @@ async def test_inactive_management_commands(mock_discord_setup, setup_test_game)
     # Test makeinactive command
     with patch('bot_impl.select_player', return_value=setup_test_game['players']['alice']):
         with patch('bot_impl.backup') as mock_backup:
-            with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 with patch.object(mock_discord_setup['members']['alice'], 'add_roles',
                                   return_value=AsyncMock()) as mock_add_roles:
                     # Set initial state - active
@@ -330,7 +330,7 @@ async def test_inactive_management_commands(mock_discord_setup, setup_test_game)
     # Test undoinactive command
     with patch('bot_impl.select_player', return_value=setup_test_game['players']['alice']):
         with patch('bot_impl.backup') as mock_backup:
-            with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 with patch.object(mock_discord_setup['members']['alice'], 'remove_roles',
                                   return_value=AsyncMock()) as mock_remove_roles:
                     # Set initial state - inactive
@@ -364,7 +364,7 @@ async def test_changerole_command(mock_discord_setup, setup_test_game):
 
     # Use the mock directly or through a patched registry
     with patch('bot_impl.backup') as mock_backup:
-        with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+        with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
             # Store original character
             original_character = setup_test_game['players']['alice'].character
 
@@ -391,7 +391,7 @@ async def test_changealignment_command(mock_discord_setup, setup_test_game):
     # Test changealignment command
     with patch('bot_impl.select_player', return_value=setup_test_game['players']['alice']):
         with patch('bot_impl.backup') as mock_backup:
-            with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 # Store original alignment
                 original_alignment = setup_test_game['players']['alice'].alignment
 
@@ -418,7 +418,7 @@ async def test_ability_management_commands(mock_discord_setup, setup_test_game):
     # Test changeability command
     with patch('bot_impl.select_player', return_value=setup_test_game['players']['alice']):
         with patch('bot_impl.backup') as mock_backup:
-            with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 # Store original ability
                 if hasattr(setup_test_game['players']['alice'], 'ability'):
                     original_ability = setup_test_game['players']['alice'].ability
@@ -436,7 +436,7 @@ async def test_ability_management_commands(mock_discord_setup, setup_test_game):
     # Test removeability command
     with patch('bot_impl.select_player', return_value=setup_test_game['players']['alice']):
         with patch('bot_impl.backup') as mock_backup:
-            with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 # Remove ability directly
                 setup_test_game['players']['alice'].ability = None
 
@@ -459,7 +459,7 @@ async def test_welcome_command(mock_discord_setup, setup_test_game):
 
     # Test welcome command
     with patch('bot_impl.select_player', return_value=setup_test_game['players']['alice']):
-        with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+        with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
             # Send welcome message directly to player
             welcome_message = "Welcome to the game, Alice! You are playing as a Character. Your alignment is good."
             await mock_safe_send(setup_test_game['players']['alice'].user, welcome_message)
@@ -489,7 +489,7 @@ async def test_nominate_command(mock_discord_setup, setup_test_game):
     with patch('global_vars.game', setup_test_game['game']):
         with patch('bot_impl.select_player', return_value=setup_test_game['players']['charlie']):
             with patch('bot_impl.backup', return_value=None):
-                with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+                with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                     # Mock nomination function
                     original_nomination = setup_test_game['game'].days[-1].nomination
                     setup_test_game['game'].days[-1].nomination = AsyncMock()
@@ -534,7 +534,7 @@ async def run_command_vote(mock_discord_setup, setup_test_game):
     with patch('global_vars.game', setup_test_game['game']):
         with patch('bot_impl.get_player', return_value=setup_test_game['players']['alice']):
             with patch('bot_impl.backup', return_value=None):
-                with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+                with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                     # Mock vote method
                     original_vote = vote.vote
                     vote.vote = AsyncMock()
@@ -565,7 +565,7 @@ async def test_presetvote_command(mock_discord_setup, setup_test_game):
     # Process the command
     with patch('global_vars.game', setup_test_game['game']):
         with patch('bot_impl.backup', return_value=None) as mock_backup:
-            with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 # Mock preset_vote method
                 original_preset_vote = setup_test_game['game'].days[-1].votes[-1].preset_vote
                 setup_test_game['game'].days[-1].votes[-1].preset_vote = AsyncMock()
@@ -605,7 +605,7 @@ async def test_defaultvote_command(mock_discord_setup, setup_test_game):
             mock_settings.save = MagicMock()
             mock_load.return_value = mock_settings
 
-            with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 # Call set_default_vote directly
                 mock_settings.set_default_vote(
                     setup_test_game['players']['alice'].user.id,
@@ -651,7 +651,7 @@ async def test_nomination_management_commands(mock_discord_setup, setup_test_gam
     # Test cancelnomination command
     with patch('global_vars.game', setup_test_game['game']):
         with patch('bot_impl.backup') as mock_backup:
-            with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 # Clear votes directly instead of using on_message handler
                 setup_test_game['game'].days[-1].votes = []
 
@@ -686,7 +686,7 @@ async def test_adjustvotes_command(mock_discord_setup, setup_test_game):
     # Test adjustvotes command
     with patch('global_vars.game', setup_test_game['game']):
         with patch('bot_impl.backup') as mock_backup:
-            with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 # Set to 2 yes, 0 no directly
                 vote.history = [1, 1]  # Both yes votes
 
@@ -725,7 +725,7 @@ async def test_pm_command(mock_discord_setup, setup_test_game):
         with patch('bot_impl.select_player', return_value=setup_test_game['players']['bob']):
             with patch('bot_impl.chose_whisper_candidates', return_value=[setup_test_game['players']['bob']]):
                 with patch('bot_impl.backup', return_value=None):
-                    with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+                    with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                         # Mock message method
                         original_message = setup_test_game['players']['bob'].message
                         setup_test_game['players']['bob'].message = AsyncMock()
@@ -777,7 +777,7 @@ async def test_history_command(mock_discord_setup, setup_test_game):
     with patch('bot_impl.backup', return_value=None):
         with patch('bot_impl.select_player') as mock_select_player:
             mock_select_player.return_value = setup_test_game['players']['bob']
-            with patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send:
+            with patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
                 await on_message(alice_message)
 
                 # Verify message history was sent
@@ -800,7 +800,7 @@ async def test_info_command(mock_discord_setup, setup_test_game):
     global_vars.game = setup_test_game['game']
 
     # Test info command directly
-    with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+    with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
         # Create an info message response (simplified for testing)
         info_message = "Information about Washerwoman: The Washerwoman is a Townsfolk character..."
 
@@ -829,7 +829,7 @@ async def test_player_status_commands(mock_discord_setup, setup_test_game):
     setup_test_game['players']['alice'].is_active = False
 
     with patch('global_vars.game', setup_test_game['game']):
-        with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+        with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
             # Generate inactive players list directly
             inactive_players = [p for p in setup_test_game['game'].seatingOrder if not p.is_active]
             inactive_list_message = "Inactive players: " + ", ".join([p.name for p in inactive_players])
@@ -849,7 +849,7 @@ async def test_player_status_commands(mock_discord_setup, setup_test_game):
     setup_test_game['players']['bob'].has_checked_in = False
 
     with patch('global_vars.game', setup_test_game['game']):
-        with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+        with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
             # Generate players needing check-in list directly
             not_checked_in = [p for p in setup_test_game['game'].seatingOrder if not p.has_checked_in]
             checkin_list_message = "Players who need to check in: " + ", ".join([p.name for p in not_checked_in])
@@ -878,7 +878,7 @@ async def test_player_status_commands(mock_discord_setup, setup_test_game):
     setup_test_game['players']['alice'].can_nominate = True
 
     with patch('global_vars.game', setup_test_game['game']):
-        with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+        with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
             # Generate can nominate list directly
             can_nominate = [p for p in setup_test_game['game'].seatingOrder
                             if hasattr(p, 'can_nominate') and p.can_nominate and p.is_active]
@@ -913,7 +913,7 @@ async def test_lastactive_command(mock_discord_setup, setup_test_game):
     setup_test_game['players']['charlie'].last_active = current_time - datetime.timedelta(days=1)
 
     with patch('global_vars.game', setup_test_game['game']):
-        with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+        with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
             # Generate last active status directly
             last_active_info = []
             for player in setup_test_game['game'].seatingOrder:
@@ -956,7 +956,7 @@ async def test_automatekills_command(mock_discord_setup, setup_test_game):
     # Test enabling automated life and death
     with patch('global_vars.game', setup_test_game['game']):
         with patch('bot_impl.backup') as mock_backup:
-            with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 # Set initial state
                 setup_test_game['game'].has_automated_life_and_death = False
 
@@ -987,7 +987,7 @@ async def test_automatekills_command(mock_discord_setup, setup_test_game):
     # Test disabling automated life and death
     with patch('global_vars.game', setup_test_game['game']):
         with patch('bot_impl.backup') as mock_backup:
-            with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 # Disable automation directly
                 setup_test_game['game'].has_automated_life_and_death = False
 
@@ -1026,7 +1026,7 @@ async def test_setatheist_command(mock_discord_setup, setup_test_game):
     # 1. Test enabling atheist mode
     with patch('global_vars.game', setup_test_game['game']):
         with patch('bot_impl.backup') as mock_backup:
-            with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 # Set initial state - atheist mode off
                 setup_test_game['game'].is_atheist = False
 
@@ -1057,7 +1057,7 @@ async def test_setatheist_command(mock_discord_setup, setup_test_game):
     # 2. Test disabling atheist mode
     with patch('global_vars.game', setup_test_game['game']):
         with patch('bot_impl.backup') as mock_backup:
-            with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 # Disable atheist mode directly
                 setup_test_game['game'].is_atheist = False
 
@@ -1097,7 +1097,7 @@ async def test_poison_commands(mock_discord_setup, setup_test_game):
     with patch('global_vars.game', setup_test_game['game']):
         with patch('bot_impl.select_player', return_value=setup_test_game['players']['alice']):
             with patch('bot_impl.backup') as mock_backup:
-                with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+                with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                     # Set initial state - not poisoned
                     setup_test_game['players']['alice'].is_poisoned = False
 
@@ -1129,7 +1129,7 @@ async def test_poison_commands(mock_discord_setup, setup_test_game):
     with patch('global_vars.game', setup_test_game['game']):
         with patch('bot_impl.select_player', return_value=setup_test_game['players']['alice']):
             with patch('bot_impl.backup') as mock_backup:
-                with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+                with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                     # Unpoison player directly
                     setup_test_game['players']['alice'].is_poisoned = False
 
@@ -1171,7 +1171,7 @@ async def test_reseat_commands(mock_discord_setup, setup_test_game):
     # 1. Test resetseats command
     with patch('global_vars.game', setup_test_game['game']):
         with patch('bot_impl.backup') as mock_backup:
-            with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 # Reset seats directly
                 setup_test_game['game'].seatingOrder = original_seating_order.copy()
 
@@ -1191,7 +1191,7 @@ async def test_reseat_commands(mock_discord_setup, setup_test_game):
     # 2. Test reseat command
     with patch('global_vars.game', setup_test_game['game']):
         with patch('bot_impl.backup') as mock_backup:
-            with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 # New seating order: Alice, Charlie, Bob
                 new_seating_order = [
                     setup_test_game['players']['alice'],
@@ -1243,7 +1243,7 @@ async def test_makealias_command(mock_discord_setup, setup_test_game):
         mock_settings.save = MagicMock()
         mock_load.return_value = mock_settings
 
-        with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+        with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
             # Set alias directly
             mock_settings.set_alias(
                 setup_test_game['players']['alice'].user.id,
@@ -1291,7 +1291,7 @@ async def test_dead_vote_commands(mock_discord_setup, setup_test_game):
     with patch('global_vars.game', setup_test_game['game']):
         with patch('bot_impl.select_player', return_value=setup_test_game['players']['alice']):
             with patch('bot_impl.backup') as mock_backup:
-                with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+                with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                     with patch.object(mock_discord_setup['members']['alice'], 'add_roles',
                                       return_value=AsyncMock()) as mock_add_roles:
                         # Add dead vote role directly
@@ -1322,7 +1322,7 @@ async def test_dead_vote_commands(mock_discord_setup, setup_test_game):
     with patch('global_vars.game', setup_test_game['game']):
         with patch('bot_impl.select_player', return_value=setup_test_game['players']['alice']):
             with patch('bot_impl.backup') as mock_backup:
-                with patch('bot_impl.safe_send', return_value=AsyncMock()) as mock_safe_send:
+                with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                     with patch.object(mock_discord_setup['members']['alice'], 'remove_roles',
                                       return_value=AsyncMock()) as mock_remove_roles:
                         # Remove dead vote role directly

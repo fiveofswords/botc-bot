@@ -157,7 +157,7 @@ class MockMessage:
         self.author = author
         self.pinned = False
         self.created_at = datetime.datetime.now()
-        self.jump_url = f"https://discord.com/channels/123/{channel.id if channel else 0}/{id}"
+        self.jump_url = f"https://discord.com/channels/123/{channel.id if channel else 0}/{self.id}"
         # For direct messages, guild will be None
         self.guild = guild
 
@@ -321,25 +321,3 @@ async def mock_discord_setup():
             'charlie': charlie
         }
     }
-
-
-def create_mock_message(id, content, channel, author, guild=None, embed=None):
-    """Factory function to create a mock message."""
-    return MockMessage(
-        id=id,
-        content=content,
-        channel=channel,
-        author=author,
-        guild=guild,
-        embed=embed
-    )
-
-
-def create_mock_channel(channel_id, name):
-    """Factory function to create a mock channel."""
-    return MockChannel(channel_id, name)
-
-
-def create_mock_member(member_id, name, display_name=None, roles=None):
-    """Factory function to create a mock member."""
-    return MockMember(member_id, name, display_name, roles)

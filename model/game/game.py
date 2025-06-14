@@ -6,8 +6,8 @@ from model.channels.channel_utils import reorder_channels
 from model.characters import Storyteller, SeatingOrderModifier, DayStartModifier
 from model.game.whisper_mode import WhisperMode
 from model.player import Player, STORYTELLER_ALIGNMENT
+from utils import message_utils
 from utils.game_utils import update_presence, remove_backup
-from utils.message_utils import safe_send
 
 
 class Game:
@@ -91,7 +91,8 @@ class Game:
 
             if not self.info_channel_seating_order_message:  # If message doesn't exist or was reset
                 try:
-                    self.info_channel_seating_order_message = await safe_send(global_vars.info_channel, message_text)
+                    self.info_channel_seating_order_message = await message_utils.safe_send(global_vars.info_channel,
+                                                                                            message_text)
                     if self.info_channel_seating_order_message: # If message was sent successfully
                         await self.info_channel_seating_order_message.pin()
                 except Exception as e:
@@ -127,7 +128,7 @@ class Game:
 
         # announcement
         winner = winner.lower()
-        await safe_send(
+        await message_utils.safe_send(
             global_vars.channel,
             f"{global_vars.player_role.mention}, {'The game is over.' if winner == 'tie' else f'{winner} has won.'} Good game!",
         )
@@ -176,7 +177,7 @@ class Game:
         self.seatingOrder.insert(person.position, person)
         await person.user.add_roles(global_vars.player_role, global_vars.traveler_role)
         await self.reseat(self.seatingOrder)
-        await safe_send(
+        await message_utils.safe_send(
             global_vars.channel,
             "{} has joined the town as the {}.".format(
                 person.display_name, person.character.role_name
@@ -192,7 +193,7 @@ class Game:
         self.seatingOrder.remove(person)
         await person.user.remove_roles(global_vars.player_role, global_vars.traveler_role)
         await self.reseat(self.seatingOrder)
-        announcement = await safe_send(
+        announcement = await message_utils.safe_send(
             global_vars.channel, "{} has left the town.".format(person.display_name)
         )
         await announcement.pin()
@@ -215,9 +216,9 @@ class Game:
 
         deaths = [await person.kill() for person in kills]
         if deaths == [] and len(self.days) > 0:
-            no_kills = await safe_send(global_vars.channel, "No one has died.")
+            no_kills = await message_utils.safe_send(global_vars.channel, "No one has died.")
             await no_kills.pin()
-        await safe_send(
+        await message_utils.safe_send(
             global_vars.channel,
             "{}, wake up! Message the storytellers to set default votes for today.".format(
                 global_vars.player_role.mention
@@ -228,7 +229,7 @@ class Game:
         self.isDay = True
 
         if global_vars.whisper_channel:
-            message = await safe_send(global_vars.whisper_channel, f"Start of day {len(self.days)}")
+            message = await message_utils.safe_send(global_vars.whisper_channel, f"Start of day {len(self.days)}")
             await message.pin()
 
         await update_presence(client)

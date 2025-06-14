@@ -14,11 +14,8 @@ Mock implementations of Discord objects:
 - `MockGuild`: Discord server (guild) with member/channel lookup
 - `MockRole`: Discord role with member tracking
 
-Factory functions:
-
-- `create_mock_message()`: Creates a mock message
-- `create_mock_channel()`: Creates a mock channel
-- `create_mock_member()`: Creates a mock member
+**Note:** Mock objects should be created directly using their class constructors (e.g., `MockMessage()`,
+`MockChannel()`, `MockMember()`) for better clarity and explicitness.
 
 Fixtures:
 
@@ -47,10 +44,15 @@ Patch collections:
 
 - `disable_backup()`: Disables backup functionality for tests
 - `common_patches()`: Returns common patches needed for most tests
-- `patch_file_operations()`: Disables all file operations
-- `patch_discord_send()`: Mocks Discord message sending
-- `patch_discord_reactions()`: Mocks Discord reaction handling
-- `patch_game_functions()`: Mocks Game class methods
+- `file_operations_patches_combined()`: Disables all file operations
+- `discord_message_patches()`: Mocks Discord message sending
+- `discord_reaction_patches_combined()`: Mocks Discord reaction handling
+- `game_function_patches()`: Mocks Game class methods
+- `base_bot_patches()`: Core patches for bot functionality
+- `command_execution_patches()`: Patches for command testing
+- `hand_status_patches()`: Patches for hand status testing
+- `vote_execution_patches()`: Patches for vote execution testing
+- `storyteller_command_patches()`: Patches for storyteller command testing
 
 ### Command Testing (`command_testing.py`)
 
@@ -65,9 +67,9 @@ Command testing helpers:
 **Enhanced helpers for common patterns:**
 
 - `execute_command_with_wait_for()`: Execute commands with predefined client.wait_for responses
-
-**Note:** For MockMessage creation, use `MockMessage` directly instead of wrapper functions for better clarity and
-explicitness.
+- `test_hand_command()`: Helper for testing hand commands with prevote interactions
+- `patch_hand_status_testing()`: Context manager for hand status testing patches
+- `patch_vote_testing()`: Context manager for vote testing patches
 
 ## Usage
 
@@ -114,7 +116,7 @@ async def test_some_command(mock_discord_setup, setup_test_game):
     # Test with individual patches (recommended approach)
     with patch('bot_impl.get_player', return_value=alice),
             patch('bot_impl.backup') as mock_backup,
-            patch('bot_impl.safe_send', new_callable=AsyncMock) as mock_safe_send:
+            patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
         await on_message(msg)
 
         # Verify results
