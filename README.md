@@ -10,6 +10,7 @@ A Discord bot for playing Blood on the Clocktower.
 - Whisper mode and private communications
 - Traveler voting system
 - Info channel with seating order updates
+- Enhanced command registry system with integrated help
 - Comprehensive testing suite with 400+ tests
 - Multiple environment support for different servers
 
