@@ -1573,6 +1573,24 @@ class Zealot(Outsider):
         self.role_name = "Zealot"
 
 
+class Hermit(Outsider, AbilityModifier):
+    """The hermit."""
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Hermit"
+
+    def extra_info(self):
+        # list the extra info for each ability
+        base_info = super().extra_info()
+        for ability in self.abilities:
+            info = ability.extra_info()
+            base_info += f"\nHas Ability: {ability.role_name}"
+            if info:
+                base_info = base_info + f"\n{info}"
+        return base_info.strip()
+
+
 class Marionette(Minion):
     """The marionette."""
     
