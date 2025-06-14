@@ -48,7 +48,7 @@ def get_token() -> str:
     Reads the API token from 'token.txt' or returns a stub in testing environments.
     """
     token_path = os.path.dirname(os.path.realpath(__file__)) + "/token.txt"
-    if os.path.exists(token_path):
+    if os.path.isfile(token_path):
         with open(token_path) as tokenfile:
             return tokenfile.readline().strip()
     elif os.environ.get('TESTING'):

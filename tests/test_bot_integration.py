@@ -2823,7 +2823,7 @@ async def test_on_ready_with_backup_file(mock_discord_setup, setup_test_game):
         mock_load = None
         for p in patches:
             mock = stack.enter_context(p)
-            if hasattr(p, 'attribute') and p.attribute == 'load':
+            if hasattr(p, 'tag') and p.tag == 'load_patch':
                 mock_load = mock
 
         # Call the actual on_ready function
