@@ -903,7 +903,7 @@ async def on_message(message):
                 info_channel_message = None
                 if global_vars.info_channel:
                     try:
-                        info_channel_message = await safe_send(global_vars.info_channel, message_text)
+                        info_channel_message = await message_utils.safe_send(global_vars.info_channel, message_text)
                         if info_channel_message:
                             await info_channel_message.pin()
                     except Exception as e:
