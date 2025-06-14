@@ -1,10 +1,10 @@
-import time
+import logging
 
 import discord
-import logging
-from bot_client import client, token
 
 import bot_impl
+from bot_client import client, get_token
+
 _ = bot_impl.__name__  # need to reference the bot module to "install" event handlers
 
 
@@ -16,7 +16,7 @@ class BotApp:
         active = True
         while active:
             try:
-                client.run(token)
+                client.run(get_token())
                 print("ending bot...")
                 print("ignore errors on bot end. the libraries are not perfect")
                 active = False

@@ -13,13 +13,20 @@ Mock implementations of Discord objects:
 - `MockMessage`: Discord message with edit/pin functionality
 - `MockGuild`: Discord server (guild) with member/channel lookup
 - `MockRole`: Discord role with member tracking
+- `MockClient`: Discord client with automatic guild/channel lookup
+
+**Enhanced Features:**
+
+- MockClient automatically provides `get_guild()` and `get_channel()` methods
+- Automatic channel and category lookup by ID from the associated guild
+- No manual client method setup required in tests
 
 **Note:** Mock objects should be created directly using their class constructors (e.g., `MockMessage()`,
 `MockChannel()`, `MockMember()`) for better clarity and explicitness.
 
 Fixtures:
 
-- `mock_discord_setup()`: Sets up a complete Discord environment for testing
+- `mock_discord_setup()`: Sets up a complete Discord environment with enhanced MockClient
 
 ### Game Fixtures (`game_fixtures.py`)
 
@@ -40,19 +47,31 @@ Game setup helpers:
 
 ### Common Patches (`common_patches.py`)
 
-Patch collections:
+Patch collections for different testing scenarios:
 
-- `disable_backup()`: Disables backup functionality for tests
-- `common_patches()`: Returns common patches needed for most tests
-- `file_operations_patches_combined()`: Disables all file operations
-- `discord_message_patches()`: Mocks Discord message sending
+**Core patches (return lists for ExitStack):**
+
+- `backup_patches_combined()`: Disables backup functionality
+- `file_operation_patches_combined()`: Disables file system operations
 - `discord_reaction_patches_combined()`: Mocks Discord reaction handling
+- `file_operations_patches_combined()`: Disables all file operations
+
+**Dictionary patches (for manual patching):**
+- `discord_message_patches()`: Mocks Discord message sending
 - `game_function_patches()`: Mocks Game class methods
 - `base_bot_patches()`: Core patches for bot functionality
+- `config_patches()`: Patches bot config values with mock Discord objects
+
+**Targeted patches for specific scenarios:**
 - `command_execution_patches()`: Patches for command testing
 - `hand_status_patches()`: Patches for hand status testing
 - `vote_execution_patches()`: Patches for vote execution testing
 - `storyteller_command_patches()`: Patches for storyteller command testing
+
+**Complete bot setup:**
+
+- `full_bot_setup_patches_combined()`: Complete patches for bot initialization tests
+- `disable_backup()`: Auto-fixture that disables backup for all tests
 
 ### Command Testing (`command_testing.py`)
 
@@ -78,50 +97,49 @@ Import the fixtures in your test files:
 ```python
 import pytest
 from unittest.mock import patch, AsyncMock
-from tests.fixtures.discord_mocks import mock_discord_setup
-from tests.fixtures.game_fixtures import setup_test_game, setup_vote_with_preset, setup_storyteller_permissions
-from tests.fixtures.discord_mocks import MockMessage
-from bot_impl import on_message
+from contextlib import ExitStack
+from tests.fixtures.discord_mocks import mock_discord_setup, MockMessage
+from tests.fixtures.game_fixtures import setup_test_game
+from tests.fixtures.common_patches import full_bot_setup_patches_combined
+from bot_impl import on_message, on_ready
 
 
 @pytest.mark.asyncio
-async def test_some_command(mock_discord_setup, setup_test_game):
-    # Test using the enhanced fixtures
+async def test_bot_initialization(mock_discord_setup):
+    """Example of bot initialization testing with complete setup."""
+    # Use the complete bot setup patches
+    patches = full_bot_setup_patches_combined(mock_discord_setup)
+    with ExitStack() as stack:
+        for p in patches:
+            stack.enter_context(p)
+
+        # Test bot initialization
+        await on_ready()
+
+        # Verify initialization completed
+        assert global_vars.server == mock_discord_setup['guild']
+
+
+@pytest.mark.asyncio
+async def test_command_execution(mock_discord_setup, setup_test_game):
+    """Example of testing commands with targeted patches."""
     game = setup_test_game['game']
     alice = setup_test_game['players']['alice']
-    storyteller = setup_test_game['players']['storyteller']
-
-    # Set up a vote with preset votes using shared infrastructure
-    vote = setup_vote_with_preset(
-        game=game,
-        nominee=alice,
-        nominator=storyteller,
-        voters=[alice],
-        preset_votes={alice.user.id: 1}
-    )
-
-    # Set up storyteller permissions using shared helper
-    setup_storyteller_permissions(
-        storyteller=storyteller,
-        mock_discord_setup=mock_discord_setup
-    )
 
     # Create a command message using MockMessage directly
     msg = MockMessage(
-        content="@vote yes",
+        content="@hand up",
         channel=alice.user.dm_channel,
         author=alice.user
     )
 
-    # Test with individual patches (recommended approach)
-    with patch('bot_impl.get_player', return_value=alice),
-            patch('bot_impl.backup') as mock_backup,
-            patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
-        await on_message(msg)
+    # Use targeted patches for specific functionality
+    with patch('bot_impl.get_player', return_value=alice):
+        with patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
+            await on_message(msg)
 
-        # Verify results
-        assert mock_backup.called
-        assert mock_safe_send.called
+            # Verify results
+            assert mock_safe_send.called
 ```
 
 Always use the fixtures to minimize duplication and ensure consistent testing behavior.

@@ -28,13 +28,28 @@ class MockClient:
         self.user.id = 999
         self.user.name = "Test Bot"
         self.guild = guild
-        # Make get_channel a MagicMock so it can be easily mocked in tests
+
+        # Set up get_guild method
+        self.get_guild = MagicMock(return_value=guild)
+
+        # Set up get_channel method to return channels and categories by ID
         self.get_channel = MagicMock(side_effect=self._get_channel)
 
     def _get_channel(self, channel_id):
-        """Get a channel by ID from the associated guild."""
-        if self.guild:
-            return self.guild.get_channel(channel_id)
+        """Get a channel or category by ID from the associated guild."""
+        if not self.guild:
+            return None
+
+        # Check regular channels
+        for channel in self.guild.channels:
+            if channel.id == channel_id:
+                return channel
+
+        # Check categories (which are also channels in Discord)
+        for category in self.guild.categories:
+            if category.id == channel_id:
+                return category
+                
         return None
 
 

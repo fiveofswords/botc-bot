@@ -8,7 +8,6 @@ import discord
 _member_cache: discord.MemberCacheFlags
 client: discord.Client
 logger: logging.Logger
-token: str
 
 logger = logging.getLogger("discord")
 logger.setLevel(logging.WARNING)
@@ -44,6 +43,15 @@ client = discord.Client(
 )  # discord client
 
 # Read API Token
-with open(os.path.dirname(os.path.realpath(__file__)) + "/token.txt") as tokenfile:
-    token = tokenfile.readline().strip()
-
+def get_token() -> str:
+    """
+    Reads the API token from 'token.txt' or returns a stub in testing environments.
+    """
+    token_path = os.path.dirname(os.path.realpath(__file__)) + "/token.txt"
+    if os.path.exists(token_path):
+        with open(token_path) as tokenfile:
+            return tokenfile.readline().strip()
+    elif os.environ.get('TESTING'):
+        return "dummy_token_for_testing"
+    else:
+        raise FileNotFoundError("token.txt not found and not in testing mode")
