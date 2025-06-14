@@ -6,6 +6,7 @@ def load_all_commands():
     """Import all command modules to register their commands."""
     command_modules = [
         "commands.info_commands",
+        "commands.help_commands",
     ]
 
     for module_name in command_modules:
