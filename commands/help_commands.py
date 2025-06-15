@@ -1,5 +1,6 @@
 """Enhanced help commands that combine registry and hardcoded help."""
 import logging
+from typing import NamedTuple, List
 
 import discord
 
@@ -18,6 +19,17 @@ except ImportError:
     config.PREFIXES = (',', '@')
 
 logging = logging.getLogger('discord')
+
+
+class HardcodedCommand(NamedTuple):
+    name: str
+    description: str
+    aliases: List[str]
+
+
+class CommandDisplay(NamedTuple):
+    name: str
+    description: str
 
 
 class HelpGenerator:
@@ -99,7 +111,7 @@ class HelpGenerator:
                 value=info["description"],
                 inline=False,
             )
-        
+
         HelpGenerator._add_issues_field(embed)
         return embed
 
@@ -108,27 +120,24 @@ class HelpGenerator:
                                   user_type: commands.help_types.UserType) -> discord.Embed:
         """Create a help embed for a specific section with integrated registry + hardcoded commands."""
         section_info = HelpGenerator.SECTION_INFO.get(section)
-        
+
         embed = discord.Embed(
             title=section_info["title"] if section_info else f"{section.value.title()} Commands",
             description=f"Commands in the {section.value} category",
         )
 
         # Add registry and hardcoded commands for the section
-        hardcoded_commands: list[tuple[str, str]] = HelpGenerator._get_hardcoded_commands_for_section(section)
-        section_commands = []
-        section_commands.extend(hardcoded_commands)
-        for cmd in registry.get_commands_by_section(section, user_type):
-            cmd_name = cmd.name
-            if cmd.aliases:
-                cmd_name += f" (aliases: {', '.join(cmd.aliases)})"
-            section_commands.append((cmd_name, cmd.get_description_for_user(user_type)))
-        section_commands.sort(key=lambda x: x[0].lower())  # Sort by command name
+        hardcoded_commands: list[HardcodedCommand] = HelpGenerator._get_hardcoded_commands_for_section(section)
+        registry_commands = registry.get_commands_by_section(section, user_type)
+        
+        all_commands = HelpGenerator._combine_and_sort_commands(
+            registry_commands, hardcoded_commands, user_type
+        )
 
-        for cmd_name, description in section_commands:
-            embed.add_field(name=cmd_name, value=description, inline=False)
+        for cmd in all_commands:
+            embed.add_field(name=cmd.name, value=cmd.description, inline=False)
 
-        if not section_commands:
+        if not all_commands:
             embed.add_field(
                 name="No commands found",
                 value="No commands are available for this section yet.",
@@ -138,78 +147,95 @@ class HelpGenerator:
         return embed
 
     @staticmethod
-    def _get_hardcoded_commands_for_section(section: commands.help_types.HelpSection) -> list[tuple[str, str]]:
+    def _get_hardcoded_commands_for_section(section: commands.help_types.HelpSection) -> list[HardcodedCommand]:
         """Get hardcoded commands for a specific section."""
         hardcoded_map = {
             commands.help_types.HelpSection.COMMON: [
-                ("startgame", "starts the game"),
-                ("endgame <<team>>", "ends the game with winner team"),
-                ("startday <<players>>", "starts the day, killing players"),
-                ("endday", "ends the day"),
-                ("kill <<player>>", "kills player"),
-                ("execute <<player>>", "executes player"),
-                ("exile <<traveler>>", "exiles traveler"),
-                ("setdeadline <time>", "sets deadline and opens nominations"),
-                ("poison <<player>>", "poisons player"),
-                ("unpoison <<player>>", "unpoisons player"),
+                HardcodedCommand("startgame", "starts the game", []),
+                HardcodedCommand("endgame <<team>>", "ends the game with winner team", []),
+                HardcodedCommand("startday <<players>>", "starts the day, killing players", []),
+                HardcodedCommand("endday", "ends the day", []),
+                HardcodedCommand("kill <<player>>", "kills player", []),
+                HardcodedCommand("execute <<player>>", "executes player", []),
+                HardcodedCommand("exile <<traveler>>", "exiles traveler", []),
+                HardcodedCommand("setdeadline <time>", "sets deadline and opens nominations", []),
+                HardcodedCommand("poison <<player>>", "poisons player", []),
+                HardcodedCommand("unpoison <<player>>", "unpoisons player", []),
             ],
             commands.help_types.HelpSection.PROGRESSION: [
-                ("startgame", "starts the game"),
-                ("endgame <<team>>", "ends the game with winner team"),
-                ("startday <<players>>", "starts the day, killing players"),
-                ("endday", "ends the day"),
+                HardcodedCommand("startgame", "starts the game", []),
+                HardcodedCommand("endgame <<team>>", "ends the game with winner team", []),
+                HardcodedCommand("startday <<players>>", "starts the day, killing players", []),
+                HardcodedCommand("endday", "ends the day", []),
             ],
             commands.help_types.HelpSection.DAY: [
-                ("setdeadline <time>", "sets deadline and opens nominations"),
-                ("openpms", "opens private messages"),
-                ("opennoms", "opens nominations"),
-                ("open", "opens both PMs and nominations"),
-                ("closepms", "closes private messages"),
-                ("closenoms", "closes nominations"),
-                ("close", "closes both PMs and nominations"),
-                ("vote", "votes for the current player"),
+                HardcodedCommand("setdeadline <time>", "sets deadline and opens nominations", []),
+                HardcodedCommand("openpms", "opens private messages", []),
+                HardcodedCommand("opennoms", "opens nominations", []),
+                HardcodedCommand("open", "opens both PMs and nominations", []),
+                HardcodedCommand("closepms", "closes private messages", []),
+                HardcodedCommand("closenoms", "closes nominations", []),
+                HardcodedCommand("close", "closes both PMs and nominations", []),
+                HardcodedCommand("vote", "votes for the current player", []),
             ],
             commands.help_types.HelpSection.GAMESTATE: [
-                ("kill <<player>>", "kills player"),
-                ("execute <<player>>", "executes player"),
-                ("exile <<traveler>>", "exiles traveler"),
-                ("revive <<player>>", "revives player"),
-                ("changerole <<player>>", "changes player's role"),
-                ("changealignment <<player>>", "changes player's alignment"),
-                ("changeability <<player>>", "changes player's ability"),
-                ("removeability <<player>>", "clears player's modified ability"),
-                ("givedeadvote <<player>>", "adds a dead vote for player"),
-                ("removedeadvote <<player>>", "removes a dead vote from player"),
-                ("poison <<player>>", "poisons player"),
-                ("unpoison <<player>>", "unpoisons player"),
+                HardcodedCommand("kill <<player>>", "kills player", []),
+                HardcodedCommand("execute <<player>>", "executes player", []),
+                HardcodedCommand("exile <<traveler>>", "exiles traveler", []),
+                HardcodedCommand("revive <<player>>", "revives player", []),
+                HardcodedCommand("changerole <<player>>", "changes player's role", []),
+                HardcodedCommand("changealignment <<player>>", "changes player's alignment", []),
+                HardcodedCommand("changeability <<player>>", "changes player's ability", []),
+                HardcodedCommand("removeability <<player>>", "clears player's modified ability", []),
+                HardcodedCommand("givedeadvote <<player>>", "adds a dead vote for player", []),
+                HardcodedCommand("removedeadvote <<player>>", "removes a dead vote from player", []),
+                HardcodedCommand("poison <<player>>", "poisons player", []),
+                HardcodedCommand("unpoison <<player>>", "unpoisons player", []),
             ],
             commands.help_types.HelpSection.CONFIGURE: [
-                ("whispermode <<all/neighbors/storytellers>>", "sets whisper mode"),
-                ("enabletally", "enables display of whisper counts"),
-                ("disabletally", "disables display of whisper counts"),
-                ("setatheist <<true/false>>", "sets whether atheist is on script"),
-                ("automatekills <<true/false>>", "sets whether deaths are automated"),
+                HardcodedCommand("whispermode <<all/neighbors/storytellers>>", "sets whisper mode", []),
+                HardcodedCommand("enabletally", "enables display of whisper counts", []),
+                HardcodedCommand("disabletally", "disables display of whisper counts", []),
+                HardcodedCommand("setatheist <<true/false>>", "sets whether atheist is on script", []),
+                HardcodedCommand("automatekills <<true/false>>", "sets whether deaths are automated", []),
             ],
             commands.help_types.HelpSection.INFO: [
-                ("history <<player1>> <<player2>>", "views message history between players"),
-                ("history <<player>>", "views all of player's messages"),
-                ("votehistory", "views all nominations and votes"),
-                ("search <<content>>", "views all messages containing content"),
-                ("whispers <<player>>", "view message count for player per day"),
-                ("info <<player>>", "views game information about player"),
-                ("grimoire", "views the grimoire"),
+                HardcodedCommand("history <<player1>> <<player2>>", "views message history between players", []),
+                HardcodedCommand("history <<player>>", "views all of player's messages", []),
+                HardcodedCommand("votehistory", "views all nominations and votes", []),
+                HardcodedCommand("search <<content>>", "views all messages containing content", []),
+                HardcodedCommand("whispers <<player>>", "view message count for player per day", []),
+                HardcodedCommand("info <<player>>", "views game information about player", []),
+                HardcodedCommand("grimoire", "views the grimoire", []),
             ],
             commands.help_types.HelpSection.MISC: [
-                ("notactive", "lists players who are yet to speak"),
-                ("makeinactive <<player>>", "marks player as inactive"),
-                ("undoinactive <<player>>", "undoes an inactivity mark"),
-                ("checkin <<players>>", "marks players as checked in"),
-                ("undocheckin <<players>>", "marks players as not checked in"),
-                ("addtraveler <<player>>", "adds player as a traveler"),
-                ("removetraveler <<traveler>>", "removes traveler from game"),
-                ("cancelnomination", "cancels the previous nomination"),
-                ("reseat", "reseats the game"),
+                HardcodedCommand("notactive", "lists players who are yet to speak", []),
+                HardcodedCommand("makeinactive <<player>>", "marks player as inactive", []),
+                HardcodedCommand("undoinactive <<player>>", "undoes an inactivity mark", []),
+                HardcodedCommand("checkin <<players>>", "marks players as checked in", []),
+                HardcodedCommand("undocheckin <<players>>", "marks players as not checked in", []),
+                HardcodedCommand("addtraveler <<player>>", "adds player as a traveler", []),
+                HardcodedCommand("removetraveler <<traveler>>", "removes traveler from game", []),
+                HardcodedCommand("cancelnomination", "cancels the previous nomination", []),
+                HardcodedCommand("reseat", "reseats the game", []),
             ],
+            # This section is for commands available to players
+            commands.help_types.HelpSection.PLAYER: [
+                HardcodedCommand("pm <<player>>", "sends player a message", ["message"]),
+                HardcodedCommand("history <<player>>", "views message history with player", []),
+                HardcodedCommand("search <<content>>", "views messages containing content", []),
+                HardcodedCommand("whispers", "view message count with other players per day", []),
+                HardcodedCommand("vote <<yes/no>>", "votes on ongoing nomination", []),
+                HardcodedCommand("nominate <<player>>", "nominates player", []),
+                HardcodedCommand("presetvote <<yes/no>>", "submits preset vote", ["prevote"]),
+                HardcodedCommand("cancelprevote", "cancels existing prevote", []),
+                HardcodedCommand("defaultvote <<vote = 'no'>> <<time=60>>", "sets default vote behavior", []),
+                HardcodedCommand("makealias <<alias>> <<command>>", "creates command alias", []),
+                HardcodedCommand("clear", "returns whitespace", []),
+                HardcodedCommand("cannominate", "lists players who can still nominate", []),
+                HardcodedCommand("canbenominated", "lists players who can be nominated", []),
+                HardcodedCommand("tocheckin", "lists players who need to check in", []),
+            ]
         }
         return hardcoded_map.get(section, [])
 
@@ -229,53 +255,13 @@ class HelpGenerator:
         registry_commands.extend(
             registry.get_commands_by_section(commands.help_types.HelpSection.PLAYER, commands.help_types.UserType.ALL))
 
-        # Remove duplicates
-        seen = set()
-        unique_commands = []
-        for cmd in registry_commands:
-            if cmd.name not in seen:
-                seen.add(cmd.name)
-                unique_commands.append(cmd)
-
-        # Prepare all commands (registry + hardcoded) for sorting
-        all_commands = []
-        for cmd in unique_commands:
-            cmd_name = cmd.name
-            if cmd.aliases:
-                cmd_name += f" (aliases: {', '.join(cmd.aliases)})"
-            all_commands.append((cmd_name, cmd.get_description_for_user(commands.help_types.UserType.PLAYER)))
-
         # Add hardcoded player commands that aren't in registry
-        hardcoded_commands = [
-            ("pm <<player>>", "sends player a message", ["message"]),
-            ("history <<player>>", "views message history with player", []),
-            ("search <<content>>", "views messages containing content", []),
-            ("whispers", "view message count with other players per day", []),
-            ("vote <<yes/no>>", "votes on ongoing nomination", []),
-            ("nominate <<player>>", "nominates player", []),
-            ("presetvote <<yes/no>>", "submits preset vote", ["prevote"]),
-            ("cancelprevote", "cancels existing prevote", []),
-            ("defaultvote <<vote = 'no'>> <<time=60>>", "sets default vote behavior", []),
-            ("makealias <<alias>> <<command>>", "creates command alias", []),
-            ("clear", "returns whitespace", []),
-            ("cannominate", "lists players who can still nominate", []),
-            ("canbenominated", "lists players who can be nominated", []),
-            ("tocheckin", "lists players who need to check in", []),
-        ]
-
-        for cmd_name, description, aliases in hardcoded_commands:
-            base_cmd = cmd_name.split()[0]
-            if base_cmd not in seen:
-                if aliases:
-                    cmd_name += f" (aliases: {', '.join(aliases)})"
-                all_commands.append((cmd_name, description))
-                seen.add(base_cmd)
-
-        # Sort all commands alphabetically by command name
-        all_commands.sort(key=lambda x: x[0].lower())
-
-        for cmd_name, description in all_commands:
-            embed.add_field(name=cmd_name, value=description, inline=False)
+        hardcoded_commands = HelpGenerator._get_hardcoded_commands_for_section(commands.help_types.HelpSection.PLAYER)
+        all_commands = HelpGenerator._combine_and_sort_commands(
+            registry_commands, hardcoded_commands, commands.help_types.UserType.PLAYER
+        )
+        for cmd in all_commands:
+            embed.add_field(name=cmd.name, value=cmd.description, inline=False)
 
         # Add having issues section
         embed.add_field(
@@ -285,6 +271,37 @@ class HelpGenerator:
         )
 
         return embed
+
+    @staticmethod
+    def _combine_and_sort_commands(
+            registry_commands: list,
+            hardcoded_commands: list[HardcodedCommand],
+            user_type: commands.help_types.UserType
+    ) -> list['CommandDisplay']:
+        """Combine registry and hardcoded commands, deduplicate, and sort alphabetically."""
+
+        seen = set()
+        all_commands: list[CommandDisplay] = []
+        # Registry commands
+        for cmd in registry_commands:
+            cmd_name = cmd.name
+            if getattr(cmd, 'aliases', None):
+                cmd_name += f" (aliases: {', '.join(cmd.aliases)})"
+            if cmd.name not in seen:
+                all_commands.append(CommandDisplay(cmd_name, cmd.get_description_for_user(user_type)))
+                seen.add(cmd.name)
+        # Hardcoded commands
+        for cmd in hardcoded_commands:
+            base_cmd = cmd.name.split()[0]
+            if base_cmd not in seen:
+                if cmd.aliases:
+                    cmd_name = f"{cmd.name} (aliases: {', '.join(cmd.aliases)})"
+                else:
+                    cmd_name = cmd.name
+                all_commands.append(CommandDisplay(cmd_name, cmd.description))
+                seen.add(base_cmd)
+        all_commands.sort(key=lambda x: x.name.lower())
+        return all_commands
 
 
 @registry.command(
