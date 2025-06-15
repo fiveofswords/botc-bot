@@ -1,7 +1,7 @@
 """
 Tests for info commands integration with the command registry through bot_impl.
 
-This module tests that info_commands (ping, test) can be called via the registry
+This module tests that debug_commands (ping, test) can be called via the registry
 through bot_impl's on_message handler.
 """
 
