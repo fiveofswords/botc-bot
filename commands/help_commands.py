@@ -1,12 +1,16 @@
 """Enhanced help commands that combine registry and hardcoded help."""
 import logging
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 import discord
 
 import global_vars
 from commands.command_enums import HelpSection, UserType
 from commands.registry import registry, CommandInfo, CommandArgument
+from model.settings.global_settings import GlobalSettings
+
+# Type alias for user-defined aliases (alias_name -> command_name)
+UserAliases = dict[str, str]
 
 # Try to import config, create a mock config module if not available
 try:
@@ -237,30 +241,62 @@ class HelpGenerator:
     def _combine_and_sort_commands(
             registry_commands: tuple[CommandInfo, ...],
             hardcoded_commands: tuple[HardcodedCommand, ...],
-            user_type: UserType
+            user_type: UserType,
+            user_aliases: Optional[UserAliases] = None
     ) -> list[CommandDisplay]:
-        """Combine registry and hardcoded commands, deduplicate, and sort alphabetically."""
+        """Combine registry and hardcoded commands, deduplicate, and sort alphabetically.
+        
+        Args:
+            registry_commands: Commands from the command registry
+            hardcoded_commands: Hardcoded commands for the section
+            user_type: User type for command formatting
+            user_aliases: Optional user aliases (alias_name -> command_name)
+        """
+
+        # Convert user aliases to command -> [aliases] mapping
+        user_aliases_by_command: dict[str, list[str]] = {}
+        if user_aliases:
+            for alias, command in user_aliases.items():
+                if command not in user_aliases_by_command:
+                    user_aliases_by_command[command] = []
+                user_aliases_by_command[command].append(alias)
 
         seen = set()
         all_commands: list[CommandDisplay] = []
+
         # Registry commands
         for cmd in registry_commands:
             cmd_name = cmd.get_formatted_name_for_user(user_type)
-            if getattr(cmd, 'aliases', None):
-                cmd_name += f" (aliases: {', '.join(cmd.aliases)})"
+
+            # Combine registry aliases + user aliases
+            all_aliases = list(cmd.aliases) if getattr(cmd, 'aliases', None) else []
+            if cmd.name in user_aliases_by_command:
+                all_aliases.extend(user_aliases_by_command[cmd.name])
+
+            if all_aliases:
+                cmd_name += f" (aliases: {', '.join(all_aliases)})"
+                
             if cmd.name not in seen:
                 all_commands.append(CommandDisplay(cmd_name, cmd.get_description_for_user(user_type)))
                 seen.add(cmd.name)
+
         # Hardcoded commands
         for cmd in hardcoded_commands:
             base_cmd = cmd.name.split()[0]
             if base_cmd not in seen:
-                if cmd.aliases:
-                    cmd_name = f"{cmd.name} (aliases: {', '.join(cmd.aliases)})"
+                # Combine hardcoded aliases + user aliases
+                all_aliases = list(cmd.aliases) if cmd.aliases else []
+                if base_cmd in user_aliases_by_command:
+                    all_aliases.extend(user_aliases_by_command[base_cmd])
+
+                if all_aliases:
+                    cmd_name = f"{cmd.name} (aliases: {', '.join(all_aliases)})"
                 else:
                     cmd_name = cmd.name
+
                 all_commands.append(CommandDisplay(cmd_name, cmd.description))
                 seen.add(base_cmd)
+
         all_commands.sort(key=lambda x: x.name.lower())
         return all_commands
 
@@ -289,8 +325,15 @@ class HelpGenerator:
 
     @staticmethod
     def create_section_help_embed(section: HelpSection,
-                                  user_type: UserType) -> discord.Embed:
-        """Create a help embed for a specific section with integrated registry + hardcoded commands."""
+                                  user_type: UserType,
+                                  user_aliases: Optional[UserAliases] = None) -> discord.Embed:
+        """Create a help embed for a specific section with integrated registry + hardcoded commands.
+        
+        Args:
+            section: Help section to generate embed for
+            user_type: User type for command formatting
+            user_aliases: Optional user aliases (alias_name -> command_name)
+        """
         section_info = HelpGenerator.SECTION_INFO[section]
 
         embed = discord.Embed(
@@ -303,7 +346,7 @@ class HelpGenerator:
         registry_commands: tuple[CommandInfo, ...] = registry.get_commands_by_section(section)
 
         all_commands = HelpGenerator._combine_and_sort_commands(
-            registry_commands, hardcoded_commands, user_type
+            registry_commands, hardcoded_commands, user_type, user_aliases
         )
 
         for cmd in all_commands:
@@ -319,9 +362,13 @@ class HelpGenerator:
         return embed
 
     @staticmethod
-    def create_player_help_embed() -> discord.Embed:
-        """Create help embed for player commands with integrated registry + hardcoded commands, sorted alphabetically."""
-        embed = HelpGenerator.create_section_help_embed(HelpSection.PLAYER, UserType.PLAYER)
+    def create_player_help_embed(user_aliases: Optional[UserAliases] = None) -> discord.Embed:
+        """Create help embed for player commands with integrated registry + hardcoded commands, sorted alphabetically.
+        
+        Args:
+            user_aliases: Optional user aliases (alias_name -> command_name)
+        """
+        embed = HelpGenerator.create_section_help_embed(HelpSection.PLAYER, UserType.PLAYER, user_aliases)
         HelpGenerator._add_common_help_fields(embed, "playing")
         return embed
 
@@ -348,6 +395,15 @@ class HelpGenerator:
 async def help_command(message: discord.Message, argument: str):
     """Enhanced help command that combines registry commands with existing hardcoded help."""
 
+    # Load user aliases
+    user_aliases = None
+    try:
+        user_aliases = GlobalSettings.load().get_aliases(message.author.id)
+    except Exception as e:
+        # If there's any error loading user aliases, continue without them
+        logging.warning(f"Failed to load user aliases for {message.author.id}: {e}")
+        pass
+
     # Determine user type
     is_storyteller = global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles
 
@@ -361,19 +417,19 @@ async def help_command(message: discord.Message, argument: str):
             embed = HelpGenerator.create_storyteller_help_embed()
         elif argument == "player":
             # Show player commands
-            embed = HelpGenerator.create_player_help_embed()
+            embed = HelpGenerator.create_player_help_embed(user_aliases)
         else:
             # Try to match a help section
             section = HelpGenerator.SECTION_MAP.get(argument)
             if section:
-                embed = HelpGenerator.create_section_help_embed(section, UserType.STORYTELLER)
+                embed = HelpGenerator.create_section_help_embed(section, UserType.STORYTELLER, user_aliases)
             else:
                 # Unknown help topic
                 await message.author.send(f"Unknown help topic: {argument}. Use `@help` to see available topics.")
                 return
     else:
         # PLAYER HELP
-        embed = HelpGenerator.create_player_help_embed()
+        embed = HelpGenerator.create_player_help_embed(user_aliases)
 
     # Send the help embed as a DM
     # This is one of the rare places we use .send directly instead of safe_send

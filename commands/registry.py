@@ -234,6 +234,29 @@ class CommandRegistry:
         if alias_info:
             logger.info(f"Aliases: {', '.join(alias_info)}")
 
+    def save_state(self) -> tuple[dict, dict]:
+        """Save the current state of the registry for restoration later.
+        
+        Returns:
+            Tuple of (commands_copy, aliases_copy) for restoration
+        """
+        return (self.commands.copy(), self.aliases.copy())
+
+    def restore_state(self, state: tuple[dict, dict]) -> None:
+        """Restore the registry to a previously saved state.
+        
+        Args:
+            state: Tuple of (commands, aliases) from save_state()
+        """
+        commands, aliases = state
+        self.commands = commands.copy()
+        self.aliases = aliases.copy()
+
+    def clear(self) -> None:
+        """Clear all commands and aliases from the registry."""
+        self.commands.clear()
+        self.aliases.clear()
+
 
 # Global registry instance
 registry = CommandRegistry()

@@ -18,6 +18,10 @@ class GlobalSettings:
     # ==============================
     # Aliases
     # ==============================
+    def get_aliases(self, player_id: int) -> dict[str, str]:
+        """Get all aliases for a player."""
+        return self._settings.get_settings(player_id, "aliases") or {}
+
     def get_alias(self, player_id: int, alias: str):
         """Get an alias for a player."""
         aliases: dict[str, str] = self._settings.get_settings(player_id, "aliases") or {}
