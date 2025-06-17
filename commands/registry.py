@@ -5,7 +5,9 @@ from typing import Dict, Callable, Awaitable, Optional, List, Union, NamedTuple
 
 import discord
 
-from commands.command_enums import HelpSection, UserType
+from commands.command_enums import (
+    HelpSection, UserType, GamePhase
+)
 
 
 class CommandArgument(NamedTuple):
@@ -35,6 +37,9 @@ class CommandInfo(NamedTuple):
     user_types: tuple[UserType, ...]
     aliases: tuple[str, ...] = ()
     arguments: Union[tuple[CommandArgument, ...], MappingProxyType[UserType, tuple[CommandArgument, ...]]] = ()
+    # New requirement fields  
+    required_phases: tuple[GamePhase, ...] = ()
+    implemented: bool = True
 
     def get_description_for_user(self, user_type: UserType) -> str:
         """Get the appropriate description for a specific user type.
@@ -87,7 +92,7 @@ class CommandInfo(NamedTuple):
         def _format_arg(arg: CommandArgument) -> str:
             wrapper = "[{}]" if arg.optional else "<{}>"
             if isinstance(arg.name_or_choices, tuple):
-                return wrapper.format(" | ".join(arg.name_or_choices))
+                return wrapper.format("|".join(arg.name_or_choices))
             return wrapper.format(arg.name_or_choices)
 
         formatted_args = [_format_arg(arg) for arg in args]
@@ -106,8 +111,11 @@ class CommandRegistry:
                 user_types: Optional[List[UserType]] = None,
                 arguments: Union[List[CommandArgument], Dict[UserType, List[CommandArgument]]] = None,
                 description: Union[str, Dict[UserType, str]] = "",
-                help_sections: Optional[List[HelpSection]] = None):
-        """Decorator to register a command handler along with help metadata.
+                help_sections: Optional[List[HelpSection]] = None,
+                # New requirement parameters
+                required_phases: Optional[List[GamePhase]] = None,
+                implemented: bool = True):
+        """Decorator to register a command handler along with help metadata and requirements.
 
         Args:
             name (str): The primary name of the command.
@@ -117,6 +125,11 @@ class CommandRegistry:
                 Command arguments, either shared or per user type.
             description (Union[str, dict[UserType, str]]): Help text for the command.
             help_sections (list[HelpSection]): Sections this command appears in.
+            required_phases (list[GamePhase], optional): Required game phases. 
+                Empty list = no game needed, [DAY] = day only, [NIGHT] = night only,
+                [DAY, NIGHT] = works in any phase when game exists.
+            implemented (bool): Whether this command implementation should be used (default: True).
+                Set to False during migration to fall back to bot_impl.
 
         Note:
             The `description` and `arguments` parameters accept either:
@@ -130,18 +143,12 @@ class CommandRegistry:
             Examples:
                 ```python
                 @registry.command(
-                    name="vote",
-                    aliases=["v"],
-                    user_types=[UserType.PLAYER, UserType.STORYTELLER],
-                    arguments={
-                        UserType.PLAYER: [CommandArgument(("yes", "no"))],
-                        UserType.STORYTELLER: [CommandArgument("player"), CommandArgument(("yes", "no"))]
-                    },
-                    description={
-                        UserType.PLAYER: "Vote on the current nomination",
-                        UserType.STORYTELLER: "Process votes for the current player"
-                    },
-                    help_sections=[HelpSection.DAY, HelpSection.PLAYER]
+                    name="kill",
+                    description="Kill a player (make them a ghost)",
+                    help_sections=[HelpSection.COMMON],
+                    user_types=[UserType.STORYTELLER],
+                    arguments=[CommandArgument("player")],
+                    required_phases=[GamePhase.DAY, GamePhase.NIGHT]  # Works in any phase
                 )
                 ```
         """
@@ -153,6 +160,8 @@ class CommandRegistry:
             aliases = []
         if arguments is None:
             arguments = []
+        if required_phases is None:
+            required_phases = []
 
         def decorator(func: Callable[[discord.Message, str], Awaitable[None]]):
             # Convert mutable types to immutable for internal storage
@@ -173,7 +182,10 @@ class CommandRegistry:
                 help_sections=tuple(help_sections),
                 user_types=tuple(user_types),
                 aliases=tuple(aliases),
-                arguments=immutable_arguments
+                arguments=immutable_arguments,
+                # New requirement fields
+                required_phases=tuple(required_phases),
+                implemented=implemented
             )
             self.commands[name] = command_info
 
@@ -195,10 +207,10 @@ class CommandRegistry:
         actual_command = self.aliases.get(command, command)
 
         command_info = self.commands.get(actual_command)
-        if command_info:
+        if command_info and command_info.implemented:
             await command_info.handler(message, argument)
             return True
-        return False
+        return False  # Fall back to bot_impl for unimplemented commands
 
     def get_all_commands(self) -> Dict[str, CommandInfo]:
         """Get all registered commands."""
@@ -216,23 +228,55 @@ class CommandRegistry:
         """Get all commands available to a specific user type."""
         result = []
         for command_info in self.commands.values():
-            if user_type in command_info.user_types or UserType.NONE in command_info.user_types:
+            if user_type in command_info.user_types or UserType.PUBLIC in command_info.user_types:
                 result.append(command_info)
         return tuple(sorted(result, key=lambda x: x.name))
 
     def log_registered_commands(self, logger):
-        """Log all registered commands at startup."""
-        command_list = sorted(self.commands.keys())
-        alias_info = []
+        """Log all registered commands at startup, differentiating implemented vs skeleton."""
+        implemented_commands = []
+        skeleton_commands = []
 
+        for name, command_info in self.commands.items():
+            if command_info.implemented:
+                implemented_commands.append(name)
+            else:
+                skeleton_commands.append(name)
+
+        implemented_commands.sort()
+        skeleton_commands.sort()
+
+        total_commands = len(implemented_commands) + len(skeleton_commands)
+
+        # Log summary
+        logger.info(f"📋 Command Registry: {total_commands} commands registered")
+        logger.info(f"✅ Implemented: {len(implemented_commands)} commands")
+        logger.info(f"🏗️ Skeleton (fallback to bot_impl): {len(skeleton_commands)} commands")
+
+        # Log detailed lists
+        if implemented_commands:
+            logger.info(f"Implemented commands: {', '.join(implemented_commands)}")
+
+        if skeleton_commands:
+            logger.info(f"Skeleton commands: {', '.join(skeleton_commands)}")
+
+        # Log aliases, split by implementation status
+        implemented_aliases = []
+        skeleton_aliases = []
+        
         for alias, command in self.aliases.items():
-            alias_info.append(f"{alias} -> {command}")
+            alias_entry = f"{alias} -> {command}"
+            command_info = self.commands.get(command)
+            if command_info and command_info.implemented:
+                implemented_aliases.append(alias_entry)
+            else:
+                skeleton_aliases.append(alias_entry)
 
-        logger.info(f"📋 Command Registry: {len(command_list)} commands registered")
-        logger.info(f"Commands: {', '.join(command_list)}")
+        if implemented_aliases:
+            logger.info(f"✅ Implemented aliases: {', '.join(implemented_aliases)}")
 
-        if alias_info:
-            logger.info(f"Aliases: {', '.join(alias_info)}")
+        if skeleton_aliases:
+            logger.info(f"🏗️ Skeleton aliases: {', '.join(skeleton_aliases)}")
 
     def save_state(self) -> tuple[dict, dict]:
         """Save the current state of the registry for restoration later.

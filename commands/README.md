@@ -136,38 +136,49 @@ The help command has been extracted from `bot_impl.py` and integrated with the r
 4. **Role-Based Filtering**: Shows appropriate commands based on user's storyteller/player role
 5. **Centralized Logic**: All embed generation happens in `HelpGenerator` to eliminate duplication
 
-## Migration Path
+## Migration Strategy: Skeleton Registration
 
-The enhanced system is designed to work immediately with existing commands:
+The enhanced system uses a **skeleton registration strategy** for safe gradual migration:
 
-1. **✅ Complete Integration**: Registry-based help system is now the primary implementation
-2. **Gradual Migration**: Commands can be moved from `bot_impl.py` to the registry system incrementally
-3. **Backward Compatibility**: Existing hardcoded commands continue to show in help until migrated
-4. **Help Integration**: Once commands are registered, the help system automatically includes them
+1. **Complete Skeleton Registration**: All bot commands registered with `implemented=False`
+2. **Safe Fallback**: Registry checks `implemented` flag, falls back to `bot_impl.py` for actual execution
+3. **Zero Risk Migration**: Bot functionality unchanged while structure is established
+4. **Gradual Implementation**: Individual commands migrated by setting `implemented=True`
+5. **Complete Metadata**: All commands have help sections, user types, and arguments defined
 
-### Example Migration
+### Current State (Skeleton Registration)
 
-**Before** (in `bot_impl.py`):
-
-```python
-elif command == "startgame":
-# Command implementation
-pass
-```
-
-**After** (in a commands module):
-
+**Registry Registration** (in command files):
 ```python
 @registry.command(
     name="startgame",
-    description="Starts the game",
-    help_sections=[HelpSection.COMMON, HelpSection.PROGRESSION],
-    user_types=[UserType.STORYTELLER]
+   description="Start a new game",
+   help_sections=[HelpSection.COMMON],
+   user_types=[UserType.STORYTELLER],
+   required_phases=[],  # No game needed
+   implemented=False  # Falls back to bot_impl.py
 )
 async def startgame_command(message: discord.Message, argument: str):
-    # Same command implementation
+   """Start a new game."""
+   raise NotImplementedError("Registry implementation not ready - using bot_impl")
+```
+
+**Implementation** (still in `bot_impl.py`):
+
+```python
+elif command == "startgame":
+    # Actual implementation remains here until migrated
     pass
 ```
+
+### Future Migration Example
+
+To migrate a command, simply:
+
+1. Copy implementation from `bot_impl.py` to registry command file
+2. Change `implemented=False` to `implemented=True`
+3. Remove the `raise NotImplementedError` line
+4. Test thoroughly
 
 ## Help System Integration
 
@@ -223,12 +234,20 @@ python -m pytest tests/commands/ -v
 ```
 commands/
 ├── __init__.py
-├── README.md              # This file
-├── command_enums.py       # Enums for command registry
-├── registry.py            # Enhanced command registry with strict validation
-├── help_commands.py       # Integrated help system (command + generation)
-├── debug_commands.py      # Sample commands with help metadata
-└── loader.py              # Command module loader
+├── README.md                        # This file
+├── COMMAND_OVERVIEW.md              # Complete command documentation
+├── EXTRACTION_PLAN.md               # Migration strategy documentation
+├── command_enums.py                 # Enums for command registry (HelpSection, UserType, GamePhase)
+├── registry.py                      # Enhanced command registry with implemented flag
+├── help_commands.py                 # Integrated help system (command + generation)
+├── loader.py                        # Command module loader (imports all command files)
+├── debug_commands.py                # Sample commands with help metadata
+├── utility_commands.py              # Utility and miscellaneous commands
+├── information_commands.py          # Game status and player information commands
+├── game_management_commands.py      # Game state and configuration commands
+├── player_management_commands.py    # Player state management commands
+├── voting_commands.py               # Voting and nomination commands
+└── communication_commands.py        # PM and communication control commands
 ```
 
 ## Usage in Production
