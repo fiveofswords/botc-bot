@@ -6,7 +6,7 @@ import discord
 
 import global_vars
 from commands.command_enums import HelpSection, UserType
-from commands.registry import registry, CommandInfo
+from commands.registry import registry, CommandInfo, CommandArgument
 
 # Try to import config, create a mock config module if not available
 try:
@@ -60,16 +60,16 @@ class HelpGenerator:
             overview_field_description="Prints commonly used storyteller commands.",
             commands=(
                 HardcodedCommand("startgame", "starts the game"),
-                HardcodedCommand("endgame <<team>>", "ends the game, with winner team"),
-                HardcodedCommand("startday <<players>>", "starts the day, killing players"),
+                HardcodedCommand("endgame <team>", "ends the game, with winner team"),
+                HardcodedCommand("startday [players]", "starts the day, killing players"),
                 HardcodedCommand("endday", "ends the day. if there is an execution, execute is preferred"),
-                HardcodedCommand("kill <<player>>", "kills player"),
-                HardcodedCommand("execute <<player>>", "executes player"),
-                HardcodedCommand("exile <<traveler>>", "exiles traveler"),
+                HardcodedCommand("kill <player>", "kills player"),
+                HardcodedCommand("execute <player>", "executes player"),
+                HardcodedCommand("exile <traveler>", "exiles traveler"),
                 HardcodedCommand("setdeadline <time>",
                                  "sends a message with time in UTC as the deadline and opens nominations. The format can be HH:MM to specify a UTC time, or +HHhMMm to specify a relative time from now e.g. +3h15m; alternatively an epoch timestamp can be used - see https://www.epochconverter.com/"),
-                HardcodedCommand("poison <<player>>", "poisons player"),
-                HardcodedCommand("unpoison <<player>>", "unpoisons player"),
+                HardcodedCommand("poison <player>", "poisons player"),
+                HardcodedCommand("unpoison <player>", "unpoisons player"),
             )
         ),
         HelpSection.PROGRESSION: SectionInfo(
@@ -79,8 +79,8 @@ class HelpGenerator:
             overview_field_description="Prints commands which progress game-time.",
             commands=(
                 HardcodedCommand("startgame", "starts the game"),
-                HardcodedCommand("endgame <<team>>", "ends the game, with winner team"),
-                HardcodedCommand("startday <<players>>", "starts the day, killing players"),
+                HardcodedCommand("endgame <team>", "ends the game, with winner team"),
+                HardcodedCommand("startday [players]", "starts the day, killing players"),
                 HardcodedCommand("endday", "ends the day. if there is an execution, execute is preferred"),
             )
         ),
@@ -107,21 +107,21 @@ class HelpGenerator:
             overview_field_name="help gamestate",
             overview_field_description="Prints commands which affect the game-state.",
             commands=(
-                HardcodedCommand("kill <<player>>", "kills player"),
-                HardcodedCommand("execute <<player>>", "executes player"),
-                HardcodedCommand("exile <<traveler>>", "exiles traveler"),
-                HardcodedCommand("revive <<player>>", "revives player"),
-                HardcodedCommand("changerole <<player>>", "changes player's role"),
-                HardcodedCommand("changealignment <<player>>", "changes player's alignment"),
-                HardcodedCommand("changeability <<player>>",
+                HardcodedCommand("kill <player>", "kills player"),
+                HardcodedCommand("execute <player>", "executes player"),
+                HardcodedCommand("exile <traveler>", "exiles traveler"),
+                HardcodedCommand("revive <player>", "revives player"),
+                HardcodedCommand("changerole <player>", "changes player's role"),
+                HardcodedCommand("changealignment <player>", "changes player's alignment"),
+                HardcodedCommand("changeability <player>",
                                  "changes player's ability, if applicable to their character (ex apprentice)"),
-                HardcodedCommand("removeability <<player>>",
+                HardcodedCommand("removeability <player>",
                                  "clears a player's modified ability, if applicable to their character (ex cannibal)"),
-                HardcodedCommand("givedeadvote <<player>>", "adds a dead vote for player"),
-                HardcodedCommand("removedeadvote <<player>>",
+                HardcodedCommand("givedeadvote <player>", "adds a dead vote for player"),
+                HardcodedCommand("removedeadvote <player>",
                                  "removes a dead vote from player. not necessary for ordinary usage"),
-                HardcodedCommand("poison <<player>>", "poisons player"),
-                HardcodedCommand("unpoison <<player>>", "unpoisons player"),
+                HardcodedCommand("poison <player>", "poisons player"),
+                HardcodedCommand("unpoison <player>", "unpoisons player"),
             )
         ),
         HelpSection.INFO: SectionInfo(
@@ -130,13 +130,12 @@ class HelpGenerator:
             overview_field_name="help info",
             overview_field_description="Prints commands which display game information.",
             commands=(
-                HardcodedCommand("history <<player1>> <<player2>>",
-                                 "views the message history between player1 and player2"),
-                HardcodedCommand("history <<player>>", "views all of player's messages"),
+                HardcodedCommand("history <player1> [player2]",
+                                 "views the message history between player1 and player2, or all messages for player1"),
                 HardcodedCommand("votehistory", "views all nominations and votes for those nominations"),
-                HardcodedCommand("search <<content>>", "views all messages containing content"),
-                HardcodedCommand("whispers <<player>>", "view a count of messages for the player per day"),
-                HardcodedCommand("info <<player>>", "views game information about player"),
+                HardcodedCommand("search <content>", "views all messages containing content"),
+                HardcodedCommand("whispers <player>", "view a count of messages for the player per day"),
+                HardcodedCommand("info <player>", "views game information about player"),
                 HardcodedCommand("grimoire", "views the grimoire"),
             )
         ),
@@ -146,12 +145,12 @@ class HelpGenerator:
             overview_field_name="help configure",
             overview_field_description="Prints commands which configures how the bot works.",
             commands=(
-                HardcodedCommand("whispermode <<all/neighbors/storytellers>>", "sets whisper mode"),
+                HardcodedCommand("whispermode <all|neighbors|storytellers>", "sets whisper mode"),
                 HardcodedCommand("enabletally", "enables display of whisper counts"),
                 HardcodedCommand("disabletally", "disables display of whisper counts"),
-                HardcodedCommand("setatheist <<true/false>>",
+                HardcodedCommand("setatheist <true|false>",
                                  "sets whether the atheist is on the script - this allows the storyteller to be nominated"),
-                HardcodedCommand("automatekills <<true/false>>",
+                HardcodedCommand("automatekills <true|false>",
                                  "sets whether deaths are automated for certain characters (Riot, Golem, etc.).\nThis is not recommended for most games, as more work is needed from the Storytellers"),
             )
         ),
@@ -162,14 +161,15 @@ class HelpGenerator:
             overview_field_description="Prints miscellaneous commands.",
             commands=(
                 HardcodedCommand("notactive", "lists players who are yet to speak"),
-                HardcodedCommand("makeinactive <<player>>",
+                HardcodedCommand("makeinactive <player>",
                                  "marks player as inactive. must be done in all games player is participating in"),
-                HardcodedCommand("undoinactive <<player>>",
+                HardcodedCommand("undoinactive <player>",
                                  "undoes an inactivity mark. must be done in all games player is participating in"),
-                HardcodedCommand("checkin <<players>>", "Marks players as checked in for tonight. Resets each day."),
-                HardcodedCommand("undocheckin <<players>>", "Marks players as not checked in for tonight."),
-                HardcodedCommand("addtraveler <<player>>", "adds player as a traveler", ("addtraveller",)),
-                HardcodedCommand("removetraveler <<traveler>>", "removes traveler from the game", ("removetraveller",)),
+                HardcodedCommand("checkin <players>", "Marks players as checked in for tonight. Resets each day."),
+                HardcodedCommand("undocheckin <players>", "Marks players as not checked in for tonight."),
+                HardcodedCommand("addtraveler <player>", "adds player as a traveler", aliases=("addtraveller",)),
+                HardcodedCommand("removetraveler <traveler>", "removes traveler from the game",
+                                 aliases=("removetraveller",)),
                 HardcodedCommand("cancelnomination", "cancels the previous nomination"),
                 HardcodedCommand("reseat", "reseats the game"),
             )
@@ -180,19 +180,19 @@ class HelpGenerator:
             overview_field_name="help player",
             overview_field_description="Prints the player help dialogue.",
             commands=(
-                HardcodedCommand("pm <<player>>", "sends player a message", ("message",)),
-                HardcodedCommand("history <<player>>", "views your message history with player"),
-                HardcodedCommand("search <<content>>", "views all of your messages containing content"),
+                HardcodedCommand("pm <player>", "sends player a message", ("message",)),
+                HardcodedCommand("history <player>", "views your message history with player"),
+                HardcodedCommand("search <content>", "views all of your messages containing content"),
                 HardcodedCommand("whispers", "view a count of your messages with other players per day"),
-                HardcodedCommand("vote <<yes/no>>", "votes on an ongoing nomination"),
-                HardcodedCommand("nominate <<player>>", "nominates player"),
-                HardcodedCommand("presetvote <<yes/no>>",
+                HardcodedCommand("vote <yes|no>", "votes on an ongoing nomination"),
+                HardcodedCommand("nominate <player>", "nominates player"),
+                HardcodedCommand("presetvote <yes|no>",
                                  "submits a preset vote. will not work if it is your turn to vote. not recommended -- contact the storytellers instead",
-                                 ("prevote",)),
+                                 aliases=("prevote",)),
                 HardcodedCommand("cancelprevote", "cancels an existing prevote"),
-                HardcodedCommand("defaultvote <<vote = 'no'>> <<time=60>>",
+                HardcodedCommand("defaultvote [vote=no] [time=60]",
                                  "will always vote vote in time minutes. if no arguments given, deletes existing defaults."),
-                HardcodedCommand("makealias <<alias>> <<command>>", "creates an alias for a command"),
+                HardcodedCommand("makealias <alias> <command>", "creates an alias for a command"),
                 HardcodedCommand("clear", "returns whitespace"),
                 HardcodedCommand("cannominate", "lists players who are yet to nominate or skip"),
                 HardcodedCommand("canbenominated", "lists players who are yet to be nominated"),
@@ -245,7 +245,7 @@ class HelpGenerator:
         all_commands: list[CommandDisplay] = []
         # Registry commands
         for cmd in registry_commands:
-            cmd_name = cmd.name
+            cmd_name = cmd.get_formatted_name_for_user(user_type)
             if getattr(cmd, 'aliases', None):
                 cmd_name += f" (aliases: {', '.join(cmd.aliases)})"
             if cmd.name not in seen:
@@ -330,11 +330,20 @@ class HelpGenerator:
 # Command Registration
 # =============================================================================
 
+# TODO: Create a separate Observer view showing help for observer commands
 @registry.command(
     name="help",
+    user_types=[UserType.STORYTELLER, UserType.PLAYER, UserType.OBSERVER, UserType.NONE],
+    arguments={
+        UserType.STORYTELLER: [
+            CommandArgument(("common", "progression", "day", "gamestate", "configure", "info", "misc"), optional=True)
+        ],
+        UserType.OBSERVER: [],
+        UserType.PLAYER: [],
+        UserType.NONE: []
+    },
     description="Display help information for bot commands",
-    help_sections=[HelpSection.INFO, HelpSection.PLAYER],
-    user_types=list(UserType)
+    help_sections=[HelpSection.MISC, HelpSection.PLAYER]
 )
 async def help_command(message: discord.Message, argument: str):
     """Enhanced help command that combines registry commands with existing hardcoded help."""

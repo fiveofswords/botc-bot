@@ -20,4 +20,4 @@ class UserType(Enum):
     STORYTELLER = "storyteller"
     OBSERVER = "observer"
     PLAYER = "player"
-    NONE = "none"  # Commands for users not actively participating in the game
+    NONE = "none"  # Someone who is none of Storyteller, Observer, or Player

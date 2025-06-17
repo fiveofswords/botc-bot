@@ -8,6 +8,24 @@ import discord
 from commands.command_enums import HelpSection, UserType
 
 
+class CommandArgument(NamedTuple):
+    """Definition of a command argument.
+    
+    Args:
+        name_or_choices: Either a string (for generic arguments like "player") 
+                        or a tuple of strings (for specific choices like ("yes", "no"))
+        optional: Whether the argument is optional (default: False)
+    
+    Examples:
+        CommandArgument("player")                    # Required generic argument
+        CommandArgument("player", optional=True)     # Optional generic argument  
+        CommandArgument(("yes", "no"))              # Required choice argument
+        CommandArgument(("red", "blue"), optional=True) # Optional choice argument
+    """
+    name_or_choices: Union[str, tuple[str, ...]]
+    optional: bool = False
+
+
 class CommandInfo(NamedTuple):
     """Information about a registered command."""
     name: str
@@ -16,33 +34,64 @@ class CommandInfo(NamedTuple):
     help_sections: tuple[HelpSection, ...]
     user_types: tuple[UserType, ...]
     aliases: tuple[str, ...] = ()
+    arguments: Union[tuple[CommandArgument, ...], MappingProxyType[UserType, tuple[CommandArgument, ...]]] = ()
 
     def get_description_for_user(self, user_type: UserType) -> str:
         """Get the appropriate description for a specific user type.
-        
-        When descriptions are provided as a dictionary:
-        1. First tries to find description for the specific user_type
-        2. Falls back to UserType.NONE if available
-        3. Returns empty string if no match found
-        
-        This allows flexible description strategies:
-        - Provide descriptions for all user types
-        - Provide specific descriptions with NONE as fallback
-        - Provide only specific descriptions (others get empty string)
         
         Args:
             user_type: The user type to get description for
             
         Returns:
-            Description string for the user type, or empty string if not found
+            Description string for the user type
+            
+        Raises:
+            KeyError: If user_type is not found in description dict
         """
         if isinstance(self.description, MappingProxyType):
-            # Try specific user type first, then fallback to NONE, then empty string
-            return (self.description.get(user_type) or
-                    self.description.get(UserType.NONE) or "")
+            return self.description[user_type]
         else:
             # Single description string - works for all user types
             return self.description
+
+    def get_arguments_for_user(self, user_type: UserType) -> tuple[CommandArgument, ...]:
+        """Get the appropriate arguments for a specific user type.
+        
+        Args:
+            user_type: The user type to get arguments for
+            
+        Returns:
+            Tuple of CommandArgument for the user type
+            
+        Raises:
+            KeyError: If user_type is not found in arguments dict
+        """
+        if isinstance(self.arguments, MappingProxyType):
+            return self.arguments[user_type]
+        else:
+            return self.arguments
+
+    def get_formatted_name_for_user(self, user_type: UserType) -> str:
+        """Get the command name formatted with arguments for a specific user type.
+        
+        Args:
+            user_type: The user type to format for
+            
+        Returns:
+            Formatted command name with arguments (e.g., "execute <player>")
+        """
+        args = self.get_arguments_for_user(user_type)
+        if not args:
+            return self.name
+
+        def _format_arg(arg: CommandArgument) -> str:
+            wrapper = "[{}]" if arg.optional else "<{}>"
+            if isinstance(arg.name_or_choices, tuple):
+                return wrapper.format(" | ".join(arg.name_or_choices))
+            return wrapper.format(arg.name_or_choices)
+
+        formatted_args = [_format_arg(arg) for arg in args]
+        return f"{self.name} {' '.join(formatted_args)}"
 
 
 class CommandRegistry:
@@ -53,33 +102,48 @@ class CommandRegistry:
         self.aliases: Dict[str, str] = {}
 
     def command(self, name: str,
-                description: Union[str, Dict[UserType, str]] = "",
-                help_sections: Optional[List[HelpSection]] = None,
+                aliases: Optional[List[str]] = None,
                 user_types: Optional[List[UserType]] = None,
-                aliases: Optional[List[str]] = None):
+                arguments: Union[List[CommandArgument], Dict[UserType, List[CommandArgument]]] = None,
+                description: Union[str, Dict[UserType, str]] = "",
+                help_sections: Optional[List[HelpSection]] = None):
         """Decorator to register a command handler along with help metadata.
 
         Args:
             name (str): The primary name of the command.
+            aliases (list[str], optional): Alternative names for the command.
+            user_types (list[UserType]): User types that can access this command.
+            arguments (Union[list[CommandArgument], dict[UserType, list[CommandArgument]]], optional):
+                Command arguments, either shared or per user type.
             description (Union[str, dict[UserType, str]]): Help text for the command.
             help_sections (list[HelpSection]): Sections this command appears in.
-            user_types (list[UserType]): User types that can access this command.
-            aliases (list[str], optional): Alternative names for the command.
 
         Note:
-            The `description` argument accepts either:
-            - A string used for all user types.
-            - A dict mapping `UserType` to role-specific descriptions.
-
-            Description resolution order:
-                1. User-specific key in the dict
-                2. Fallback to `UserType.NONE`
-                3. Empty string if no match found
+            The `description` and `arguments` parameters accept either:
+            - A string/list used for all user types
+            - A dict mapping `UserType` to role-specific descriptions/arguments
+            
+            **IMPORTANT**: When using dictionaries, they must contain exactly the same
+            user types as specified in `user_types`. No fallback behavior exists - 
+            missing user types will raise KeyError.
 
             Examples:
-                Single: `"command description"`
-                Role-specific: `{UserType.PLAYER: "player desc", UserType.STORYTELLER: "storyteller desc"}`
-                With fallback: `{UserType.STORYTELLER: "ST-only desc", UserType.NONE: "general desc"}`
+                ```python
+                @registry.command(
+                    name="vote",
+                    aliases=["v"],
+                    user_types=[UserType.PLAYER, UserType.STORYTELLER],
+                    arguments={
+                        UserType.PLAYER: [CommandArgument(("yes", "no"))],
+                        UserType.STORYTELLER: [CommandArgument("player"), CommandArgument(("yes", "no"))]
+                    },
+                    description={
+                        UserType.PLAYER: "Vote on the current nomination",
+                        UserType.STORYTELLER: "Process votes for the current player"
+                    },
+                    help_sections=[HelpSection.DAY, HelpSection.PLAYER]
+                )
+                ```
         """
         if help_sections is None:
             help_sections = []
@@ -87,6 +151,8 @@ class CommandRegistry:
             user_types = []
         if aliases is None:
             aliases = []
+        if arguments is None:
+            arguments = []
 
         def decorator(func: Callable[[discord.Message, str], Awaitable[None]]):
             # Convert mutable types to immutable for internal storage
@@ -94,14 +160,20 @@ class CommandRegistry:
                 MappingProxyType(description) if isinstance(description, dict)
                 else description
             )
-            
+
+            immutable_arguments = (
+                MappingProxyType({k: tuple(v) for k, v in arguments.items()}) if isinstance(arguments, dict)
+                else tuple(arguments)
+            )
+
             command_info = CommandInfo(
                 name=name,
                 handler=func,
                 description=immutable_description,
                 help_sections=tuple(help_sections),
                 user_types=tuple(user_types),
-                aliases=tuple(aliases)
+                aliases=tuple(aliases),
+                arguments=immutable_arguments
             )
             self.commands[name] = command_info
 

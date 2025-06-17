@@ -8,9 +8,10 @@ structured help messages and better organization.
 The enhanced system provides:
 
 - **Structured Help Information**: Commands can include descriptions and categorization
-- **User Type Filtering**: Commands can be restricted to specific user types (storyteller, player, all)
+- **User Type Filtering**: Commands can be restricted to specific user types (storyteller, player, observer, none)
 - **Help Section Organization**: Commands are organized into logical sections (common, progression, day, etc.)
 - **Automatic Help Generation**: Dynamic help embeds generated from registered command metadata
+- **Strict Type Safety**: Dictionary-based descriptions and arguments must exactly match specified user types
 
 ## Core Components
 
@@ -19,15 +20,16 @@ The enhanced system provides:
 Defines enums for organizing commands:
 
 - `HelpSection`: Categories like COMMON, PROGRESSION, DAY, GAMESTATE, CONFIGURE, INFO, MISC, PLAYER
-- `UserType`: STORYTELLER, PLAYER, OBSERVER, ALL
+- `UserType`: STORYTELLER, PLAYER, OBSERVER, NONE
 
 ### `registry.py`
 
 Enhanced command registry with:
 
-- `CommandInfo`: Stores command metadata (name, handler, description, help sections, user types, aliases)
+- `CommandInfo`: Stores command metadata (name, handler, description, help sections, user types, aliases, arguments)
 - `CommandRegistry`: Manages command registration and lookup with help support
 - Enhanced `@registry.command` decorator with help parameters
+- **Strict user type validation**: Dictionary descriptions/arguments must exactly match user_types (no fallback)
 
 ### `help_commands.py`
 
@@ -38,7 +40,6 @@ Comprehensive help system combining both the help command and help generation fu
 - `HelpGenerator.create_storyteller_help_embed()`: Storyteller main help menu
 - `HelpGenerator.create_section_help_embed()`: Section-specific help with registry + hardcoded integration
 - `HelpGenerator.create_player_help_embed()`: Player command help with integration
-- `HelpGenerator._get_hardcoded_commands_for_section()`: Maps hardcoded commands to sections
 
 **help_command function:**
 
@@ -47,40 +48,40 @@ Comprehensive help system combining both the help command and help generation fu
 - **Primary help system** integrated with the command registry
 - Automatically includes commands from the registry alongside existing help text
 
-### `help_command_example.py`
-
-Example implementation showing how the existing help command in `bot_impl.py` could be refactored to use the new system.
-
 ## Usage
 
 ### Registering Commands with Help Information
 
 ```python
-from commands.registry import registry
+from commands.registry import registry, CommandArgument
 from commands.command_enums import HelpSection, UserType
-
 
 @registry.command(
    name="startgame",
+   aliases=["sg"],
+   user_types=[UserType.STORYTELLER],
    description="Starts the game",
-   help_sections=[HelpSection.COMMON, HelpSection.PROGRESSION],
-   user_types=[UserType.STORYTELLER]
+   help_sections=[HelpSection.COMMON, HelpSection.PROGRESSION]
 )
 async def startgame_command(message: discord.Message, argument: str):
    # Command implementation
    pass
 
 
-# Example with role-specific descriptions
+# Example with role-specific descriptions and arguments
 @registry.command(
    name="vote",
+   aliases=["v"],
+   user_types=[UserType.STORYTELLER, UserType.PLAYER],
+   arguments={
+      UserType.PLAYER: [CommandArgument(("yes", "no"))],
+      UserType.STORYTELLER: [CommandArgument("player"), CommandArgument(("yes", "no"))],
+   },
    description={
        UserType.PLAYER: "Vote yes/no on the current nomination",
        UserType.STORYTELLER: "Process votes on the current nomination",
    },
-   help_sections=[HelpSection.PLAYER, HelpSection.DAY],
-   user_types=[UserType.STORYTELLER, UserType.PLAYER],
-   aliases=["v"]
+   help_sections=[HelpSection.PLAYER, HelpSection.DAY]
 )
 async def vote_command(message: discord.Message, argument: str):
    # Command implementation
@@ -130,8 +131,7 @@ The help command has been extracted from `bot_impl.py` and integrated with the r
 ### How It Works
 
 1. **Registry Commands First**: Each help section checks the registry for relevant commands
-2. **Hardcoded Integration**: Existing commands are mapped to sections in
-   `HelpGenerator._get_hardcoded_commands_for_section()`
+2. **Hardcoded Integration**: Existing commands are mapped to sections in `HelpGenerator`
 3. **Deduplication**: Commands only appear once, with registry taking precedence over hardcoded
 4. **Role-Based Filtering**: Shows appropriate commands based on user's storyteller/player role
 5. **Centralized Logic**: All embed generation happens in `HelpGenerator` to eliminate duplication
@@ -191,17 +191,23 @@ The system maps to the existing help categories:
 
 ## Testing
 
-The system includes comprehensive tests in `test_help_system.py`:
+The system includes comprehensive tests:
 
-- Enum value validation
-- Command registration with help metadata
-- Help embed generation
-- Section and user type filtering
+- `test_help_system.py`: Enum validation, command registration, help embed generation
+- `test_registry_user_types.py`: **Strict user type validation enforcement**
+- `test_integrated_help.py`: Integration testing of help command
+- `test_debug_commands_registry.py`: Registry-based command testing
+
+**Important**: The system enforces strict user type consistency with unit tests that validate:
+
+- Dictionary descriptions must contain exactly the same user types as `user_types`
+- Dictionary arguments must contain exactly the same user types as `user_types`
+- No fallback behavior exists - missing user types raise KeyError
 
 Run tests with:
 
 ```bash
-python -m pytest tests/commands/test_help_system.py -v
+python -m pytest tests/commands/ -v
 ```
 
 ## Future Enhancements
@@ -219,10 +225,9 @@ commands/
 ├── __init__.py
 ├── README.md              # This file
 ├── command_enums.py       # Enums for command registry
-├── registry.py            # Enhanced command registry
+├── registry.py            # Enhanced command registry with strict validation
 ├── help_commands.py       # Integrated help system (command + generation)
-├── help_command_example.py # Example help command implementation  
-├── debug_commands.py       # Sample commands with help metadata
+├── debug_commands.py      # Sample commands with help metadata
 └── loader.py              # Command module loader
 ```
 

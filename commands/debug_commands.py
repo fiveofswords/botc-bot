@@ -3,7 +3,7 @@
 import discord
 
 from commands.command_enums import HelpSection, UserType
-from commands.registry import registry
+from commands.registry import registry, CommandArgument
 from utils import message_utils
 
 
@@ -11,11 +11,12 @@ from utils import message_utils
     name="ping",
     description={
         UserType.STORYTELLER: "Test command to check if the bot is responding to a Storyteller",
+        UserType.OBSERVER: "Test command to check if the bot is responding to an Observer",
         UserType.PLAYER: "Test command to check if the bot is responding to a Player",
         UserType.NONE: "Test command to check if the bot is responding",
     },
     help_sections=[HelpSection.MISC],
-    user_types=list(UserType)
+    user_types=[UserType.STORYTELLER, UserType.OBSERVER, UserType.PLAYER, UserType.NONE],
 )
 async def ping_command(message: discord.Message, argument: str):
     """Ping command for testing."""
@@ -26,8 +27,8 @@ async def ping_command(message: discord.Message, argument: str):
     name="test",
     description="Test command to verify new command system works",
     help_sections=[HelpSection.MISC],
-    user_types=[UserType.STORYTELLER]
-)
+    user_types=[UserType.STORYTELLER],
+    arguments=[CommandArgument("argument(s)", optional=True)])
 async def test_command(message: discord.Message, argument: str):
     """Test command to verify new command system works."""
     await message_utils.safe_send(message.channel, f"New command system working! Argument: {argument}")

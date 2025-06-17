@@ -52,7 +52,7 @@ class TestIntegratedHelp:
         help_cmd = registry.commands["help"]
         assert help_cmd.name == "help"
         assert help_cmd.description == "Display help information for bot commands"
-        assert HelpSection.INFO in help_cmd.help_sections
+        assert HelpSection.MISC in help_cmd.help_sections
         assert UserType.NONE in help_cmd.user_types
 
     @pytest.mark.asyncio
@@ -218,4 +218,4 @@ class TestIntegratedHelp:
         # Help command should have proper metadata
         help_cmd = registry.commands["help"]
         assert help_cmd.description == "Display help information for bot commands"
-        assert HelpSection.INFO in help_cmd.help_sections
+        assert HelpSection.MISC in help_cmd.help_sections
