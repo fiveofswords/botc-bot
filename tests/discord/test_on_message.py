@@ -565,48 +565,6 @@ async def test_whispers_command(mock_discord_setup, setup_test_game):
 
 
 @pytest.mark.asyncio
-async def test_makealias_command(mock_discord_setup):
-    """Test making a command alias."""
-    # Create a direct message channel for Alice
-    alice_dm_channel = MockChannel(401, "dm-alice")
-    alice_dm_channel.guild = None  # Simulate DM
-
-    # Setup mock server for role check (needed for many command handlers)
-    mock_server = MagicMock()
-    mock_member = MagicMock()
-    mock_member.roles = []  # Not a storyteller
-    mock_server.get_member.return_value = mock_member
-    global_vars.server = mock_server
-
-    # Create a makealias message from Alice
-    alice_message = MockMessage(
-        id=16,
-        content="@makealias v vote",  # Make 'v' an alias for 'vote'
-        channel=alice_dm_channel,
-        author=mock_discord_setup['members']['alice']
-    )
-
-    # Mock GlobalSettings with properly functioning set_alias
-    mock_global_settings = MagicMock()
-    mock_global_settings.set_alias = MagicMock()
-    mock_global_settings.save = MagicMock()
-    mock_global_settings.get_alias = MagicMock(return_value=None)  # Important! This was missing
-
-    # Process the message
-    with patch('bot_impl.backup') as mock_backup:
-        with patch('model.settings.global_settings.GlobalSettings.load', return_value=mock_global_settings):
-            with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
-                # Execute the message handling function
-                await on_message(alice_message)
-
-                # Verify confirmation message was sent (which indicates the command was processed)
-                mock_safe_send.assert_called_with(
-                    mock_discord_setup['members']['alice'],
-                    "Successfully created alias v for command vote."
-                )
-
-
-@pytest.mark.asyncio
 async def test_default_vote_command(mock_discord_setup):
     """Test setting a default vote."""
     # Create a direct message channel for Alice

@@ -1226,55 +1226,251 @@ async def test_reseat_commands(mock_discord_setup, setup_test_game):
 # Utility Commands
 ###############################
 
+
 @pytest.mark.asyncio
-async def test_makealias_command(mock_discord_setup, setup_test_game):
-    """Test the makealias command in direct message."""
-    # Create a direct message channel for Alice
-    alice_dm_channel = MockChannel(401, "dm-alice")
-    alice_dm_channel.guild = None  # Simulate DM
+async def test_makealias_restrictions(mock_discord_setup, setup_test_game):
+    """Test that makealias correctly prevents creating aliases for registered command names."""
+    from commands.utility_commands import makealias_command
+    from commands.registry import registry
+    from commands.loader import load_all_commands
+
+    # Ensure all commands are loaded for testing
+    load_all_commands()
+
+    # Create a mock message from Alice
+    alice_message = MockMessage(
+        id=123,
+        content="@makealias test command",
+        channel=MockChannel(401, "dm-alice"),
+        author=mock_discord_setup['members']['alice']
+    )
+    alice_message.channel.guild = None  # Simulate DM
 
     # Set up global variables for this test
     global_vars.game = setup_test_game['game']
 
+    # Get registered commands dynamically
+    registered_commands = list(registry.get_all_commands())
+
+    # Make sure we have at least makealias in the registry
+    assert "makealias" in registered_commands, "makealias should be registered"
+
     with patch('model.settings.global_settings.GlobalSettings.load') as mock_load:
         # Create mock settings
         mock_settings = MagicMock()
+        mock_settings.get_alias = MagicMock(return_value=None)
         mock_settings.set_alias = MagicMock()
         mock_settings.save = MagicMock()
         mock_load.return_value = mock_settings
 
         with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
-            # Set alias directly
-            mock_settings.set_alias(
-                setup_test_game['players']['alice'].user.id,
-                "v",  # Alias
-                "vote"  # Command
-            )
+            # Test 1: Cannot create alias named 'makealias'
+            await makealias_command(alice_message, "makealias ping")
 
-            # Save settings
-            mock_settings.save()
-
-            # Send confirmation message
-            await mock_safe_send(
-                setup_test_game['players']['alice'].user,
-                "Successfully created alias v for command vote."
-            )
-
-            # Verify set_alias was called with correct args
-            mock_settings.set_alias.assert_called_with(
-                setup_test_game['players']['alice'].user.id,
-                "v",  # Alias
-                "vote"  # Command
-            )
-
-            # Verify settings were saved
-            assert mock_settings.save.called
-
-            # Verify confirmation message was sent
+            # Should send error message, not create alias
             mock_safe_send.assert_called_with(
-                setup_test_game['players']['alice'].user,
-                "Successfully created alias v for command vote."
+                alice_message.author,
+                "Cannot alias the command 'makealias' as it is a registered command."
             )
+            # Settings should not be modified
+            mock_settings.set_alias.assert_not_called()
+
+            # Reset mocks for next test
+            mock_safe_send.reset_mock()
+            mock_settings.set_alias.reset_mock()
+
+            # Test 2: Cannot create alias for other registered commands (test with first few)
+            test_commands = registered_commands[:3]  # Just test the first 3 to keep test fast
+            for command in test_commands:
+                await makealias_command(alice_message, f"{command} somecommand")
+
+                # Should send error message
+                mock_safe_send.assert_called_with(
+                    alice_message.author,
+                    f"Cannot alias the command '{command}' as it is a registered command."
+                )
+                # Settings should not be modified
+                mock_settings.set_alias.assert_not_called()
+
+                # Reset for next iteration
+                mock_safe_send.reset_mock()
+                mock_settings.set_alias.reset_mock()
+
+            # Test 3: Can create alias with non-registered name
+            await makealias_command(alice_message, "myalias ping")
+
+            # Should create the alias successfully
+            mock_safe_send.assert_called_with(
+                alice_message.author,
+                "Successfully created alias myalias for command ping."
+            )
+            # Settings should be modified
+            mock_settings.set_alias.assert_called_with(
+                alice_message.author.id,
+                "myalias",
+                "ping"
+            )
+            mock_settings.save.assert_called_once()
+
+            # Reset mocks for next test
+            mock_safe_send.reset_mock()
+            mock_settings.set_alias.reset_mock()
+            mock_settings.save.reset_mock()
+
+            # Test 4: Can alias TO registered commands (this should work)
+            await makealias_command(alice_message, "shortping ping")
+
+            # Should create the alias successfully
+            mock_safe_send.assert_called_with(
+                alice_message.author,
+                "Successfully created alias shortping for command ping."
+            )
+            # Settings should be modified
+            mock_settings.set_alias.assert_called_with(
+                alice_message.author.id,
+                "shortping",
+                "ping"
+            )
+            mock_settings.save.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_makealias_remove_restricted_name(mock_discord_setup, setup_test_game):
+    """Test that makealias can remove existing aliases, even those with restricted names (edge case)."""
+    from commands.utility_commands import makealias_command
+    from commands.loader import load_all_commands
+
+    # Ensure all commands are loaded for testing
+    load_all_commands()
+
+    # Create a mock message from Alice
+    alice_message = MockMessage(
+        id=124,
+        content="@makealias restrictedname",
+        channel=MockChannel(401, "dm-alice"),
+        author=mock_discord_setup['members']['alice']
+    )
+    alice_message.channel.guild = None  # Simulate DM
+
+    # Set up global variables for this test
+    global_vars.game = setup_test_game['game']
+
+    with patch('model.settings.global_settings.GlobalSettings.load') as mock_load:
+        # Create mock settings with an existing alias that has a restricted name
+        # (simulating legacy data where someone had created an alias before restrictions)
+        mock_settings = MagicMock()
+        mock_settings.get_alias = MagicMock(return_value="ping")  # restrictedname -> ping exists
+        mock_settings.clear_alias = MagicMock()
+        mock_settings.save = MagicMock()
+        mock_load.return_value = mock_settings
+
+        with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            # Test removing an alias (single argument form)
+            await makealias_command(alice_message, "restrictedname")
+
+            # Should remove the alias successfully
+            mock_safe_send.assert_called_with(
+                alice_message.author,
+                "Successfully removed alias restrictedname."
+            )
+            # Settings should be modified
+            mock_settings.clear_alias.assert_called_with(
+                alice_message.author.id,
+                "restrictedname"
+            )
+            mock_settings.save.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_makealias_list_functionality(mock_discord_setup, setup_test_game):
+    """Test that makealias with no arguments lists all user aliases."""
+    from commands.utility_commands import makealias_command
+    from commands.loader import load_all_commands
+
+    # Ensure all commands are loaded for testing
+    load_all_commands()
+
+    # Create a mock message from Alice
+    alice_message = MockMessage(
+        id=125,
+        content="@makealias",
+        channel=MockChannel(401, "dm-alice"),
+        author=mock_discord_setup['members']['alice']
+    )
+    alice_message.channel.guild = None  # Simulate DM
+
+    # Set up global variables for this test
+    global_vars.game = setup_test_game['game']
+
+    with patch('model.settings.global_settings.GlobalSettings.load') as mock_load:
+        # Create mock settings with some existing aliases
+        mock_settings = MagicMock()
+        existing_aliases = {
+            "v": "vote",
+            "n": "nominate",
+            "h": "help"
+        }
+        mock_settings.get_aliases = MagicMock(return_value=existing_aliases)
+        mock_load.return_value = mock_settings
+
+        with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            # Test listing aliases (0 arguments)
+            await makealias_command(alice_message, "")
+
+            # Should send list of aliases
+            mock_safe_send.assert_called_once()
+            call_args = mock_safe_send.call_args[0]
+            message_content = call_args[1]
+
+            # Check that the message contains the expected format
+            assert "Your aliases:" in message_content
+            assert "**v** → vote" in message_content
+            assert "**n** → nominate" in message_content
+            assert "**h** → help" in message_content
+
+            # Verify get_aliases was called with correct user ID
+            mock_settings.get_aliases.assert_called_with(alice_message.author.id)
+
+
+@pytest.mark.asyncio
+async def test_makealias_list_no_aliases(mock_discord_setup, setup_test_game):
+    """Test that makealias with no arguments shows appropriate message when no aliases exist."""
+    from commands.utility_commands import makealias_command
+    from commands.loader import load_all_commands
+
+    # Ensure all commands are loaded for testing
+    load_all_commands()
+
+    # Create a mock message from Alice
+    alice_message = MockMessage(
+        id=126,
+        content="@makealias",
+        channel=MockChannel(401, "dm-alice"),
+        author=mock_discord_setup['members']['alice']
+    )
+    alice_message.channel.guild = None  # Simulate DM
+
+    # Set up global variables for this test
+    global_vars.game = setup_test_game['game']
+
+    with patch('model.settings.global_settings.GlobalSettings.load') as mock_load:
+        # Create mock settings with no existing aliases
+        mock_settings = MagicMock()
+        mock_settings.get_aliases = MagicMock(return_value={})  # Empty dict
+        mock_load.return_value = mock_settings
+
+        with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
+            # Test listing aliases when none exist
+            await makealias_command(alice_message, "")
+
+            # Should send "no aliases" message
+            mock_safe_send.assert_called_with(
+                alice_message.author,
+                "You have no aliases set."
+            )
+
+            # Verify get_aliases was called with correct user ID
+            mock_settings.get_aliases.assert_called_with(alice_message.author.id)
 
 
 @pytest.mark.asyncio

@@ -7,6 +7,7 @@ def load_all_commands():
     command_modules = [
         "commands.debug_commands",
         "commands.help_commands",
+        "commands.utility_commands",
     ]
 
     for module_name in command_modules:

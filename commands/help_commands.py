@@ -196,7 +196,6 @@ class HelpGenerator:
                 HardcodedCommand("cancelprevote", "cancels an existing prevote"),
                 HardcodedCommand("defaultvote [vote=no] [time=60]",
                                  "will always vote vote in time minutes. if no arguments given, deletes existing defaults."),
-                HardcodedCommand("makealias <alias> <command>", "creates an alias for a command"),
                 HardcodedCommand("clear", "returns whitespace"),
                 HardcodedCommand("cannominate", "lists players who are yet to nominate or skip"),
                 HardcodedCommand("canbenominated", "lists players who are yet to be nominated"),

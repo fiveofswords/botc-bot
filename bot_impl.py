@@ -2999,28 +2999,6 @@ async def on_message(message):
                 await message_utils.safe_send(message.author, message_text)
                 return
 
-            # Create custom alias
-            elif command == "makealias":
-
-                argument = argument.split(" ")
-                if len(argument) != 2:
-                    await message_utils.safe_send(message.author,
-                                                  "makealias takes exactly two arguments: @makealias <alias> <command>")
-                    return
-
-                global_settings: GlobalSettings = GlobalSettings.load()
-                alias_term = argument[0]
-                command_term = argument[1]
-                if "makealias" == alias_term:
-                    await message_utils.safe_send(message.author, "Cannot alias the makealias command.")
-                    return
-                global_settings.set_alias(message.author.id, alias_term, command_term)
-                global_settings.save()
-                await message_utils.safe_send(message.author,
-                                              "Successfully created alias {} for command {}.".format(alias_term,
-                                                                                                     command_term))
-                return
-
             # Hand up
             elif command == "handup" or command == "handdown":
                 player = await get_player(message.author)
