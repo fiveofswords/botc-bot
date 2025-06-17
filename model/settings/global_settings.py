@@ -37,6 +37,17 @@ class GlobalSettings:
         self._settings.update_settings(player_id, {'aliases': current_aliases})
         return self
 
+    def clear_alias(self, player_id: int, alias: str) -> GlobalSettings:
+        """Clear an alias for a player."""
+        # Retrieve current aliases or initialize an empty dictionary if none exist
+        current_aliases = self._settings.get_settings(player_id, "aliases") or {}
+        # Remove the specified alias if it exists
+        if alias in current_aliases:
+            del current_aliases[alias]
+            # Update the player's settings with the modified aliases dictionary
+            self._settings.update_settings(player_id, {'aliases': current_aliases})
+        return self
+
     # ==============================
     # Default Votes
     # ==============================

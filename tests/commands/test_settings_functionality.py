@@ -209,3 +209,20 @@ async def test_global_settings_set_alias():
     mock_base_settings.get_settings.assert_called_once_with(1, "aliases")
     mock_base_settings.update_settings.assert_called_once_with(1, {
         'aliases': {"existing": "command", "test": "new_command"}})
+
+
+@pytest.mark.asyncio
+async def test_global_settings_clear_alias():
+    """Test clearing alias in global settings."""
+    # Create mock settings
+    mock_base_settings = MagicMock()
+    mock_base_settings.get_settings.return_value = {"existing": "command", "test": "to_remove"}
+    settings = GlobalSettings(mock_base_settings)
+
+    # Set alias
+    settings.clear_alias(1, "test")
+
+    # Verify get_settings and update_settings were called correctly
+    mock_base_settings.get_settings.assert_called_once_with(1, "aliases")
+    mock_base_settings.update_settings.assert_called_once_with(1, {
+        'aliases': {"existing": "command"}})
