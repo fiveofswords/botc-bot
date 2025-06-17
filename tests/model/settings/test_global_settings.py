@@ -60,3 +60,19 @@ class TestGlobalSettings:
         self.global_settings.save()
         loaded_settings = GlobalSettings.load(TEST_PREFERENCES_FILENAME)
         assert self.global_settings == loaded_settings
+
+    def test_clear_alias_existing(self):
+        self.global_settings.set_alias(1, 'ToRemove', 'SomeCommand')
+        assert self.global_settings.get_alias(1, 'ToRemove') == 'SomeCommand'
+        self.global_settings.clear_alias(1, 'ToRemove')
+        assert self.global_settings.get_alias(1, 'ToRemove') is None
+
+    def test_clear_alias_nonexistent(self):
+        # Should not raise or affect other aliases
+        self.global_settings.clear_alias(1, 'DoesNotExist')
+        assert self.global_settings.get_alias(1, 'TestAlias') == 'AliasedCommand'
+
+    def test_clear_alias_new_player(self):
+        # Should not raise for a player with no aliases
+        self.global_settings.clear_alias(3, 'AnyAlias')
+        assert self.global_settings.get_alias(3, 'AnyAlias') is None

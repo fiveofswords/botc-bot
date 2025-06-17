@@ -65,6 +65,7 @@ docker exec -it ${BOT_NAME} /bin/bash
 - `model/` - Core game entities (player, characters, settings, channels)
 - `utils/` - Utility functions and helpers
 - `time_utils/` - Time-related utilities
+- `commands/` - Enhanced command registry system with help integration
 - `global_vars.py` - Centralized global state management
 - `bot_configs/` - Environment-specific configurations
 - `tests/` - Test directory with comprehensive fixtures and mocks
@@ -72,9 +73,17 @@ docker exec -it ${BOT_NAME} /bin/bash
 ### Core Modules
 
 - `bot.py` - Main bot entry point
-- `bot_impl.py` - Core bot implementation and command handling
+- `bot_impl.py` - Core bot implementation and legacy command handling
 - `bot_client.py` - Discord client wrapper
 - `global_vars.py` - Global state management for server, channels, roles
+
+### Command System
+
+- `commands/registry.py` - Enhanced command registry with help metadata support
+- `commands/command_enums.py` - Enums for command categorization (sections, user types)
+- `commands/help_commands.py` - Integrated help system with command registration and dynamic generation
+- `commands/debug_commands.py` - Example registry-based commands
+- `commands/loader.py` - Command module loader
 
 ### Model Structure
 
