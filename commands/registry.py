@@ -1,13 +1,25 @@
 """Command registry system for organizing bot commands."""
 from functools import wraps
 from types import MappingProxyType
-from typing import Dict, Callable, Awaitable, Optional, List, Union, NamedTuple
+from typing import Dict, Callable, Awaitable, Optional, Union, NamedTuple
 
 import discord
 
+import global_vars
 from commands.command_enums import (
     HelpSection, UserType, GamePhase
 )
+from model.game import NULL_GAME
+from model.player import Player
+
+
+# =============================================================================
+# Type Definitions
+# =============================================================================
+
+class ValidationError(Exception):
+    """Exception raised when command validation fails."""
+    pass
 
 
 class CommandArgument(NamedTuple):
@@ -99,6 +111,113 @@ class CommandInfo(NamedTuple):
         return f"{self.name} {' '.join(formatted_args)}"
 
 
+# =============================================================================
+# Validation Functions
+# =============================================================================
+
+async def get_player(user) -> Optional[Player]:
+    """Get player object for a Discord user."""
+    if global_vars.game is NULL_GAME:
+        return None
+
+    for person in global_vars.game.seatingOrder:
+        if person.user == user:
+            return person
+
+    return None
+
+
+async def validate_user_type(message: discord.Message, command_info: CommandInfo) -> None:
+    """Validate that the user has permission to use this command.
+    
+    UserType is a partition of all server members:
+    - STORYTELLER: Users with gamemaster role
+    - PLAYER: Users currently in the game's seating order  
+    - OBSERVER: Users with observer role
+    - PUBLIC: Other server members (not storyteller/player/observer)
+    
+    Args:
+        message: Discord message object
+        command_info: Command information including user types and name
+        
+    Raises:
+        ValidationError: If user doesn't have permission
+    """
+    if not command_info.user_types:
+        return  # No user type restriction
+
+    member = global_vars.server.get_member(message.author.id)
+    if not member:
+        raise ValidationError("You are not a member of this server.")
+
+    # Determine what user type this person actually is
+    is_storyteller = global_vars.gamemaster_role in member.roles
+    is_observer = global_vars.observer_role in member.roles
+    player = await get_player(message.author)
+    is_player = player is not None
+
+    # Check if user matches any of the required types
+    user_matches = False
+
+    if UserType.STORYTELLER in command_info.user_types and is_storyteller:
+        user_matches = True
+    elif UserType.PLAYER in command_info.user_types and is_player:
+        user_matches = True
+    elif UserType.OBSERVER in command_info.user_types and is_observer:
+        user_matches = True
+    elif UserType.PUBLIC in command_info.user_types and not (is_storyteller or is_player or is_observer):
+        user_matches = True  # Regular member (none of the special roles)
+
+    if user_matches:
+        return  # User has permission
+
+    # Generate consistent error message with required roles
+    role_name_map = {
+        UserType.STORYTELLER: "Storyteller",
+        UserType.PLAYER: "Player",
+        UserType.OBSERVER: "Observer",
+        UserType.PUBLIC: "Public",
+    }
+    role_names = [role_name_map.get(user_type, str(user_type)) for user_type in command_info.user_types]
+    required_roles = ", ".join(role_names)
+    raise ValidationError(
+        f"You do not have permission to use the {command_info.name} command. Required role(s): {required_roles}.")
+
+
+def validate_game_phase(required_phases: tuple[GamePhase, ...]) -> None:
+    """Validate that the current game phase allows this command.
+    
+    Args:
+        required_phases: Game phases required for this command
+        
+    Raises:
+        ValidationError: If game phase doesn't allow this command
+    """
+    if not required_phases:
+        return  # No phase restriction
+
+    # Check if game exists
+    if global_vars.game is NULL_GAME:
+        raise ValidationError("There's no game right now.")
+
+    # Check day phase
+    if GamePhase.DAY in required_phases and global_vars.game.isDay:
+        return  # Day phase allowed and it's day
+
+    # Check night phase  
+    if GamePhase.NIGHT in required_phases and not global_vars.game.isDay:
+        return  # Night phase allowed and it's night
+
+    # If we get here, current phase isn't allowed
+    if required_phases == (GamePhase.DAY,):
+        raise ValidationError("It's not day right now.")
+    elif required_phases == (GamePhase.NIGHT,):
+        raise ValidationError("It's not night right now.")
+    else:
+        # Multiple phases allowed - shouldn't happen if we got here
+        raise ValidationError("This command cannot be used in the current game phase.")
+
+
 class CommandRegistry:
     """Registry for bot commands with decorator-based registration."""
 
@@ -107,13 +226,13 @@ class CommandRegistry:
         self.aliases: Dict[str, str] = {}
 
     def command(self, name: str,
-                aliases: Optional[List[str]] = None,
-                user_types: Optional[List[UserType]] = None,
-                arguments: Union[List[CommandArgument], Dict[UserType, List[CommandArgument]]] = None,
+                aliases: Optional[list[str]] = None,
+                user_types: Optional[list[UserType]] = None,
+                arguments: Union[list[CommandArgument], Dict[UserType, list[CommandArgument]]] = None,
                 description: Union[str, Dict[UserType, str]] = "",
-                help_sections: Optional[List[HelpSection]] = None,
+                help_sections: Optional[list[HelpSection]] = None,
                 # New requirement parameters
-                required_phases: Optional[List[GamePhase]] = None,
+                required_phases: Optional[list[GamePhase]] = None,
                 implemented: bool = True):
         """Decorator to register a command handler along with help metadata and requirements.
 
@@ -202,14 +321,28 @@ class CommandRegistry:
         return decorator
 
     async def handle_command(self, command: str, message: discord.Message, argument: str):
-        """Handle a command by looking up and calling its handler."""
+        """Handle a command by looking up and calling its handler with validation."""
         # Check for alias first
         actual_command = self.aliases.get(command, command)
 
         command_info = self.commands.get(actual_command)
         if command_info and command_info.implemented:
-            await command_info.handler(message, argument)
-            return True
+            try:
+                # Validate user type permissions
+                await validate_user_type(message, command_info)
+
+                # Validate game phase requirements
+                validate_game_phase(command_info.required_phases)
+
+                # If validation passes, execute the command
+                await command_info.handler(message, argument)
+                return True
+
+            except ValidationError as e:
+                # Send validation error message to user
+                await message.channel.send(str(e))
+                return True  # Return True because we handled the command (even if it failed validation)
+                
         return False  # Fall back to bot_impl for unimplemented commands
 
     def get_all_commands(self) -> Dict[str, CommandInfo]:
