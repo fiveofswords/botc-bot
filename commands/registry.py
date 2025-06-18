@@ -179,9 +179,9 @@ async def validate_user_type(message: discord.Message, command_info: CommandInfo
         UserType.PUBLIC: "Public",
     }
     role_names = [role_name_map.get(user_type, str(user_type)) for user_type in command_info.user_types]
-    required_roles = ", ".join(role_names)
+    allowed_roles = ", ".join(role_names)
     raise ValidationError(
-        f"You do not have permission to use the {command_info.name} command. Required role(s): {required_roles}.")
+        f"You do not have permission to use the {command_info.name} command. Allowed role(s): {allowed_roles}.")
 
 
 def validate_game_phase(required_phases: tuple[GamePhase, ...]) -> None:
