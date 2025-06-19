@@ -8,10 +8,13 @@ structured help messages and better organization.
 The enhanced system provides:
 
 - **Structured Help Information**: Commands can include descriptions and categorization
-- **User Type Filtering**: Commands can be restricted to specific user types (storyteller, player, observer, none)
+- **Automated User Type Validation**: Commands are automatically restricted to specific user types (storyteller, player,
+  observer, public)
+- **Automated Game Phase Validation**: Commands can require specific game phases (day, night, or any active game)
 - **Help Section Organization**: Commands are organized into logical sections (common, progression, day, etc.)
 - **Automatic Help Generation**: Dynamic help embeds generated from registered command metadata
 - **Strict Type Safety**: Dictionary-based descriptions and arguments must exactly match specified user types
+- **Consistent Error Messages**: Standardized permission denied messages with specific role requirements
 
 ## Core Components
 
@@ -20,15 +23,21 @@ The enhanced system provides:
 Defines enums for organizing commands:
 
 - `HelpSection`: Categories like COMMON, PROGRESSION, DAY, GAMESTATE, CONFIGURE, INFO, MISC, PLAYER
-- `UserType`: STORYTELLER, PLAYER, OBSERVER, NONE
+- `UserType`: STORYTELLER, PLAYER, OBSERVER, PUBLIC (for regular server members)
+- `GamePhase`: DAY, NIGHT (for phase-specific commands)
 
 ### `registry.py`
 
 Enhanced command registry with:
 
-- `CommandInfo`: Stores command metadata (name, handler, description, help sections, user types, aliases, arguments)
-- `CommandRegistry`: Manages command registration and lookup with help support
-- Enhanced `@registry.command` decorator with help parameters
+- `CommandInfo`: Stores command metadata (name, handler, description, help sections, user types, aliases, arguments,
+  required phases)
+- `CommandRegistry`: Manages command registration and lookup with automated validation
+- Enhanced `@registry.command` decorator with validation parameters
+- **Automated User Type Validation**: `validate_user_type()` automatically checks permissions with consistent error
+  messages
+- **Automated Game Phase Validation**: `validate_game_phase()` automatically enforces phase requirements
+- **ValidationError Exception**: Standardized exception handling for validation failures
 - **Strict user type validation**: Dictionary descriptions/arguments must exactly match user_types (no fallback)
 
 ### `help_commands.py`
@@ -61,7 +70,8 @@ from commands.command_enums import HelpSection, UserType
    aliases=["sg"],
    user_types=[UserType.STORYTELLER],
    description="Starts the game",
-   help_sections=[HelpSection.COMMON, HelpSection.PROGRESSION]
+   help_sections=[HelpSection.COMMON, HelpSection.PROGRESSION],
+   required_phases=[]  # No game needed
 )
 async def startgame_command(message: discord.Message, argument: str):
    # Command implementation
@@ -81,9 +91,23 @@ async def startgame_command(message: discord.Message, argument: str):
        UserType.PLAYER: "Vote yes/no on the current nomination",
        UserType.STORYTELLER: "Process votes on the current nomination",
    },
-   help_sections=[HelpSection.PLAYER, HelpSection.DAY]
+   help_sections=[HelpSection.PLAYER, HelpSection.DAY],
+   required_phases=[GamePhase.DAY]  # Day only command
 )
 async def vote_command(message: discord.Message, argument: str):
+   # Command implementation
+   pass
+
+
+# Example with game phase validation
+@registry.command(
+   name="endday",
+   user_types=[UserType.STORYTELLER],
+   description="End the current day and proceed to night",
+   help_sections=[HelpSection.PROGRESSION],
+   required_phases=[GamePhase.DAY]  # Must be day to end day
+)
+async def endday_command(message: discord.Message, argument: str):
    # Command implementation
    pass
 ```
@@ -100,6 +124,68 @@ common_commands = registry.get_commands_by_section(HelpSection.COMMON)
 # Get all commands available to players
 player_commands = registry.get_commands_by_user_type(UserType.PLAYER)
 ```
+
+## Automated Validation System
+
+The registry provides automatic validation for user permissions and game phases:
+
+### User Type Validation
+
+Commands are automatically restricted to specified user types. When a user lacks permission:
+
+```python
+# User tries to use storyteller-only command
+# System automatically responds: "You do not have permission to use the startgame command. Required role(s): Storyteller."
+```
+
+**User Types:**
+
+- `STORYTELLER`: Users with gamemaster role
+- `PLAYER`: Users currently in the game's seating order
+- `OBSERVER`: Users with observer role
+- `PUBLIC`: Regular server members (not storyteller/player/observer)
+
+### Game Phase Validation
+
+Commands can require specific game phases. Invalid phase usage triggers automatic error messages:
+
+```python
+# Example: Using day-only command at night
+# System automatically responds: "It's not day right now."
+
+# Example: Using command when no game exists  
+# System automatically responds: "There's no game right now."
+```
+
+**Game Phases:**
+
+- `[]` (empty): No game required
+- `[GamePhase.DAY]`: Day phase only
+- `[GamePhase.NIGHT]`: Night phase only
+- `[GamePhase.DAY, GamePhase.NIGHT]`: Any active game phase
+
+### Validation Parameters
+
+```python
+@registry.command(
+    name="execute",
+    user_types=[UserType.STORYTELLER],          # Who can use it
+    required_phases=[GamePhase.DAY],             # When it can be used
+    description="Execute a player",
+    help_sections=[HelpSection.PROGRESSION]
+)
+async def execute_command(message: discord.Message, argument: str):
+    # No manual permission checking needed - registry handles it automatically
+    pass
+```
+
+### Error Messages
+
+The system provides consistent error messages:
+
+- **Permission Denied**: `"You do not have permission to use the {command} command. Required role(s): {roles}."`
+- **Wrong Phase**: `"It's not day right now."` / `"It's not night right now."`
+- **No Game**: `"There's no game right now."`
 
 ### Generating Help Embeds
 
@@ -206,10 +292,18 @@ The system includes comprehensive tests:
 
 - `test_help_system.py`: Enum validation, command registration, help embed generation
 - `test_registry_user_types.py`: **Strict user type validation enforcement**
+- `test_enum_enforcement.py`: **Automated validation testing for user types and game phases**
 - `test_integrated_help.py`: Integration testing of help command
 - `test_debug_commands_registry.py`: Registry-based command testing
 
-**Important**: The system enforces strict user type consistency with unit tests that validate:
+**Validation Testing**: The system includes thorough testing of the automated validation:
+
+- **User Type Validation**: Tests permission enforcement and error messages for all user types
+- **Game Phase Validation**: Tests phase restrictions and appropriate error responses
+- **Error Message Consistency**: Validates standardized error message format
+- **Permission Partitioning**: Ensures user types (storyteller/player/observer/public) are mutually exclusive
+
+**Type Safety Testing**: The system enforces strict user type consistency:
 
 - Dictionary descriptions must contain exactly the same user types as `user_types`
 - Dictionary arguments must contain exactly the same user types as `user_types`
@@ -222,12 +316,8 @@ python -m pytest tests/commands/ -v
 ```
 
 ## Future Enhancements
-
-- **Command Aliases**: Support for command aliases with help display
-- **Permission Integration**: Integration with Discord permission system
+ 
 - **Interactive Help**: Reaction-based help navigation
-- **Command Usage Stats**: Track command usage for analytics
-- **Localization**: Multi-language help support
 
 ## File Structure
 
