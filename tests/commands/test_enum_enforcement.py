@@ -97,7 +97,7 @@ class TestEnumEnforcement:
         result = await registry.handle_command("test_storyteller_only", mock_message, "")
         assert result is True  # Command was handled (with error)
         mock_message.channel.send.assert_called_once_with(
-            "You do not have permission to use the test_storyteller_only command. Required role(s): Storyteller.")
+            "You do not have permission to use the test_storyteller_only command. Allowed role(s): Storyteller.")
 
         # Try with storyteller - should work
         storyteller = mock_discord_setup['members']['storyteller']
@@ -124,7 +124,7 @@ class TestEnumEnforcement:
         result = await registry.handle_command("test_player_only", mock_message, "")
         assert result is True  # Command was handled (with error)
         mock_message.channel.send.assert_called_once_with(
-            "You do not have permission to use the test_player_only command. Required role(s): Player.")
+            "You do not have permission to use the test_player_only command. Allowed role(s): Player.")
 
         # Try with alice (a player in the game) - should work
         alice = mock_discord_setup['members']['alice']
@@ -206,7 +206,7 @@ class TestEnumEnforcement:
         result = await registry.handle_command("test_none_only", mock_message, "")
         assert result is True  # Command was handled (with error)
         mock_message.channel.send.assert_called_once_with(
-            "You do not have permission to use the test_none_only command. Required role(s): Public.")
+            "You do not have permission to use the test_none_only command. Allowed role(s): Public.")
 
         # Test that player CANNOT use PUBLIC-only commands
         alice = mock_discord_setup['members']['alice']  # Alice is a player in the game
@@ -216,7 +216,7 @@ class TestEnumEnforcement:
         result = await registry.handle_command("test_none_only", mock_message, "")
         assert result is True  # Command was handled (with error)
         mock_message.channel.send.assert_called_once_with(
-            "You do not have permission to use the test_none_only command. Required role(s): Public.")
+            "You do not have permission to use the test_none_only command. Allowed role(s): Public.")
 
     @pytest.mark.asyncio
     async def test_game_phase_validation_directly(self, mock_discord_setup, setup_test_game):

@@ -135,7 +135,7 @@ Commands are automatically restricted to specified user types. When a user lacks
 
 ```python
 # User tries to use storyteller-only command
-# System automatically responds: "You do not have permission to use the startgame command. Required role(s): Storyteller."
+# System automatically responds: "You do not have permission to use the startgame command. Allowed role(s): Storyteller."
 ```
 
 **User Types:**
@@ -183,7 +183,7 @@ async def execute_command(message: discord.Message, argument: str):
 
 The system provides consistent error messages:
 
-- **Permission Denied**: `"You do not have permission to use the {command} command. Required role(s): {roles}."`
+- **Permission Denied**: `"You do not have permission to use the {command} command. Allowed role(s): {roles}."`
 - **Wrong Phase**: `"It's not day right now."` / `"It's not night right now."`
 - **No Game**: `"There's no game right now."`
 
