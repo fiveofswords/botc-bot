@@ -79,11 +79,20 @@ docker exec -it ${BOT_NAME} /bin/bash
 
 ### Command System
 
-- `commands/registry.py` - Enhanced command registry with help metadata support
-- `commands/command_enums.py` - Enums for command categorization (sections, user types)
+- `commands/registry.py` - Enhanced command registry with help metadata support and skeleton fallback
+- `commands/command_enums.py` - Enums for command categorization (sections, user types, game phases)
 - `commands/help_commands.py` - Integrated help system with command registration and dynamic generation
+- `commands/loader.py` - Command module loader for all command files
+- `commands/information_commands.py` - 18 skeleton commands for game information
+- `commands/game_management_commands.py` - 13 skeleton commands for game state management
+- `commands/player_management_commands.py` - 17 skeleton commands for player state management
+- `commands/voting_commands.py` - 12 skeleton commands for voting and nominations
+- `commands/communication_commands.py` - 8 skeleton commands for PM and communication control
+- `commands/utility_commands.py` - Utility commands (makealias, etc.)
 - `commands/debug_commands.py` - Example registry-based commands
-- `commands/loader.py` - Command module loader
+
+**Skeleton Registration Strategy**: All 61 commands are registered with `implemented=False`, providing complete metadata
+while falling back to `bot_impl.py` for execution. Individual commands can be migrated by setting `implemented=True`.
 
 ### Model Structure
 

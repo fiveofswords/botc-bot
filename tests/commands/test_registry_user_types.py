@@ -23,7 +23,7 @@ class TestRegistryUserTypeDescriptions:
             name="simple",
             description="Simple command for everyone",
             help_sections=[HelpSection.COMMON],
-            user_types=[UserType.NONE]
+            user_types=[UserType.PUBLIC]
         )
         async def simple_command(message, argument):
             pass
@@ -33,7 +33,7 @@ class TestRegistryUserTypeDescriptions:
         # Should return same description for all user types
         assert command_info.get_description_for_user(UserType.PLAYER) == "Simple command for everyone"
         assert command_info.get_description_for_user(UserType.STORYTELLER) == "Simple command for everyone"
-        assert command_info.get_description_for_user(UserType.NONE) == "Simple command for everyone"
+        assert command_info.get_description_for_user(UserType.PUBLIC) == "Simple command for everyone"
 
     def test_user_type_specific_descriptions(self):
         """Test user-type-specific descriptions work correctly."""
@@ -45,7 +45,7 @@ class TestRegistryUserTypeDescriptions:
                 UserType.STORYTELLER: "votes for the current player (prompts for player selection)"
             },
             help_sections=[HelpSection.DAY],
-            user_types=[UserType.NONE]
+            user_types=[UserType.PUBLIC]
         )
         async def vote_command(message, argument):
             pass
@@ -90,7 +90,7 @@ class TestRegistryUserTypeDescriptions:
                 UserType.STORYTELLER: "Storyteller view"
             },
             help_sections=[HelpSection.COMMON],
-            user_types=[UserType.NONE]
+            user_types=[UserType.PUBLIC]
         )
         async def all_command(message, argument):
             pass
@@ -126,7 +126,7 @@ class TestRegistryUserTypeDescriptions:
                 UserType.STORYTELLER: "Storyteller day command"
             },
             help_sections=[HelpSection.DAY],
-            user_types=[UserType.NONE]
+            user_types=[UserType.PUBLIC]
         )
         async def day_command(message, argument):
             pass
@@ -154,7 +154,7 @@ class TestRegistryUserTypeDescriptions:
             handler=lambda: None,
             description="Simple description",
             help_sections=(HelpSection.COMMON,),
-            user_types=(UserType.NONE,)
+            user_types=(UserType.PUBLIC,)
         )
 
         assert cmd1.get_description_for_user(UserType.PLAYER) == "Simple description"
@@ -169,7 +169,7 @@ class TestRegistryUserTypeDescriptions:
                 UserType.STORYTELLER: "Storyteller desc"
             }),
             help_sections=(HelpSection.COMMON,),
-            user_types=(UserType.NONE,)
+            user_types=(UserType.PUBLIC,)
         )
 
         assert cmd2.get_description_for_user(UserType.PLAYER) == "Player desc"
@@ -245,9 +245,9 @@ class TestUserTypeConsistencyValidation:
         @self.registry.command(
             name="valid_none_cmd",
             description={
-                UserType.NONE: "Description for users with no specific role"
+                UserType.PUBLIC: "Description for users with no specific role"
             },
-            user_types=[UserType.NONE]
+            user_types=[UserType.PUBLIC]
         )
         async def valid_none_command(message, argument):
             pass
@@ -298,9 +298,9 @@ class TestUserTypeConsistencyValidation:
         @self.registry.command(
             name="valid_none_args_cmd",
             arguments={
-                UserType.NONE: [CommandArgument("general_arg")]
+                UserType.PUBLIC: [CommandArgument("general_arg")]
             },
-            user_types=[UserType.NONE]
+            user_types=[UserType.PUBLIC]
         )
         async def valid_none_args_command(message, argument):
             pass
@@ -449,12 +449,12 @@ class TestUserTypeConsistencyValidation:
         @self.registry.command(
             name="good_none_cmd",
             description={
-                UserType.NONE: "Description for users with no specific role"
+                UserType.PUBLIC: "Description for users with no specific role"
             },
             arguments={
-                UserType.NONE: [CommandArgument("general_arg")]
+                UserType.PUBLIC: [CommandArgument("general_arg")]
             },
-            user_types=[UserType.NONE]
+            user_types=[UserType.PUBLIC]
         )
         async def good_none_command(message, argument):
             pass

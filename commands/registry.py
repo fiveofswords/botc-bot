@@ -1,11 +1,25 @@
 """Command registry system for organizing bot commands."""
 from functools import wraps
 from types import MappingProxyType
-from typing import Dict, Callable, Awaitable, Optional, List, Union, NamedTuple
+from typing import Dict, Callable, Awaitable, Optional, Union, NamedTuple
 
 import discord
 
-from commands.command_enums import HelpSection, UserType
+import global_vars
+from commands.command_enums import (
+    HelpSection, UserType, GamePhase
+)
+from model.game import NULL_GAME
+from model.player import Player
+
+
+# =============================================================================
+# Type Definitions
+# =============================================================================
+
+class ValidationError(Exception):
+    """Exception raised when command validation fails."""
+    pass
 
 
 class CommandArgument(NamedTuple):
@@ -35,6 +49,9 @@ class CommandInfo(NamedTuple):
     user_types: tuple[UserType, ...]
     aliases: tuple[str, ...] = ()
     arguments: Union[tuple[CommandArgument, ...], MappingProxyType[UserType, tuple[CommandArgument, ...]]] = ()
+    # New requirement fields  
+    required_phases: tuple[GamePhase, ...] = ()
+    implemented: bool = True
 
     def get_description_for_user(self, user_type: UserType) -> str:
         """Get the appropriate description for a specific user type.
@@ -87,11 +104,118 @@ class CommandInfo(NamedTuple):
         def _format_arg(arg: CommandArgument) -> str:
             wrapper = "[{}]" if arg.optional else "<{}>"
             if isinstance(arg.name_or_choices, tuple):
-                return wrapper.format(" | ".join(arg.name_or_choices))
+                return wrapper.format("|".join(arg.name_or_choices))
             return wrapper.format(arg.name_or_choices)
 
         formatted_args = [_format_arg(arg) for arg in args]
         return f"{self.name} {' '.join(formatted_args)}"
+
+
+# =============================================================================
+# Validation Functions
+# =============================================================================
+
+async def get_player(user) -> Optional[Player]:
+    """Get player object for a Discord user."""
+    if global_vars.game is NULL_GAME:
+        return None
+
+    for person in global_vars.game.seatingOrder:
+        if person.user == user:
+            return person
+
+    return None
+
+
+async def validate_user_type(message: discord.Message, command_info: CommandInfo) -> None:
+    """Validate that the user has permission to use this command.
+    
+    UserType is a partition of all server members:
+    - STORYTELLER: Users with gamemaster role
+    - PLAYER: Users currently in the game's seating order  
+    - OBSERVER: Users with observer role
+    - PUBLIC: Other server members (not storyteller/player/observer)
+    
+    Args:
+        message: Discord message object
+        command_info: Command information including user types and name
+        
+    Raises:
+        ValidationError: If user doesn't have permission
+    """
+    if not command_info.user_types:
+        return  # No user type restriction
+
+    member = global_vars.server.get_member(message.author.id)
+    if not member:
+        raise ValidationError("You are not a member of this server.")
+
+    # Determine what user type this person actually is
+    is_storyteller = global_vars.gamemaster_role in member.roles
+    is_observer = global_vars.observer_role in member.roles
+    player = await get_player(message.author)
+    is_player = player is not None
+
+    # Check if user matches any of the required types
+    user_matches = False
+
+    if UserType.STORYTELLER in command_info.user_types and is_storyteller:
+        user_matches = True
+    elif UserType.PLAYER in command_info.user_types and is_player:
+        user_matches = True
+    elif UserType.OBSERVER in command_info.user_types and is_observer:
+        user_matches = True
+    elif UserType.PUBLIC in command_info.user_types and not (is_storyteller or is_player or is_observer):
+        user_matches = True  # Regular member (none of the special roles)
+
+    if user_matches:
+        return  # User has permission
+
+    # Generate consistent error message with required roles
+    role_name_map = {
+        UserType.STORYTELLER: "Storyteller",
+        UserType.PLAYER: "Player",
+        UserType.OBSERVER: "Observer",
+        UserType.PUBLIC: "Public",
+    }
+    role_names = [role_name_map.get(user_type, str(user_type)) for user_type in command_info.user_types]
+    allowed_roles = ", ".join(role_names)
+    raise ValidationError(
+        f"You do not have permission to use the {command_info.name} command. Allowed role(s): {allowed_roles}.")
+
+
+def validate_game_phase(required_phases: tuple[GamePhase, ...]) -> None:
+    """Validate that the current game phase allows this command.
+    
+    Args:
+        required_phases: Game phases required for this command
+        
+    Raises:
+        ValidationError: If game phase doesn't allow this command
+    """
+    if not required_phases:
+        return  # No phase restriction
+
+    # Check if game exists
+    if global_vars.game is NULL_GAME:
+        raise ValidationError("There's no game right now.")
+
+    # Check day phase
+    if GamePhase.DAY in required_phases and global_vars.game.isDay:
+        return  # Day phase allowed and it's day
+
+    # Check night phase  
+    if GamePhase.NIGHT in required_phases and not global_vars.game.isDay:
+        return  # Night phase allowed and it's night
+
+    # If we get here, current phase isn't allowed
+    if required_phases == (GamePhase.DAY,):
+        raise ValidationError("It's not day right now.")
+    elif required_phases == (GamePhase.NIGHT,):
+        raise ValidationError("It's not night right now.")
+    else:
+        # Multiple phases allowed - shouldn't happen if we got here
+        raise ValidationError("This command cannot be used in the current game phase.")
 
 
 class CommandRegistry:
@@ -102,12 +226,15 @@ class CommandRegistry:
         self.aliases: Dict[str, str] = {}
 
     def command(self, name: str,
-                aliases: Optional[List[str]] = None,
-                user_types: Optional[List[UserType]] = None,
-                arguments: Union[List[CommandArgument], Dict[UserType, List[CommandArgument]]] = None,
+                aliases: Optional[list[str]] = None,
+                user_types: Optional[list[UserType]] = None,
+                arguments: Union[list[CommandArgument], Dict[UserType, list[CommandArgument]]] = None,
                 description: Union[str, Dict[UserType, str]] = "",
-                help_sections: Optional[List[HelpSection]] = None):
-        """Decorator to register a command handler along with help metadata.
+                help_sections: Optional[list[HelpSection]] = None,
+                # New requirement parameters
+                required_phases: Optional[list[GamePhase]] = None,
+                implemented: bool = True):
+        """Decorator to register a command handler along with help metadata and requirements.
 
         Args:
             name (str): The primary name of the command.
@@ -117,6 +244,11 @@ class CommandRegistry:
                 Command arguments, either shared or per user type.
             description (Union[str, dict[UserType, str]]): Help text for the command.
             help_sections (list[HelpSection]): Sections this command appears in.
+            required_phases (list[GamePhase], optional): Required game phases. 
+                Empty list = no game needed, [DAY] = day only, [NIGHT] = night only,
+                [DAY, NIGHT] = works in any phase when game exists.
+            implemented (bool): Whether this command implementation should be used (default: True).
+                Set to False during migration to fall back to bot_impl.
 
         Note:
             The `description` and `arguments` parameters accept either:
@@ -130,18 +262,12 @@ class CommandRegistry:
             Examples:
                 ```python
                 @registry.command(
-                    name="vote",
-                    aliases=["v"],
-                    user_types=[UserType.PLAYER, UserType.STORYTELLER],
-                    arguments={
-                        UserType.PLAYER: [CommandArgument(("yes", "no"))],
-                        UserType.STORYTELLER: [CommandArgument("player"), CommandArgument(("yes", "no"))]
-                    },
-                    description={
-                        UserType.PLAYER: "Vote on the current nomination",
-                        UserType.STORYTELLER: "Process votes for the current player"
-                    },
-                    help_sections=[HelpSection.DAY, HelpSection.PLAYER]
+                    name="kill",
+                    description="Kill a player (make them a ghost)",
+                    help_sections=[HelpSection.COMMON],
+                    user_types=[UserType.STORYTELLER],
+                    arguments=[CommandArgument("player")],
+                    required_phases=[GamePhase.DAY, GamePhase.NIGHT]  # Works in any phase
                 )
                 ```
         """
@@ -153,6 +279,8 @@ class CommandRegistry:
             aliases = []
         if arguments is None:
             arguments = []
+        if required_phases is None:
+            required_phases = []
 
         def decorator(func: Callable[[discord.Message, str], Awaitable[None]]):
             # Convert mutable types to immutable for internal storage
@@ -173,7 +301,10 @@ class CommandRegistry:
                 help_sections=tuple(help_sections),
                 user_types=tuple(user_types),
                 aliases=tuple(aliases),
-                arguments=immutable_arguments
+                arguments=immutable_arguments,
+                # New requirement fields
+                required_phases=tuple(required_phases),
+                implemented=implemented
             )
             self.commands[name] = command_info
 
@@ -190,15 +321,29 @@ class CommandRegistry:
         return decorator
 
     async def handle_command(self, command: str, message: discord.Message, argument: str):
-        """Handle a command by looking up and calling its handler."""
+        """Handle a command by looking up and calling its handler with validation."""
         # Check for alias first
         actual_command = self.aliases.get(command, command)
 
         command_info = self.commands.get(actual_command)
-        if command_info:
-            await command_info.handler(message, argument)
-            return True
-        return False
+        if command_info and command_info.implemented:
+            try:
+                # Validate user type permissions
+                await validate_user_type(message, command_info)
+
+                # Validate game phase requirements
+                validate_game_phase(command_info.required_phases)
+
+                # If validation passes, execute the command
+                await command_info.handler(message, argument)
+                return True
+
+            except ValidationError as e:
+                # Send validation error message to user
+                await message.channel.send(str(e))
+                return True  # Return True because we handled the command (even if it failed validation)
+                
+        return False  # Fall back to bot_impl for unimplemented commands
 
     def get_all_commands(self) -> Dict[str, CommandInfo]:
         """Get all registered commands."""
@@ -216,23 +361,55 @@ class CommandRegistry:
         """Get all commands available to a specific user type."""
         result = []
         for command_info in self.commands.values():
-            if user_type in command_info.user_types or UserType.NONE in command_info.user_types:
+            if user_type in command_info.user_types or UserType.PUBLIC in command_info.user_types:
                 result.append(command_info)
         return tuple(sorted(result, key=lambda x: x.name))
 
     def log_registered_commands(self, logger):
-        """Log all registered commands at startup."""
-        command_list = sorted(self.commands.keys())
-        alias_info = []
+        """Log all registered commands at startup, differentiating implemented vs skeleton."""
+        implemented_commands = []
+        skeleton_commands = []
 
+        for name, command_info in self.commands.items():
+            if command_info.implemented:
+                implemented_commands.append(name)
+            else:
+                skeleton_commands.append(name)
+
+        implemented_commands.sort()
+        skeleton_commands.sort()
+
+        total_commands = len(implemented_commands) + len(skeleton_commands)
+
+        # Log summary
+        logger.info(f"📋 Command Registry: {total_commands} commands registered")
+        logger.info(f"✅ Implemented: {len(implemented_commands)} commands")
+        logger.info(f"🏗️ Skeleton (fallback to bot_impl): {len(skeleton_commands)} commands")
+
+        # Log detailed lists
+        if implemented_commands:
+            logger.info(f"Implemented commands: {', '.join(implemented_commands)}")
+
+        if skeleton_commands:
+            logger.info(f"Skeleton commands: {', '.join(skeleton_commands)}")
+
+        # Log aliases, split by implementation status
+        implemented_aliases = []
+        skeleton_aliases = []
+        
         for alias, command in self.aliases.items():
-            alias_info.append(f"{alias} -> {command}")
+            alias_entry = f"{alias} -> {command}"
+            command_info = self.commands.get(command)
+            if command_info and command_info.implemented:
+                implemented_aliases.append(alias_entry)
+            else:
+                skeleton_aliases.append(alias_entry)
 
-        logger.info(f"📋 Command Registry: {len(command_list)} commands registered")
-        logger.info(f"Commands: {', '.join(command_list)}")
+        if implemented_aliases:
+            logger.info(f"✅ Implemented aliases: {', '.join(implemented_aliases)}")
 
-        if alias_info:
-            logger.info(f"Aliases: {', '.join(alias_info)}")
+        if skeleton_aliases:
+            logger.info(f"🏗️ Skeleton aliases: {', '.join(skeleton_aliases)}")
 
     def save_state(self) -> tuple[dict, dict]:
         """Save the current state of the registry for restoration later.

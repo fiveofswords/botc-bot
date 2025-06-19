@@ -1,4 +1,4 @@
-"""Enums for command help system categorization."""
+"""Enums for command help system categorization and requirements."""
 
 from enum import Enum
 
@@ -16,8 +16,14 @@ class HelpSection(Enum):
 
 
 class UserType(Enum):
-    """Types of users for command visibility."""
+    """Types of users for command visibility and permission checking."""
     STORYTELLER = "storyteller"
     OBSERVER = "observer"
     PLAYER = "player"
-    NONE = "none"  # Someone who is none of Storyteller, Observer, or Player
+    PUBLIC = "public"  # Someone who is none of Storyteller, Observer, or Player
+
+
+class GamePhase(Enum):
+    """Game phases for phase requirements."""
+    DAY = "day"  # Day phase
+    NIGHT = "night"  # Night phase

@@ -10,7 +10,7 @@ from utils import message_utils
     name="makealias",
     description="Creates, removes, or lists aliases for commands (per-user).",
     help_sections=[HelpSection.MISC, HelpSection.PLAYER],
-    user_types=[UserType.STORYTELLER, UserType.PLAYER, UserType.OBSERVER, UserType.NONE],
+    user_types=[UserType.STORYTELLER, UserType.PLAYER, UserType.OBSERVER, UserType.PUBLIC],
     arguments=[CommandArgument("alias", optional=True), CommandArgument("command", optional=True)]
 )
 async def makealias_command(message: discord.Message, argument: str):

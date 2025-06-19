@@ -13,10 +13,10 @@ from utils import message_utils
         UserType.STORYTELLER: "Test command to check if the bot is responding to a Storyteller",
         UserType.OBSERVER: "Test command to check if the bot is responding to an Observer",
         UserType.PLAYER: "Test command to check if the bot is responding to a Player",
-        UserType.NONE: "Test command to check if the bot is responding",
+        UserType.PUBLIC: "Test command to check if the bot is responding",
     },
     help_sections=[HelpSection.MISC],
-    user_types=[UserType.STORYTELLER, UserType.OBSERVER, UserType.PLAYER, UserType.NONE],
+    user_types=[UserType.STORYTELLER, UserType.OBSERVER, UserType.PLAYER, UserType.PUBLIC],
 )
 async def ping_command(message: discord.Message, argument: str):
     """Ping command for testing."""
@@ -28,7 +28,7 @@ async def ping_command(message: discord.Message, argument: str):
     description="Test command to verify new command system works",
     help_sections=[HelpSection.MISC],
     user_types=[UserType.STORYTELLER],
-    arguments=[CommandArgument("argument(s)", optional=True)])
+    arguments=[CommandArgument("arguments...", optional=True)])
 async def test_command(message: discord.Message, argument: str):
     """Test command to verify new command system works."""
     await message_utils.safe_send(message.channel, f"New command system working! Argument: {argument}")
