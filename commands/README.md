@@ -67,7 +67,6 @@ from commands.command_enums import HelpSection, UserType
 
 @registry.command(
    name="startgame",
-   aliases=["sg"],
    user_types=[UserType.STORYTELLER],
    description="Starts the game",
    help_sections=[HelpSection.COMMON, HelpSection.PROGRESSION],
@@ -81,7 +80,6 @@ async def startgame_command(message: discord.Message, argument: str):
 # Example with role-specific descriptions and arguments
 @registry.command(
    name="vote",
-   aliases=["v"],
    user_types=[UserType.STORYTELLER, UserType.PLAYER],
    arguments={
       UserType.PLAYER: [CommandArgument(("yes", "no"))],
