@@ -995,7 +995,7 @@ class TestPlayerCommands: # Consolidating into a class if not already structured
 
         game_fixture.days = [real_day]
 
-        with patch('bot_impl.backup', new_callable=AsyncMock) as mock_backup, \
+        with patch('bot_impl.backup') as mock_backup, \
                 patch.object(game_fixture, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_seating_message, \
                 patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
 

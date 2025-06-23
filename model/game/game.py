@@ -93,8 +93,6 @@ class Game:
                 try:
                     self.info_channel_seating_order_message = await message_utils.safe_send(global_vars.info_channel,
                                                                                             message_text)
-                    if self.info_channel_seating_order_message: # If message was sent successfully
-                        await self.info_channel_seating_order_message.pin()
                 except Exception as e:
                     print(f"Error sending or pinning info channel seating order message: {e}")
 
@@ -117,10 +115,6 @@ class Game:
             if global_vars.whisper_channel:
                 for msg in await global_vars.whisper_channel.pins():
                     await msg.unpin()
-
-            if global_vars.info_channel and self.info_channel_seating_order_message:
-                await self.info_channel_seating_order_message.unpin()
-                await self.info_channel_seating_order_message.delete()
         except discord.errors.NotFound:
             pass
         except discord.errors.DiscordServerError:

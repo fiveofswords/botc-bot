@@ -259,7 +259,6 @@ async def test_update_seating_order_message_posts_to_info_channel(mock_info_chan
 
     # Mock the message returned by info_channel.send
     mock_sent_message_scenario1 = AsyncMock()
-    mock_sent_message_scenario1.pin = AsyncMock()
     mock_sent_message_scenario1.edit = AsyncMock() # For scenario 2
     # This is the mock for the .send method of mock_info_channel
     original_send_mock = AsyncMock(return_value=mock_sent_message_scenario1)
@@ -285,7 +284,6 @@ async def test_update_seating_order_message_posts_to_info_channel(mock_info_chan
 
 
     mock_info_channel.send.assert_called_once_with(message_text)
-    mock_sent_message_scenario1.pin.assert_called_once()
     assert game.info_channel_seating_order_message == mock_sent_message_scenario1
     # Main channel message should also have been edited
     game.seatingOrderMessage.edit.assert_called_once_with(content=message_text)
@@ -298,8 +296,6 @@ async def test_update_seating_order_message_posts_to_info_channel(mock_info_chan
     mock_sent_message_scenario1.edit.assert_called_once_with(content=message_text)
     # Send should not be called again
     assert original_send_mock.call_count == 1 # Still 1 from scenario 1
-    # Pin should not be called again
-    assert mock_sent_message_scenario1.pin.call_count == 1 # Still 1 from scenario 1
     # Main channel message edit call count should be 2
     assert game.seatingOrderMessage.edit.call_count == 2
 
@@ -311,7 +307,6 @@ async def test_update_seating_order_message_posts_to_info_channel(mock_info_chan
 
     # Mock the new message that will be sent
     mock_sent_message_scenario3 = AsyncMock()
-    mock_sent_message_scenario3.pin = AsyncMock()
     # Update info_channel.send to return this new mock for the next call
     # Instead of replacing mock_info_channel.send, we make the original_send_mock return the new message on its next call
     original_send_mock.return_value = mock_sent_message_scenario3
@@ -322,63 +317,12 @@ async def test_update_seating_order_message_posts_to_info_channel(mock_info_chan
     # send should be called again (total 2 times now on original_send_mock)
     assert original_send_mock.call_count == 2
     original_send_mock.assert_called_with(message_text) # Checks the arguments of the last call
-    mock_sent_message_scenario3.pin.assert_called_once()
     assert game.info_channel_seating_order_message == mock_sent_message_scenario3
     # Main channel message edit call count should be 3
     assert game.seatingOrderMessage.edit.call_count == 3
     # The old message's edit was called, raised error, then new message sent.
     # So, mock_sent_message_scenario1.edit call count should be 2 (one success, one failure)
     assert mock_sent_message_scenario1.edit.call_count == 2
-
-
-@pytest.mark.asyncio
-@patch('global_vars.whisper_channel', new_callable=AsyncMock)
-@patch('global_vars.channel', new_callable=AsyncMock)
-@patch('global_vars.info_channel', new_callable=AsyncMock)
-async def test_game_end_cleans_up_info_channel_message(mock_info_channel, mock_main_channel, mock_whisper_channel, mock_discord_setup, setup_test_game):
-    """Test that Game.end correctly unpins and deletes the info channel message."""
-    game = setup_test_game['game']
-
-    # Mock game.seatingOrderMessage (main channel)
-    game.seatingOrderMessage = AsyncMock()
-    game.seatingOrderMessage.created_at = datetime.datetime.now()
-    game.seatingOrderMessage.unpin = AsyncMock()
-
-    # Mock pins for main and whisper channels
-    mock_main_channel.pins = AsyncMock(return_value=[])
-    mock_whisper_channel.pins = AsyncMock(return_value=[]) # Game.end tries to unpin from it
-
-    # Mock the info channel message
-    mock_info_msg = AsyncMock()
-    mock_info_msg.unpin = AsyncMock()
-    mock_info_msg.delete = AsyncMock()
-    game.info_channel_seating_order_message = mock_info_msg
-
-    await game.end(winner='good')
-
-    mock_info_msg.unpin.assert_called_once()
-    mock_info_msg.delete.assert_called_once()
-
-    # --- Scenario: Message already deleted/unpinned during unpin attempt ---
-    mock_info_msg.reset_mock() # Reset call counts etc.
-    mock_info_msg.unpin.side_effect = discord.errors.NotFound(Mock(), "Message not found")
-    # delete should still be an AsyncMock without side_effect here
-
-    await game.end(winner='evil') # Call end again with the modified mock
-
-    mock_info_msg.unpin.assert_called_once() # Attempted unpin
-    mock_info_msg.delete.assert_not_called()  # Delete should NOT be called when unpin raises NotFound
-
-    # --- Scenario: Message already deleted during delete attempt ---
-    mock_info_msg.reset_mock()
-    mock_info_msg.unpin.side_effect = None # Clear side effect from previous scenario
-    mock_info_msg.unpin.return_value = None # Ensure it's a simple AsyncMock again
-    mock_info_msg.delete.side_effect = discord.errors.NotFound(Mock(), "Message not found")
-
-    await game.end(winner='tie')
-
-    mock_info_msg.unpin.assert_called_once() # Unpin should be called
-    mock_info_msg.delete.assert_called_once() # Delete was attempted
 
 
 @pytest.mark.asyncio
@@ -416,14 +360,12 @@ async def test_game_functions_correctly_with_none_info_channel_message(mock_info
 
     # Test update_seating_order_message with None info channel message
     mock_sent_message = AsyncMock()
-    mock_sent_message.pin = AsyncMock()
     mock_info_channel.send = AsyncMock(return_value=mock_sent_message)
 
     await game.update_seating_order_message()
 
     # Should create new info channel message since it was None
     mock_info_channel.send.assert_called_once()
-    mock_sent_message.pin.assert_called_once()
     assert game.info_channel_seating_order_message == mock_sent_message
 
     # Test update_seating_order_message again (should edit existing message)
@@ -444,10 +386,6 @@ async def test_game_functions_correctly_with_none_info_channel_message(mock_info
 
     assert game.seatingOrder == new_seating_order
 
-    # Test game.end() works correctly with info channel message
-    mock_sent_message.unpin = AsyncMock()
-    mock_sent_message.delete = AsyncMock()
-
     # Mock the main channel pins for game.end()
     mock_main_channel = mock_discord_setup['channels']['town_square']
     mock_main_channel.pins = AsyncMock(return_value=[])
@@ -457,9 +395,6 @@ async def test_game_functions_correctly_with_none_info_channel_message(mock_info
             patch('utils.game_utils.remove_backup'), \
             patch('utils.game_utils.update_presence'):
         await game.end(winner='good')
-
-    mock_sent_message.unpin.assert_called_once()
-    mock_sent_message.delete.assert_called_once()
 
     # Test that game.end() also works when info_channel_seating_order_message is None
     game.info_channel_seating_order_message = None

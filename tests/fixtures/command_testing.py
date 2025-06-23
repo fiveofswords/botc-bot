@@ -174,7 +174,7 @@ async def execute_command_with_wait_for(command_function, message, mock_discord_
             mock_discord_setup['client'].wait_for = AsyncMock(side_effect=wait_for_responses)
 
     # Use individual patches for command execution
-    with patch('bot_impl.backup', AsyncMock()), \
+    with patch('bot_impl.backup'), \
             patch('utils.message_utils.safe_send', AsyncMock()), \
             patch('bot_impl.client', mock_discord_setup['client']):
         await command_function(message)
