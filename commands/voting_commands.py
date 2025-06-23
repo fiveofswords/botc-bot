@@ -80,24 +80,10 @@ async def presetvote_command(message: discord.Message, argument: str):
     raise NotImplementedError("Registry implementation not ready - using bot_impl")
 
 
-
-
-@registry.command(
-    name="cancelpreset",
-    description="Cancel preset vote for yourself (player) or anyone (storyteller)",
-    help_sections=[HelpSection.PLAYER],
-    user_types=[UserType.PLAYER, UserType.STORYTELLER],
-    required_phases=[GamePhase.DAY],  # Day only
-    implemented=False
-)
-async def cancelpreset_command(message: discord.Message, argument: str):
-    """Cancel preset vote for yourself (player) or anyone (storyteller)."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
-
-
 @registry.command(
     name="cancelprevote",
     description="cancels an existing prevote",
+    aliases=["cancelpreset"],
     help_sections=[HelpSection.PLAYER],
     user_types=[UserType.PLAYER, UserType.STORYTELLER],
     required_phases=[GamePhase.DAY],  # Day only
@@ -148,17 +134,4 @@ async def adjustvotes_command(message: discord.Message, argument: str):
 )
 async def nominate_command(message: discord.Message, argument: str):
     """Nominate another player for execution."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
-
-
-@registry.command(
-    name="skip",
-    description="Skip your nomination turn",
-    help_sections=[HelpSection.PLAYER],
-    user_types=[UserType.PLAYER, UserType.STORYTELLER],
-    required_phases=[GamePhase.DAY],  # Day only
-    implemented=False
-)
-async def skip_command(message: discord.Message, argument: str):
-    """Skip your nomination turn."""
     raise NotImplementedError("Registry implementation not ready - using bot_impl")
