@@ -1481,6 +1481,15 @@ class Alsaahir(Townsfolk):
         self.role_name = "Alsaahir"
 
 
+class Princess(Townsfolk):
+    """The princess."""
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Princess"
+        self.hasNominated = False
+
+
 class Golem(Outsider, NominationModifier):
     """The golem."""
     
