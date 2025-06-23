@@ -53,8 +53,8 @@ async def test_test_command_via_registry(mock_discord_setup, setup_test_game):
     # Create a DM test command message with an argument (registry commands only work in DMs)
     message = MockMessage(
         content="@test hello world",
-        channel=mock_discord_setup['members']['alice'].dm_channel,
-        author=mock_discord_setup['members']['alice'],
+        channel=mock_discord_setup['members']['storyteller'].dm_channel,
+        author=mock_discord_setup['members']['storyteller'],
         guild=None  # DM channels have no guild
     )
 
@@ -80,8 +80,8 @@ async def test_test_command_no_arguments_via_registry(mock_discord_setup, setup_
     # Create a DM test command message without arguments (registry commands only work in DMs)
     message = MockMessage(
         content="@test",
-        channel=mock_discord_setup['members']['alice'].dm_channel,
-        author=mock_discord_setup['members']['alice'],
+        channel=mock_discord_setup['members']['storyteller'].dm_channel,
+        author=mock_discord_setup['members']['storyteller'],
         guild=None  # DM channels have no guild
     )
 
@@ -177,8 +177,8 @@ async def test_info_commands_with_extra_whitespace(mock_discord_setup, setup_tes
     # Create a DM test command message with extra spaces (registry commands only work in DMs)
     message = MockMessage(
         content="@test    hello    world   ",
-        channel=mock_discord_setup['members']['alice'].dm_channel,
-        author=mock_discord_setup['members']['alice'],
+        channel=mock_discord_setup['members']['storyteller'].dm_channel,
+        author=mock_discord_setup['members']['storyteller'],
         guild=None  # DM channels have no guild
     )
 

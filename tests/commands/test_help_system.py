@@ -22,7 +22,7 @@ class TestHelpSystem:
         assert HelpSection.PLAYER.value == "player"
         assert UserType.STORYTELLER.value == "storyteller"
         assert UserType.PLAYER.value == "player"
-        assert UserType.NONE.value == "none"
+        assert UserType.PUBLIC.value == "public"
 
     def test_registry_get_commands_by_section(self):
         """Test getting commands by help section."""
@@ -35,7 +35,7 @@ class TestHelpSystem:
 
     def test_registry_get_commands_by_user_type(self):
         """Test getting commands by user type."""
-        all_commands = registry.get_commands_by_user_type(UserType.NONE)
+        all_commands = registry.get_commands_by_user_type(UserType.PUBLIC)
         storyteller_commands = registry.get_commands_by_user_type(UserType.STORYTELLER)
 
         # Should have some commands for each type
@@ -60,7 +60,7 @@ class TestHelpSystem:
 
     def test_help_generator_section_embed(self):
         """Test section-specific help embeds."""
-        misc_embed = HelpGenerator.create_section_help_embed(HelpSection.MISC, UserType.NONE)
+        misc_embed = HelpGenerator.create_section_help_embed(HelpSection.MISC, UserType.PUBLIC)
         assert isinstance(misc_embed, discord.Embed)
         assert "Miscellaneous Commands" in misc_embed.title
 
@@ -87,7 +87,7 @@ class TestHelpSystem:
             name="test_help_cmd",
             description="Test command for help system",
             help_sections=[HelpSection.MISC],
-            user_types=[UserType.NONE],
+            user_types=[UserType.PUBLIC],
             aliases=["thc"]
         )
         async def test_help_command(message, argument):
@@ -98,7 +98,7 @@ class TestHelpSystem:
         cmd_info = registry.commands["test_help_cmd"]
         assert cmd_info.description == "Test command for help system"
         assert HelpSection.MISC in cmd_info.help_sections
-        assert UserType.NONE in cmd_info.user_types
+        assert UserType.PUBLIC in cmd_info.user_types
         assert "thc" in cmd_info.aliases
 
         # Verify alias was registered
@@ -138,15 +138,15 @@ class TestHelpSystem:
         cmd = registry.commands["format_test_cmd"]
         formatted = cmd.get_formatted_name_for_user(UserType.STORYTELLER)
 
-        # Test the actual formatting logic produces industry-standard format
-        expected = "format_test_cmd <player> <yes | no> [reason] [high | medium | low]"
+        # Test the actual formatting logic produces consistent format with hardcoded commands
+        expected = "format_test_cmd <player> <yes|no> [reason] [high|medium|low]"
         assert formatted == expected
 
         # Test that the formatting logic correctly distinguishes required vs optional
         assert "<player>" in formatted  # Required argument
         assert "[reason]" in formatted  # Optional argument
-        assert "<yes | no>" in formatted  # Required choices
-        assert "[high | medium | low]" in formatted  # Optional choices
+        assert "<yes|no>" in formatted  # Required choices
+        assert "[high|medium|low]" in formatted  # Optional choices
 
     def test_role_specific_argument_resolution_logic(self):
         """Test that the user type resolution logic works for arguments."""
@@ -203,12 +203,12 @@ class TestHelpSystem:
         # Test that commands retrieved by section still have working argument formatting
         formatted = cmd.get_formatted_name_for_user(UserType.STORYTELLER)
         assert "<target>" in formatted
-        assert "<option1 | option2>" in formatted
+        assert "<option1|option2>" in formatted
 
-        # Test that undefined user type falls back to UserType.NONE arguments (which uses the list format)
+        # Test that undefined user type falls back to UserType.PUBLIC arguments (which uses the list format)
         undefined_formatted = cmd.get_formatted_name_for_user(UserType.OBSERVER)  # Not defined, falls back to NONE
         assert "<target>" in undefined_formatted  # Should use the list arguments since no dict is used
-        assert "<option1 | option2>" in undefined_formatted
+        assert "<option1|option2>" in undefined_formatted
 
     def test_dictionary_arguments_must_match_user_types(self):
         """Test that dictionary arguments contain exactly the same user types as user_types field."""
@@ -238,8 +238,8 @@ class TestHelpSystem:
             argument_user_types = set(cmd.arguments.keys())
             command_user_types = set(cmd.user_types)
 
-            # Allow UserType.NONE as a fallback in arguments dict even if not in user_types
-            argument_user_types_without_fallback = argument_user_types - {UserType.NONE}
+            # Allow UserType.PUBLIC as a fallback in arguments dict even if not in user_types
+            argument_user_types_without_fallback = argument_user_types - {UserType.PUBLIC}
 
             # Check that all non-fallback argument user types are in command user types
             extra_in_args = argument_user_types_without_fallback - command_user_types
@@ -275,8 +275,8 @@ class TestHelpSystem:
             description_user_types = set(cmd.description.keys())
             command_user_types = set(cmd.user_types)
 
-            # Allow UserType.NONE as a fallback in description dict even if not in user_types
-            description_user_types_without_fallback = description_user_types - {UserType.NONE}
+            # Allow UserType.PUBLIC as a fallback in description dict even if not in user_types
+            description_user_types_without_fallback = description_user_types - {UserType.PUBLIC}
 
             # Check that all non-fallback description user types are in command user types
             extra_in_desc = description_user_types_without_fallback - command_user_types

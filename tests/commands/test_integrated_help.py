@@ -53,7 +53,7 @@ class TestIntegratedHelp:
         assert help_cmd.name == "help"
         assert help_cmd.description == "Display help information for bot commands"
         assert HelpSection.MISC in help_cmd.help_sections
-        assert UserType.NONE in help_cmd.user_types
+        assert UserType.PUBLIC in help_cmd.user_types
 
     @pytest.mark.asyncio
     async def test_help_command_player_basic(self, setup_mock_environment):
