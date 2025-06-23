@@ -32,7 +32,7 @@ async def test_ping_command_via_registry(mock_discord_setup, setup_test_game):
     )
 
     # Test the command execution with individual patches
-    with patch('bot_impl.backup', AsyncMock()), \
+    with patch('bot_impl.backup'), \
             patch('utils.message_utils.safe_send', AsyncMock()) as mock_safe_send, \
             patch('bot_impl.client', mock_discord_setup['client']):
         await on_message(message)
@@ -59,7 +59,7 @@ async def test_test_command_via_registry(mock_discord_setup, setup_test_game):
     )
 
     # Test the command execution with individual patches
-    with patch('bot_impl.backup', AsyncMock()), \
+    with patch('bot_impl.backup'), \
             patch('utils.message_utils.safe_send', AsyncMock()) as mock_safe_send, \
             patch('bot_impl.client', mock_discord_setup['client']):
         await on_message(message)
@@ -86,7 +86,7 @@ async def test_test_command_no_arguments_via_registry(mock_discord_setup, setup_
     )
 
     # Test the command execution with individual patches
-    with patch('bot_impl.backup', AsyncMock()), \
+    with patch('bot_impl.backup'), \
             patch('utils.message_utils.safe_send', AsyncMock()) as mock_safe_send, \
             patch('bot_impl.client', mock_discord_setup['client']):
         await on_message(message)
@@ -128,7 +128,7 @@ async def test_info_commands_in_dm_channel(mock_discord_setup, setup_test_game):
     )
 
     # Test the command execution with individual patches
-    with patch('bot_impl.backup', AsyncMock()), \
+    with patch('bot_impl.backup'), \
             patch('utils.message_utils.safe_send', AsyncMock()) as mock_safe_send, \
             patch('bot_impl.client', mock_discord_setup['client']):
         await on_message(message)
@@ -155,7 +155,7 @@ async def test_info_commands_case_insensitive(mock_discord_setup, setup_test_gam
     )
 
     # Test the command execution - should work since bot_impl converts commands to lowercase
-    with patch('bot_impl.backup', AsyncMock()), \
+    with patch('bot_impl.backup'), \
             patch('utils.message_utils.safe_send', AsyncMock()) as mock_safe_send, \
             patch('bot_impl.client', mock_discord_setup['client']):
         await on_message(message)
@@ -183,7 +183,7 @@ async def test_info_commands_with_extra_whitespace(mock_discord_setup, setup_tes
     )
 
     # Test the command execution with individual patches
-    with patch('bot_impl.backup', AsyncMock()), \
+    with patch('bot_impl.backup'), \
             patch('utils.message_utils.safe_send', AsyncMock()) as mock_safe_send, \
             patch('bot_impl.client', mock_discord_setup['client']):
         await on_message(message)
@@ -211,7 +211,7 @@ async def test_registry_prevents_legacy_command_processing(mock_discord_setup, s
 
     # Mock a function that would be called in legacy command processing
     # to verify it's not reached when registry handles the command
-    with patch('bot_impl.backup', AsyncMock()), \
+    with patch('bot_impl.backup'), \
             patch('utils.message_utils.safe_send', AsyncMock()) as mock_safe_send, \
             patch('bot_impl.client', mock_discord_setup['client']), \
             patch('model.settings.global_settings.GlobalSettings.load') as mock_global_settings:
@@ -247,7 +247,7 @@ async def test_registry_commands_only_work_in_dms(mock_discord_setup, setup_test
     )
 
     # Test the command execution with individual patches
-    with patch('bot_impl.backup', AsyncMock()), \
+    with patch('bot_impl.backup'), \
             patch('utils.message_utils.safe_send', AsyncMock()) as mock_safe_send, \
             patch('bot_impl.client', mock_discord_setup['client']):
         await on_message(message)
