@@ -1258,7 +1258,7 @@ async def test_on_message_whispermode_command(mock_discord_setup, setup_test_gam
 
     # Process the message
     with patch('bot_impl.backup', return_value=None):
-        with patch('bot_impl.update_presence') as mock_update_presence:
+        with patch('utils.game_utils.update_presence') as mock_update_presence:
             mock_update_presence.return_value = AsyncMock()
             with patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
                 await on_message(st_message)
@@ -1303,7 +1303,7 @@ async def test_on_message_whispermode_command(mock_discord_setup, setup_test_gam
 
     # Process the all message
     with patch('bot_impl.backup', return_value=None):
-        with patch('bot_impl.update_presence') as mock_update_presence:
+        with patch('utils.game_utils.update_presence') as mock_update_presence:
             mock_update_presence.return_value = AsyncMock()
             with patch('utils.message_utils.safe_send', new_callable=AsyncMock):
                 await on_message(st_message_all)
