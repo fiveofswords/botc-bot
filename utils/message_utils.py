@@ -97,3 +97,62 @@ async def safe_send_dm(
     except Exception as e:
         logger.error(f"Unexpected error sending DM to {user.display_name}: {e}")
         return None
+
+
+async def notify_storytellers(message: str, **kwargs) -> None:
+    """
+    Send a message to all storytellers in the current game.
+    
+    This utility function handles the common pattern of notifying all storytellers
+    about game state changes. It will try both global_vars.gamemaster_role.members
+    and global_vars.game.storytellers to find storytellers.
+    
+    Args:
+        message: The message to send to storytellers
+        **kwargs: Additional message parameters for safe_send
+    """
+    import global_vars
+
+    # Try to send to storytellers from the game object first (preferred)
+    if (hasattr(global_vars, 'game') and
+            global_vars.game and
+            hasattr(global_vars.game, 'storytellers') and
+            global_vars.game.storytellers):
+        for storyteller in global_vars.game.storytellers:
+            # Game storytellers have a .user attribute
+            user = getattr(storyteller, 'user', storyteller)
+            await safe_send(user, message, **kwargs)
+
+    # Fallback to gamemaster role members
+    elif (hasattr(global_vars, 'gamemaster_role') and
+          global_vars.gamemaster_role and
+          hasattr(global_vars.gamemaster_role, 'members')):
+        for member in global_vars.gamemaster_role.members:
+            await safe_send(member, message, **kwargs)
+
+    # If neither is available, log a warning
+    else:
+        logger.warning(f"Could not notify storytellers: {message}")
+
+
+async def notify_storytellers_about_action(author: Union[discord.Member, discord.User], action_description: str,
+                                           **kwargs) -> None:
+    """
+    Send a notification to all storytellers about an action taken by someone.
+    
+    This is a convenience wrapper around notify_storytellers for the common pattern
+    of notifying storytellers that someone performed an action.
+    
+    Args:
+        author: The Discord user/member who performed the action
+        action_description: Description of what happened (e.g., "whisper mode set to neighbors")
+        **kwargs: Additional message parameters for safe_send
+    
+    Example (sends "<author> set whisper mode to neighbors" to storytellers):
+        await notify_storytellers_about_action(
+            message.author,
+            "set whisper mode to neighbors"
+        )
+    """
+    notification_message = f"{author.display_name} {action_description}"
+    await notify_storytellers(notification_message, **kwargs)

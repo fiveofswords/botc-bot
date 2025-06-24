@@ -1272,7 +1272,7 @@ async def test_on_message_whispermode_command(mock_discord_setup, setup_test_gam
                 # Verify notification was sent to storytellers
                 mock_safe_send.assert_called_with(
                     mock_discord_setup['members']['storyteller'],
-                    "Storyteller has set whisper mode to neighbors."
+                    "Storyteller has set whisper mode to neighbors"
                 )
 
     # Test invalid whisper mode
@@ -1670,7 +1670,7 @@ async def test_on_message_direct_tally_commands(mock_discord_setup, setup_test_g
         # Verify notification was sent to storytellers
         mock_safe_send.assert_called_with(
             mock_discord_setup['members']['storyteller'],
-            "The message tally has been enabled by Storyteller."
+            "Storyteller enabled the message tally"
         )
 
     # Test disabletally command
@@ -1690,7 +1690,7 @@ async def test_on_message_direct_tally_commands(mock_discord_setup, setup_test_g
         # Verify notification was sent to storytellers
         mock_safe_send.assert_called_with(
             mock_discord_setup['members']['storyteller'],
-            "The message tally has been disabled by Storyteller."
+            "Storyteller disabled the message tally"
         )
 
     # Test messagetally command with invalid ID

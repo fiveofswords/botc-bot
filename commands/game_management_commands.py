@@ -138,9 +138,10 @@ async def whispermode_command(message: discord.Message, argument: str):
         global_vars.game.whisper_mode = new_mode
         await utils.game_utils.update_presence(bot_client.client)
         #  for each gamemaster let them know
-        for memb in global_vars.gamemaster_role.members:
-            await message_utils.safe_send(memb, "{} has set whisper mode to {}.".format(
-                message.author.display_name, global_vars.game.whisper_mode))
+        await message_utils.notify_storytellers_about_action(
+            message.author,
+            f"has set whisper mode to {global_vars.game.whisper_mode}"
+        )
     else:
         await message_utils.safe_send(message.author,
                                       "Invalid whisper mode: {}\nUsage is `@whispermode [all/neighbors/storytellers]`".format(
@@ -160,10 +161,10 @@ async def setatheist_command(message: discord.Message, argument: str):
     # argument is true or false
     global_vars.game.script.is_atheist = argument.lower() == "true" or argument.lower() == "t"
     #  message storytellers that atheist game is set to false
-    for memb in global_vars.gamemaster_role.members:
-        await message_utils.safe_send(memb, "Atheist game is set to {} by {}".format(
-            global_vars.game.script.is_atheist,
-            message.author.display_name))
+    await message_utils.notify_storytellers_about_action(
+        message.author,
+        f"{'enabled' if global_vars.game.script.is_atheist else 'disabled'} atheist mode"
+    )
 
 
 @registry.command(
@@ -180,9 +181,10 @@ async def setatheist_command(message: discord.Message, argument: str):
 async def automatekills_command(message: discord.Message, argument: str):
     """Set whether special kills are automated."""
     global_vars.game.has_automated_life_and_death = argument.lower() == "true" or argument.lower() == "t"
-    for sts in global_vars.gamemaster_role.members:
-        await message_utils.safe_send(sts,
-                                      f"Automated life and death is set to {global_vars.game.has_automated_life_and_death} by {message.author.display_name}")
+    await message_utils.notify_storytellers_about_action(
+        message.author,
+        f"{'enabled' if global_vars.game.has_automated_life_and_death else 'disabled'} automated life and death"
+    )
 
 
 @registry.command(

@@ -84,9 +84,7 @@ async def canbenominated_command(message: discord.Message, argument: str):
 async def enabletally_command(message: discord.Message, argument: str):
     """Enable display of whisper message counts."""
     global_vars.game.show_tally = True
-    for sts in global_vars.game.storytellers:
-        await message_utils.safe_send(sts.user, "The message tally has been enabled by {}.".format(
-            message.author.display_name))
+    await message_utils.notify_storytellers_about_action(message.author, "enabled the message tally")
 
 
 @registry.command(
@@ -99,9 +97,7 @@ async def enabletally_command(message: discord.Message, argument: str):
 async def disabletally_command(message: discord.Message, argument: str):
     """Disable display of whisper message counts."""
     global_vars.game.show_tally = False
-    for sts in global_vars.game.storytellers:
-        await message_utils.safe_send(sts.user, "The message tally has been disabled by {}.".format(
-            message.author.display_name))
+    await message_utils.notify_storytellers_about_action(message.author, "disabled the message tally")
 
 
 @registry.command(
