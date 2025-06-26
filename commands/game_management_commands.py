@@ -3,8 +3,13 @@ import textwrap
 
 import discord
 
+import bot_client
+import global_vars
+import utils.game_utils
 from commands.command_enums import HelpSection, UserType, GamePhase
 from commands.registry import registry, CommandArgument
+from model.game.whisper_mode import to_whisper_mode
+from utils import message_utils
 
 
 @registry.command(
@@ -124,11 +129,23 @@ async def exile_command(message: discord.Message, argument: str):
     user_types=[UserType.STORYTELLER],
     arguments=[CommandArgument(("all", "neighbors", "storytellers"))],
     required_phases=[GamePhase.DAY, GamePhase.NIGHT],  # Any phase
-    implemented=False
 )
 async def whispermode_command(message: discord.Message, argument: str):
     """Set whisper mode for the game."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    new_mode = to_whisper_mode(argument)
+
+    if new_mode:
+        global_vars.game.whisper_mode = new_mode
+        await utils.game_utils.update_presence(bot_client.client)
+        #  for each gamemaster let them know
+        await message_utils.notify_storytellers_about_action(
+            message.author,
+            f"has set whisper mode to {global_vars.game.whisper_mode}"
+        )
+    else:
+        await message_utils.safe_send(message.author,
+                                      "Invalid whisper mode: {}\nUsage is `@whispermode [all/neighbors/storytellers]`".format(
+                                          argument))
 
 
 @registry.command(
@@ -138,11 +155,16 @@ async def whispermode_command(message: discord.Message, argument: str):
     user_types=[UserType.STORYTELLER],
     arguments=[CommandArgument(("true", "false"))],
     required_phases=[GamePhase.DAY, GamePhase.NIGHT],  # Any phase
-    implemented=False
 )
 async def setatheist_command(message: discord.Message, argument: str):
     """Set whether Atheist is on the script."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    # argument is true or false
+    global_vars.game.script.is_atheist = argument.lower() == "true" or argument.lower() == "t"
+    #  message storytellers that atheist game is set
+    await message_utils.notify_storytellers_about_action(
+        message.author,
+        f"{'enabled' if global_vars.game.script.is_atheist else 'disabled'} atheist mode"
+    )
 
 
 @registry.command(
@@ -155,11 +177,14 @@ async def setatheist_command(message: discord.Message, argument: str):
     user_types=[UserType.STORYTELLER],
     arguments=[CommandArgument(("true", "false"))],
     required_phases=[GamePhase.DAY, GamePhase.NIGHT],  # Any phase
-    implemented=False
 )
 async def automatekills_command(message: discord.Message, argument: str):
     """Set whether special kills are automated."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    global_vars.game.has_automated_life_and_death = argument.lower() == "true" or argument.lower() == "t"
+    await message_utils.notify_storytellers_about_action(
+        message.author,
+        f"{'enabled' if global_vars.game.has_automated_life_and_death else 'disabled'} automated life and death"
+    )
 
 
 @registry.command(

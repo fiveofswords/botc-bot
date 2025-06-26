@@ -2,8 +2,10 @@
 
 import discord
 
+import global_vars
 from commands.command_enums import HelpSection, UserType, GamePhase
 from commands.registry import registry, CommandArgument
+from utils import message_utils
 
 
 @registry.command(
@@ -12,11 +14,12 @@ from commands.registry import registry, CommandArgument
     help_sections=[HelpSection.PLAYER],
     user_types=[UserType.STORYTELLER, UserType.OBSERVER, UserType.PLAYER, UserType.PUBLIC],
     required_phases=[],  # No game needed
-    implemented=False
 )
 async def clear_command(message: discord.Message, argument: str):
     """Clear the chat window with blank lines."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    # Clears history
+    await message_utils.safe_send(message.author, "{}Clearing\n{}".format("\u200b\n" * 25, "\u200b\n" * 25))
+    return
 
 
 @registry.command(
@@ -77,11 +80,11 @@ async def canbenominated_command(message: discord.Message, argument: str):
     help_sections=[HelpSection.CONFIGURE],
     user_types=[UserType.STORYTELLER],
     required_phases=[GamePhase.DAY, GamePhase.NIGHT],  # Any phase
-    implemented=False
 )
 async def enabletally_command(message: discord.Message, argument: str):
     """Enable display of whisper message counts."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    global_vars.game.show_tally = True
+    await message_utils.notify_storytellers_about_action(message.author, "enabled the message tally")
 
 
 @registry.command(
@@ -90,11 +93,11 @@ async def enabletally_command(message: discord.Message, argument: str):
     help_sections=[HelpSection.CONFIGURE],
     user_types=[UserType.STORYTELLER],
     required_phases=[GamePhase.DAY, GamePhase.NIGHT],  # Any phase
-    implemented=False
 )
 async def disabletally_command(message: discord.Message, argument: str):
     """Disable display of whisper message counts."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    global_vars.game.show_tally = False
+    await message_utils.notify_storytellers_about_action(message.author, "disabled the message tally")
 
 
 @registry.command(

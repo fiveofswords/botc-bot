@@ -50,7 +50,7 @@ from model.characters import Character, AbilityModifier, Amnesiac, Minion, Demon
 from model.game.game import Game, NULL_GAME
 from model.game.script import Script
 from model.game.vote import Vote, in_play_voudon, remove_banshee_nomination
-from model.game.whisper_mode import to_whisper_mode, chose_whisper_candidates
+from model.game.whisper_mode import chose_whisper_candidates
 from model.player import Player, STORYTELLER_ALIGNMENT
 from model.settings import GlobalSettings, GameSettings
 from time_utils import parse_deadline
@@ -637,30 +637,6 @@ async def on_message(message):
                 if global_vars.game is not NULL_GAME:
                     backup("current_game.pckl")
 
-            # set whisper mode
-            elif command == "whispermode":
-                if global_vars.game is NULL_GAME:
-                    await message_utils.safe_send(message.author, "There's no game right now.")
-                    return
-
-                if not global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
-                    await message_utils.safe_send(message.author,
-                                                  "You don't have permission to change the whispermode.")
-                    return
-
-                new_mode = to_whisper_mode(argument)
-
-                if (new_mode):
-                    global_vars.game.whisper_mode = new_mode
-                    await update_presence(client)
-                    #  for each gamemaster let them know
-                    for memb in global_vars.gamemaster_role.members:
-                        await message_utils.safe_send(memb, "{} has set whisper mode to {}.".format(
-                            message.author.display_name, global_vars.game.whisper_mode))
-                else:
-                    await message_utils.safe_send(message.author,
-                                                  "Invalid whisper mode: {}\nUsage is `@whispermode [all/neighbors/storytellers]`".format(
-                                                      argument))
             # Closes pms and nominations
             elif command == "close":
                 if global_vars.game is NULL_GAME:
@@ -1864,30 +1840,6 @@ async def on_message(message):
                     message_text += "{}: {}\n".format(player if player == "Storytellers" else player.display_name, count)
                 await message_utils.safe_send(message.author, message_text)
                 return
-            elif command == "enabletally":
-                if global_vars.game is NULL_GAME:
-                    await message_utils.safe_send(message.author, "There's no game right now.")
-                    return
-
-                if not global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
-                    await message_utils.safe_send(message.author, "You don't have permission to enable tally.")
-                    return
-                global_vars.game.show_tally = True
-                for memb in global_vars.game.storytellers:
-                    await message_utils.safe_send(memb.user, "The message tally has been enabled by {}.".format(
-                        message.author.display_name))
-            elif command == "disabletally":
-                if global_vars.game is NULL_GAME:
-                    await message_utils.safe_send(message.author, "There's no game right now.")
-                    return
-
-                if not global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
-                    await message_utils.safe_send(message.author, "You don't have permission to disable tally.")
-                    return
-                global_vars.game.show_tally = False
-                for memb in global_vars.game.storytellers:
-                    await message_utils.safe_send(memb.user, "The message tally has been disabled by {}.".format(
-                        message.author.display_name))
             # Views relevant information about a player
             elif command == "info":
                 if global_vars.game is NULL_GAME:
@@ -1961,36 +1913,6 @@ async def on_message(message):
                         votes_for_day += f"{nominator_name} -> {nominee_name} ({vote.votes}): {voters}\n"
                     await message_utils.safe_send(message.author, f"```\n{votes_for_day}\n```")
                 return
-            elif command == "setatheist":
-                if global_vars.game is NULL_GAME:
-                    await message_utils.safe_send(message.author, "There's no game right now.")
-                    return
-
-                if not global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
-                    await message_utils.safe_send(message.author, "You don't have permission to configure the game.")
-                    return
-
-                # argument is true or false
-                global_vars.game.script.is_atheist = argument.lower() == "true" or argument.lower() == "t"
-                #  message storytellers that atheist game is set to false
-                for memb in global_vars.gamemaster_role.members:
-                    await message_utils.safe_send(memb, "Atheist game is set to {} by {}".format(
-                        global_vars.game.script.is_atheist,
-                                                                                   message.author.display_name))
-                pass
-            elif command == "automatekills":
-                if global_vars.game is NULL_GAME:
-                    await message_utils.safe_send(message.author, "There's no game right now.")
-                    return
-                if not global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
-                    await message_utils.safe_send(message.author, "You don't have permission to configure the game.")
-                    return
-                global_vars.game.has_automated_life_and_death = argument.lower() == "true" or argument.lower() == "t"
-                for memb in global_vars.gamemaster_role.members:
-                    await message_utils.safe_send(memb,
-                                                  f"Automated life and death is set to {global_vars.game.has_automated_life_and_death} by {message.author.display_name}")
-
-                pass
             # Views the grimoire
             elif command == "grimoire":
                 if global_vars.game is NULL_GAME:
@@ -2016,12 +1938,6 @@ async def on_message(message):
 
                 await message_utils.safe_send(message.author, message_text)
                 return
-
-            # Clears history
-            elif command == "clear":
-                await message_utils.safe_send(message.author, "{}Clearing\n{}".format("\u200b\n" * 25, "\u200b\n" * 25))
-                return
-
             # Checks active players
             elif command == "notactive":
 

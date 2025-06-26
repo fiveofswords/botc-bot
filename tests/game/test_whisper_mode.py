@@ -6,8 +6,9 @@ from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 
-from bot_impl import to_whisper_mode, chose_whisper_candidates
+from bot_impl import chose_whisper_candidates
 from model.game import WhisperMode
+from model.game.whisper_mode import to_whisper_mode
 
 
 def test_to_whisper_mode():
