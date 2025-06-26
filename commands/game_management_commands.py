@@ -160,7 +160,7 @@ async def setatheist_command(message: discord.Message, argument: str):
     """Set whether Atheist is on the script."""
     # argument is true or false
     global_vars.game.script.is_atheist = argument.lower() == "true" or argument.lower() == "t"
-    #  message storytellers that atheist game is set to false
+    #  message storytellers that atheist game is set
     await message_utils.notify_storytellers_about_action(
         message.author,
         f"{'enabled' if global_vars.game.script.is_atheist else 'disabled'} atheist mode"
