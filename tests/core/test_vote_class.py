@@ -2,12 +2,14 @@
 Tests for the Vote class in bot_impl.py
 """
 
+from typing import cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 import global_vars
-from bot_impl import Vote
+from fixtures.discord_mocks import MockChannel
+from model import Vote
 from tests.fixtures.discord_mocks import mock_discord_setup, MockMessage
 from tests.fixtures.game_fixtures import setup_test_game, setup_test_vote
 
@@ -40,7 +42,6 @@ async def test_vote_initialization(mock_discord_setup, setup_test_game):
     # Get players from the fixture
     alice = setup_test_game['players']['alice']
     bob = setup_test_game['players']['bob']
-    charlie = setup_test_game['players']['charlie']
 
     # Use setup_test_vote from fixtures to create a vote
     vote = setup_test_vote(setup_test_game['game'], alice, bob)
@@ -134,7 +135,7 @@ async def test_vote_call_next():
 async def test_vote_call_next_with_preset(mock_discord_setup, setup_test_game):
     """Test the call_next method of Vote with a preset vote."""
     # Setup mocks
-    with patch('utils.message_utils.safe_send') as mock_safe_send:
+    with patch('utils.message_utils.safe_send'):
         with patch.object(Vote, 'vote') as mock_vote_method:
             # Set up global variables
             global_vars.channel = mock_discord_setup['channels']['town_square']
@@ -632,7 +633,8 @@ async def test_voting_process(mock_discord_setup, setup_test_game):
         mock_message.id = 12345
         mock_message.pin = AsyncMock()
         global_vars.channel = mock_discord_setup['channels']['town_square']
-        global_vars.channel.messages.append(mock_message)
+        mock_channel = cast(MockChannel, global_vars.channel)
+        mock_channel.messages.append(mock_message)
         mock_safe_send.return_value = mock_message
 
         # Create a vote with a single voter
@@ -670,8 +672,8 @@ async def test_voting_process(mock_discord_setup, setup_test_game):
         vote.position = 0
 
         # Set up the mocks for the_ability
-        with patch('bot_impl.the_ability', return_value=None):
-            with patch('bot_impl.in_play_voudon', return_value=False):
+        with patch('utils.character_utils.the_ability', return_value=None):
+            with patch('model.game.vote.in_play_voudon', return_value=False):
                 # Vote yes as a ghost
                 await vote.vote(1)
 

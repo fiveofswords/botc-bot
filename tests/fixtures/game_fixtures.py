@@ -28,7 +28,7 @@ async def setup_test_game(mock_discord_setup):
     day = create_mocked_day()
 
     # Mock the start_day and end methods to avoid Discord API calls
-    with patch('bot_impl.update_presence'):
+    with patch('utils.game_utils.update_presence'):
         # Create game object with patched methods
         game = Game(
             seating_order=[players['alice'], players['bob'], players['charlie']],

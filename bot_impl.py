@@ -6,13 +6,24 @@ import itertools
 import math
 import os
 from collections import OrderedDict
-from typing import Optional, TypeVar, Protocol, Sequence
 
-import dill
 import discord
 
 import bot_client
+import commands.loader
 import global_vars
+import model.channels
+import model.channels.channel_utils
+import model.characters
+import model.game.script
+import model.game.vote
+import model.game.whisper_mode
+import model.player
+import model.settings
+import time_utils
+from commands.registry import registry
+from model.game import game
+from utils import player_utils, message_utils, update_presence, text_utils, character_utils, game_utils
 
 # Try to import config, create a mock config module if not available
 try:
@@ -40,25 +51,10 @@ except ImportError:
     config.CHANNEL_SUFFIX = 'test'
     config.PREFIXES = (',', '@')
 
-from commands.loader import load_all_commands
-from commands.registry import registry
-from model.channels import ChannelManager
-from model.channels.channel_utils import reorder_channels
-from model.characters import Character, AbilityModifier, Amnesiac, Minion, Demon, Outsider, Townsfolk, \
-    SeatingOrderModifier, Traveler, Storyteller, Banshee
-from model.game.game import Game, NULL_GAME
-from model.game.script import Script
-from model.game.vote import Vote, in_play_voudon, remove_banshee_nomination
-from model.game.whisper_mode import chose_whisper_candidates
-from model.player import Player, STORYTELLER_ALIGNMENT
-from model.settings import GlobalSettings, GameSettings
-from time_utils import parse_deadline
-from utils import message_utils
-from utils.character_utils import the_ability
-from utils.player_utils import check_and_print_if_one_or_zero_to_check_in
+
 
 # Load all commands into the registry
-load_all_commands()
+commands.loader.load_all_commands()
 
 ### API Stuff
 try:
@@ -73,299 +69,6 @@ except TypeError:
         voice=True,
         joined=True
     )
-
-### Functions
-def str_cleanup(str, chars):
-    str = [str]
-    for char in chars:
-        list = []
-        for x in str:
-            for x in x.split(char):
-                list.append(x)
-        str = list
-    return "".join([x.capitalize() for x in str])
-
-
-def str_to_class(role: str) -> type[Character]:
-    from model.characters.registry import str_to_class as registry_str_to_class
-    return registry_str_to_class(role)
-
-
-async def generate_possibilities(text: str, people: Sequence[T]) -> list[T]:
-    # Generates possible users with name or nickname matching text
-
-    possibilities = []
-    for person in people:
-        if (
-            person.display_name is not None and text.lower() in person.display_name.lower()
-        ) or text.lower() in person.name.lower():
-            possibilities.append(person)
-    return possibilities
-
-
-async def choices(user: discord.User, possibilities: list[Player], text: str) -> Optional[Player]:
-    # Clarifies which user is indended when there are multiple matches
-
-    # Generate clarification message
-    if text == "":
-        message_text = "Who do you mean? or use 'cancel'"
-    else:
-        message_text = "Who do you mean by {}? or use 'cancel'".format(text)
-    for index, person in enumerate(possibilities):
-        message_text += "\n({}). {}".format(
-            index + 1, person.display_name if person.display_name else person.name
-        )
-
-    # Request clarifciation from user
-    reply = await message_utils.safe_send(user, message_text)
-    try:
-        choice = await bot_client.client.wait_for(
-            "message",
-            check=(lambda x: x.author == user and x.channel == reply.channel),
-            timeout=200,
-        )
-    except asyncio.TimeoutError:
-        await message_utils.safe_send(user, "Timed out.")
-        return
-
-    # Cancel
-    if choice.content.lower() == "cancel":
-        await message_utils.safe_send(user, "Action cancelled!")
-        return
-
-    # If a is an int
-    try:
-        a = possibilities[int(choice.content) - 1]
-        return possibilities[int(choice.content) - 1]
-
-    # If a is a name
-    except Exception:
-        return await select_player(user, choice.content, possibilities)
-
-
-async def select_player(user: discord.User, text: str, possibilities: Sequence[T]) -> Optional[T]:
-    # Finds a player from players matching a string
-
-    new_possibilities = await generate_possibilities(text, possibilities)
-
-    # If no users found
-    if len(new_possibilities) == 0:
-        await message_utils.safe_send(user, "User {} not found. Try again!".format(text))
-        return
-
-    # If exactly one user found
-    elif len(new_possibilities) == 1:
-        return new_possibilities[0]
-
-    # If too many users found
-    elif len(new_possibilities) > 1:
-        return await choices(user, new_possibilities, text)
-
-
-async def yes_no(user, text):
-    # Ask a yes or no question of a user
-
-    reply = await message_utils.safe_send(user, "{}? yes or no".format(text))
-    try:
-        choice = await bot_client.client.wait_for(
-            "message",
-            check=(lambda x: x.author == user and x.channel == reply.channel),
-            timeout=200,
-        )
-    except asyncio.TimeoutError:
-        await message_utils.safe_send(user, "Timed out.")
-        return
-
-    # Cancel
-    if choice.content.lower() == "cancel":
-        await message_utils.safe_send(user, "Action cancelled!")
-        return
-
-    # Yes
-    if choice.content.lower() == "yes" or choice.content.lower() == "y":
-        return True
-
-    # No
-    elif choice.content.lower() == "no" or choice.content.lower() == "n":
-        return False
-
-    else:
-        return await message_utils.safe_send(
-            user, "Your answer must be 'yes,' 'y,' 'no,' or 'n' exactly. Try again."
-        )
-
-
-async def get_player(user) -> Optional[Player]:
-    # returns the Player object corresponding to user
-    if global_vars.game is NULL_GAME:
-        return
-
-    for person in global_vars.game.seatingOrder:
-        if person.user == user:
-            return person
-
-    return None
-
-
-async def active_in_st_chat(user):
-    # Makes user active
-
-    person: Player = await get_player(user)
-
-    if not person:
-        return
-
-    # updates last active timestamp when posting in ST chat.
-    person.update_last_active()
-
-    if person.has_checked_in or global_vars.game.isDay:
-        return
-
-    person.has_checked_in = True
-    await check_and_print_if_one_or_zero_to_check_in()
-
-
-async def make_active(user):
-    # Makes user active
-
-    if not await get_player(user):
-        return
-
-    person = await get_player(user)
-
-    person.update_last_active()
-
-    if person.is_active or not global_vars.game.isDay:
-        return
-
-    person.is_active = True
-    notActive = [
-        player
-        for player in global_vars.game.seatingOrder
-        if player.is_active == False and player.alignment != STORYTELLER_ALIGNMENT
-    ]
-    if len(notActive) == 1:
-        for memb in global_vars.gamemaster_role.members:
-            await message_utils.safe_send(
-                memb, "Just waiting on {} to speak.".format(notActive[0].display_name)
-            )
-    if len(notActive) == 0:
-        for memb in global_vars.gamemaster_role.members:
-            await message_utils.safe_send(memb, "Everyone has spoken!")
-
-
-async def cannot_nominate(user):
-    # Uses user's nomination
-
-    (await get_player(user)).can_nominate = False
-    can_nominate = [
-        player
-        for player in global_vars.game.seatingOrder
-        if player.can_nominate == True
-           and player.has_skipped == False
-           and player.is_ghost == False
-    ]
-    if len(can_nominate) == 1:
-        for memb in global_vars.gamemaster_role.members:
-            await message_utils.safe_send(
-                memb,
-                "Just waiting on {} to nominate or skip.".format(can_nominate[0].display_name),
-            )
-    if len(can_nominate) == 0:
-        for memb in global_vars.gamemaster_role.members:
-            await message_utils.safe_send(memb, "Everyone has nominated or skipped!")
-
-
-async def update_presence(client):
-    # Updates Discord Presence
-    from utils.game_utils import update_presence as utils_update_presence
-    await utils_update_presence(client)
-
-
-def backup(fileName):
-    # Backs up the game-state
-    from model.game.game import NULL_GAME
-    if not global_vars.game or global_vars.game is NULL_GAME:
-        return
-
-    objects = [
-        x
-        for x in dir(global_vars.game)
-        if not x.startswith("__") and not callable(getattr(global_vars.game, x))
-    ]
-    with open(fileName, "wb") as file:
-        dill.dump(objects, file)
-
-    for obj in objects:
-        with open(obj + "_" + fileName, "wb") as file:
-            if obj == "seatingOrderMessage":
-                dill.dump(getattr(global_vars.game, obj).id, file)
-            elif obj == "info_channel_seating_order_message":
-                msg = getattr(global_vars.game, obj)
-                if msg is not None:
-                    dill.dump(msg.id, file)
-                else:
-                    dill.dump(None, file)
-            else:
-                dill.dump(getattr(global_vars.game, obj), file)
-
-
-async def load(fileName):
-    # Loads the game-state
-    from model.game.game import Game
-    from model.game.script import Script
-
-    with open(fileName, "rb") as file:
-        objects = dill.load(file)
-
-    game = Game([], None, None, Script([]))
-    for obj in objects:
-        if not os.path.isfile(obj + "_" + fileName):
-            print("Incomplete backup found.")
-            return
-        with open(obj + "_" + fileName, "rb") as file:
-            if obj == "seatingOrderMessage":
-                id = dill.load(file)
-                msg = await global_vars.channel.fetch_message(id)
-                setattr(game, obj, msg)
-            elif obj == "info_channel_seating_order_message":
-                id = dill.load(file)
-                if id is not None and global_vars.info_channel:
-                    try:
-                        msg = await global_vars.info_channel.fetch_message(id)
-                        setattr(game, obj, msg)
-                    except:
-                        # Message may have been deleted or channel may not exist
-                        setattr(game, obj, None)
-                else:
-                    setattr(game, obj, None)
-            else:
-                setattr(game, obj, dill.load(file))
-
-    return game
-
-
-def remove_backup(fileName):
-    from utils.game_utils import remove_backup as utils_remove_backup
-    utils_remove_backup(fileName)
-
-
-def find_all(p, s):
-    i = s.find(p)
-    while i != -1:
-        yield i
-        i = s.find(p, i + 1)
-
-
-async def aexec(code):
-    # Make an async function with the code and `exec` it
-    exec(f"async def __ex(): " + "".join(f"\n {l}" for l in code.split("\n")))
-
-    # Get `__ex` from local variables, call it and return the result
-    return await locals()["__ex"]()
-
-
-# NULL_GAME is imported from model.game
 
 ### Event Handling
 @bot_client.client.event
@@ -413,7 +116,7 @@ async def on_ready():
             global_vars.observer_role = role
 
     if os.path.isfile("current_game.pckl"):
-        global_vars.game = await load("current_game.pckl")
+        global_vars.game = await game_utils.load("current_game.pckl")
         print("Backup restored!")
 
     else:
@@ -434,7 +137,7 @@ async def on_ready():
 async def on_message(message):
     # Handles messages
 
-    backup("current_game.pckl")
+    game_utils.backup("current_game.pckl")
 
     # Don't respond to self
     if message.author == bot_client.client.user:
@@ -442,9 +145,9 @@ async def on_message(message):
 
     # Update activity from town square message
     if message.channel == global_vars.channel:
-        if global_vars.game is not NULL_GAME:
-            await make_active(message.author)
-            backup("current_game.pckl")
+        if global_vars.game is not game.NULL_GAME:
+            await player_utils.make_active(message.author)
+            game_utils.backup("current_game.pckl")
 
         # Votes
         if message.content.startswith(config.PREFIXES):
@@ -458,7 +161,7 @@ async def on_message(message):
 
             if command == "vote":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(global_vars.channel, "There's no game right now.")
                     return
 
@@ -486,7 +189,7 @@ async def on_message(message):
 
                 vote = global_vars.game.days[-1].votes[-1]
 
-                voting_player = (await get_player(message.author))
+                voting_player = (await player_utils.get_player(message.author))
                 if not voting_player:
                     await message_utils.safe_send(global_vars.channel, "You are not a player in the game.")
                     return
@@ -498,22 +201,22 @@ async def on_message(message):
                     return
 
                 vt = int(argument == "yes" or argument == "y")
-                voudon_in_play = in_play_voudon()
+                voudon_in_play = model.game.vote.in_play_voudon()
                 if vt > 0 and voudon_in_play and voting_player != voudon_in_play and not voting_player.is_ghost:
                     await message_utils.safe_send(global_vars.channel,
                                                   "Voudon is in play. Only the Voudon and dead may vote.")
                     return
 
                 await vote.vote(vt)
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 return
 
     # Update activity from a player's Storyteller channel
-    if global_vars.game is not NULL_GAME:
-        if message.channel.id == GameSettings.load().get_st_channel(message.author.id):
-            await active_in_st_chat(message.author)
-            backup("current_game.pckl")
+    if global_vars.game is not game.NULL_GAME:
+        if message.channel.id == model.settings.GameSettings.load().get_st_channel(message.author.id):
+            await player_utils.active_in_st_chat(message.author)
+            game_utils.backup("current_game.pckl")
             return
 
     # Responding to dms
@@ -524,18 +227,13 @@ async def on_message(message):
 
             # Generate command and arguments
             if " " in message.content:
-                # VERY DANGEROUS TESTING COMMAND
-                # if message.content[1:message.content.index(' ')].lower() == 'exec':
-                # if message.author.id == 149969652141785088:
-                # await aexec(message.content[message.content.index(' ') + 1:])
-                # return
                 command = message.content[1: message.content.index(" ")].lower()
                 argument = message.content[message.content.index(" ") + 1:].lower()
             else:
                 command = message.content[1:].lower()
                 argument = ""
 
-            alias = GlobalSettings.load().get_alias(message.author.id, command)
+            alias = model.settings.GlobalSettings.load().get_alias(message.author.id, command)
             if alias:
                 command = alias
 
@@ -546,7 +244,7 @@ async def on_message(message):
             # Legacy command handling - gradually move these to registry
             # Opens pms
             if command == "openpms":
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -559,12 +257,12 @@ async def on_message(message):
                     return
 
                 await global_vars.game.days[-1].open_pms()
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
 
             # Opens nominations
             elif command == "opennoms":
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -577,12 +275,12 @@ async def on_message(message):
                     return
 
                 await global_vars.game.days[-1].open_noms()
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
 
             # Opens pms and nominations
             elif command == "open":
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -597,12 +295,12 @@ async def on_message(message):
 
                 await global_vars.game.days[-1].open_pms()
                 await global_vars.game.days[-1].open_noms()
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
 
             # Closes pms
             elif command == "closepms":
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -615,12 +313,12 @@ async def on_message(message):
                     return
 
                 await global_vars.game.days[-1].close_pms()
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
 
             # Closes nominations
             elif command == "closenoms":
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -633,12 +331,12 @@ async def on_message(message):
                     return
 
                 await global_vars.game.days[-1].close_noms()
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
 
             # Closes pms and nominations
             elif command == "close":
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -653,13 +351,13 @@ async def on_message(message):
 
                 await global_vars.game.days[-1].close_pms()
                 await global_vars.game.days[-1].close_noms()
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 return
 
             # Welcomes players
             elif command == "welcome":
-                player = await select_player(message.author, argument, global_vars.server.members)
+                player = await player_utils.select_player(message.author, argument, global_vars.server.members)
                 if player is None:
                     return
 
@@ -683,10 +381,11 @@ async def on_message(message):
                         + storytellers[-1]
                     )
 
-                game_settings = GameSettings.load()
+                game_settings = model.settings.GameSettings.load()
                 st_channel = bot_client.client.get_channel(game_settings.get_st_channel(player.id))
                 if not st_channel:
-                    st_channel = await ChannelManager(bot_client.client).create_channel(game_settings, player)
+                    st_channel = await model.channels.ChannelManager(bot_client.client).create_channel(game_settings,
+                                                                                                       player)
                     await message_utils.safe_send(message.author,
                                     f'Successfully created the channel https://discord.com/channels/{global_vars.server.id}/{st_channel.id}!')
 
@@ -709,9 +408,9 @@ async def on_message(message):
 
             # Starts game
             elif command == "startgame":
-                game_settings: GameSettings = GameSettings.load()
+                game_settings: model.settings.GameSettings = model.settings.GameSettings.load()
 
-                if global_vars.game is not NULL_GAME:
+                if global_vars.game is not game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's already an ongoing game!")
                     return
 
@@ -739,7 +438,7 @@ async def on_message(message):
 
                 users: list[discord.Member] = []
                 for person in order:
-                    name = await select_player(message.author, person, global_vars.server.members)
+                    name = await player_utils.select_player(message.author, person, global_vars.server.members)
                     if name is None:
                         return
                     users.append(name)
@@ -775,11 +474,11 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "Players and roles do not match.")
                     return
 
-                characters: list[type[Character]] = []
+                characters: list[type[model.characters.Character]] = []
                 for text in roles:
-                    role = str_cleanup(text, [",", " ", "-", "'"])
+                    role = text_utils.str_cleanup(text, [",", " ", "-", "'"])
                     try:
-                        role = str_to_class(role)
+                        role = character_utils.str_to_class(role)
                     except AttributeError:
                         await message_utils.safe_send(message.author, "Role not found: {}.".format(text))
                         return
@@ -803,12 +502,12 @@ async def on_message(message):
                     if global_vars.observer_role in user.roles:
                         await user.remove_roles(global_vars.observer_role)
                     await user.add_roles(global_vars.player_role)
-                    if issubclass(characters[index], Traveler):
+                    if issubclass(characters[index], model.characters.Traveler):
                         await user.add_roles(global_vars.traveler_role)
 
                 alignments: list[str] = []
                 for role in characters:
-                    if issubclass(role, Traveler):
+                    if issubclass(role, model.characters.Traveler):
                         msg = await message_utils.safe_send(
                             message.author,
                             "What alignment is the {}?".format(role(None).role_name)
@@ -837,18 +536,18 @@ async def on_message(message):
 
                         alignments.append(alignment.content.lower())
 
-                    elif issubclass(role, Townsfolk) or issubclass(role, Outsider):
+                    elif issubclass(role, model.characters.Townsfolk) or issubclass(role, model.characters.Outsider):
                         alignments.append("good")
 
-                    elif issubclass(role, Minion) or issubclass(role, Demon):
+                    elif issubclass(role, model.characters.Minion) or issubclass(role, model.characters.Demon):
                         alignments.append("evil")
 
                 indicies = [x for x in range(len(users))]
 
-                seating_order: list[Player] = []
+                seating_order: list[model.player.Player] = []
                 for x in indicies:
                     seating_order.append(
-                        Player(characters[x], alignments[x], users[x], st_channels[x], position=x)
+                        model.player.Player(characters[x], alignments[x], users[x], st_channels[x], position=x)
                     )
 
                 msg = await message_utils.safe_send(
@@ -871,12 +570,13 @@ async def on_message(message):
 
                 script_list = ''.join(script_message.content.split())[8:-3].split('"},{"id":"')
 
-                script = Script(script_list)
+                script = model.game.script.Script(script_list)
 
                 # Setup ST channels
-                tasks = [ChannelManager(bot_client.client).remove_ghost(st_channel.id) for st_channel in st_channels]
+                tasks = [model.channels.ChannelManager(bot_client.client).remove_ghost(st_channel.id) for st_channel in
+                         st_channels]
                 await asyncio.gather(*tasks)
-                await reorder_channels(st_channels)
+                await model.channels.channel_utils.reorder_channels(st_channels)
 
                 await message_utils.safe_send(
                     global_vars.channel,
@@ -891,14 +591,14 @@ async def on_message(message):
                     if person.hand_raised:
                         display_name_with_hand += " ✋"
                     message_text += "\n{}".format(display_name_with_hand)
-                    if isinstance(person.character, SeatingOrderModifier):
+                    if isinstance(person.character, model.characters.SeatingOrderModifier):
                         message_text += person.character.seating_order_message(
                             seating_order
                         )
                 seating_order_message = await message_utils.safe_send(global_vars.channel, message_text)
                 await seating_order_message.pin()
 
-                num_full_players = len([x for x in characters if not issubclass(x, Traveler)])
+                num_full_players = len([x for x in characters if not issubclass(x, model.characters.Traveler)])
                 distribution: tuple[int, int, int, int] = (-1, -1, -1, -1)
                 if num_full_players == 5:
                     distribution = (3, 0, 1, 1)
@@ -925,9 +625,9 @@ async def on_message(message):
                     except Exception as e:
                         print(f"Error creating info channel seating order message: {e}")
 
-                global_vars.game = Game(seating_order, seating_order_message, info_channel_message, script)
+                global_vars.game = game.Game(seating_order, seating_order_message, info_channel_message, script)
 
-                backup("current_game.pckl")
+                game_utils.backup("current_game.pckl")
                 await update_presence(bot_client.client)
 
                 return
@@ -935,7 +635,7 @@ async def on_message(message):
             # Ends game
             elif command == "endgame":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -957,14 +657,14 @@ async def on_message(message):
                     )
 
                 await global_vars.game.end(argument.lower())
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 return
 
             # Starts day
             elif command == "startday":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -978,26 +678,26 @@ async def on_message(message):
 
                 if argument == "":
                     await global_vars.game.start_day(origin=message.author)
-                    if global_vars.game is not NULL_GAME:
-                        backup("current_game.pckl")
+                    if global_vars.game is not game.NULL_GAME:
+                        game_utils.backup("current_game.pckl")
                     return
 
                 people = [
-                    await select_player(message.author, person, global_vars.game.seatingOrder)
+                    await player_utils.select_player(message.author, person, global_vars.game.seatingOrder)
                     for person in argument.split(" ")
                 ]
                 if None in people:
                     return
 
                 await global_vars.game.start_day(kills=people, origin=message.author)
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 return
 
             # Ends day
             elif command == "endday":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1010,14 +710,14 @@ async def on_message(message):
                     return
 
                 await global_vars.game.days[-1].end()
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 return
 
             # Kills a player
             elif command == "kill":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1025,7 +725,7 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "You don't have permission to kill players.")
                     return
 
-                person = await select_player(
+                person = await player_utils.select_player(
                     message.author, argument, global_vars.game.seatingOrder
                 )
                 if person is None:
@@ -1036,14 +736,14 @@ async def on_message(message):
                     return
 
                 await person.kill(force=True)
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 return
 
             # Executes a player
             elif command == "execute":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1051,21 +751,21 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "You don't have permission to execute players.")
                     return
 
-                person = await select_player(
+                person = await player_utils.select_player(
                     message.author, argument, global_vars.game.seatingOrder
                 )
                 if person is None:
                     return
 
                 await person.execute(message.author)
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 return
 
             # Exiles a traveler
             elif command == "exile":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1073,24 +773,24 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "You don't have permission to exile travelers.")
                     return
 
-                person = await select_player(
+                person = await player_utils.select_player(
                     message.author, argument, global_vars.game.seatingOrder
                 )
                 if person is None:
                     return
 
-                if not isinstance(person.character, Traveler):
+                if not isinstance(person.character, model.characters.Traveler):
                     await message_utils.safe_send(message.author, "{} is not a traveler.".format(person.display_name))
 
                 await person.character.exile(person, message.author)
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 return
 
             # Revives a player
             elif command == "revive":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1098,7 +798,7 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "You don't have permission to revive players.")
                     return
 
-                person = await select_player(
+                person = await player_utils.select_player(
                     message.author, argument, global_vars.game.seatingOrder
                 )
                 if person is None:
@@ -1109,14 +809,14 @@ async def on_message(message):
                     return
 
                 await person.revive()
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 return
 
             # Changes role
             elif command == "changerole":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1124,7 +824,7 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "You don't have permission to change roles.")
                     return
 
-                person = await select_player(
+                person = await player_utils.select_player(
                     message.author, argument, global_vars.game.seatingOrder
                 )
                 if person is None:
@@ -1147,23 +847,23 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "Role change cancelled!")
                     return
 
-                role = str_cleanup(role, [",", " ", "-", "'"])
+                role = text_utils.str_cleanup(role, [",", " ", "-", "'"])
                 try:
-                    role = str_to_class(role)
+                    role = character_utils.str_to_class(role)
                 except AttributeError:
                     await message_utils.safe_send(message.author, "Role not found: {}.".format(role))
                     return
 
                 await person.change_character(role)
                 await message_utils.safe_send(message.author, "Role change successful!")
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 return
 
             # Changes alignment
             elif command == "changealignment":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1171,7 +871,7 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "You don't have permission to change alignments.")
                     return
 
-                person = await select_player(
+                person = await player_utils.select_player(
                     message.author, argument, global_vars.game.seatingOrder
                 )
                 if person is None:
@@ -1200,13 +900,13 @@ async def on_message(message):
 
                 await person.change_alignment(alignment)
                 await message_utils.safe_send(message.author, "Alignment change successful!")
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 return
 
             # Adds an ability to an AbilityModifier character
             elif command == "changeability":
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1214,13 +914,13 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "You don't have permission to give abilities.")
                     return
 
-                person = await select_player(
+                person = await player_utils.select_player(
                     message.author, argument, global_vars.game.seatingOrder
                 )
                 if person is None:
                     return
 
-                if not isinstance(person.character, AbilityModifier):
+                if not isinstance(person.character, model.characters.AbilityModifier):
                     await message_utils.safe_send(message.author,
                                                   "The {} cannot gain abilities.".format(person.character.role_name))
                     return
@@ -1242,9 +942,9 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "New ability cancelled!")
                     return
 
-                role = str_cleanup(role, [",", " ", "-", "'"])
+                role = text_utils.str_cleanup(role, [",", " ", "-", "'"])
                 try:
-                    role = str_to_class(role)
+                    role = character_utils.str_to_class(role)
                 except AttributeError:
                     await message_utils.safe_send(message.author, "Role not found: {}.".format(role))
                     return
@@ -1255,7 +955,7 @@ async def on_message(message):
 
             # removes an ability from an AbilityModifier ability (useful if a nested ability is gained)
             elif command == "removeability":
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1263,13 +963,13 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "You don't have permission to remove abilities.")
                     return
 
-                person = await select_player(
+                person = await player_utils.select_player(
                     message.author, argument, global_vars.game.seatingOrder
                 )
                 if person is None:
                     return
 
-                if not isinstance(person.character, AbilityModifier):
+                if not isinstance(person.character, model.characters.AbilityModifier):
                     await message_utils.safe_send(message.author, "The {} cannot gain abilities to clear.".format(
                         person.character.role_name))
                     return
@@ -1285,7 +985,7 @@ async def on_message(message):
             # Marks as inactive
             elif command == "makeinactive":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1293,21 +993,21 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "You don't have permission to make players inactive.")
                     return
 
-                person = await select_player(
+                person = await player_utils.select_player(
                     message.author, argument, global_vars.game.seatingOrder
                 )
                 if person is None:
                     return
 
                 await person.make_inactive()
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 return
 
             # Marks as inactive
             elif command == "undoinactive":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1315,21 +1015,21 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "You don't have permission to make players active.")
                     return
 
-                person = await select_player(
+                person = await player_utils.select_player(
                     message.author, argument, global_vars.game.seatingOrder
                 )
                 if person is None:
                     return
 
                 await person.undo_inactive()
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 return
 
             # Marks as checked in
             elif command == "checkin":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1339,7 +1039,7 @@ async def on_message(message):
                     return
 
                 people = [
-                    await select_player(message.author, person, global_vars.game.seatingOrder)
+                    await player_utils.select_player(message.author, person, global_vars.game.seatingOrder)
                     for person in argument.split(" ")
                 ]
                 if None in people:
@@ -1349,16 +1049,16 @@ async def on_message(message):
 
                 await message_utils.safe_send(message.author, "Successfully marked as checked in: {}".format(
                     ", ".join([person.display_name for person in people])))
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
 
-                await check_and_print_if_one_or_zero_to_check_in()
+                await player_utils.check_and_print_if_one_or_zero_to_check_in()
                 return
 
             # Marks as not checked in
             elif command == "undocheckin":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1367,7 +1067,7 @@ async def on_message(message):
                     return
 
                 people = [
-                    await select_player(message.author, person, global_vars.game.seatingOrder)
+                    await player_utils.select_player(message.author, person, global_vars.game.seatingOrder)
                     for person in argument.split(" ")
                 ]
                 if None in people:
@@ -1379,16 +1079,16 @@ async def on_message(message):
                 await message_utils.safe_send(message.author, "Successfully marked as not checked in: {}".format(
                     ", ".join([person.display_name for person in people])))
 
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
 
-                await check_and_print_if_one_or_zero_to_check_in()
+                await player_utils.check_and_print_if_one_or_zero_to_check_in()
                 return
 
             # Adds traveler
             elif command == "addtraveler" or command == "addtraveller":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1396,16 +1096,17 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "You don't have permission to add travelers.")
                     return
 
-                person = await select_player(message.author, argument, global_vars.server.members)
+                person = await player_utils.select_player(message.author, argument, global_vars.server.members)
                 if person is None:
                     return
 
-                if await get_player(person) is not None:
+                if await player_utils.get_player(person) is not None:
                     await message_utils.safe_send(message.author, "{} is already in the game.".format(
                         person.display_name if person.display_name else person.name))
                     return
 
-                st_channel = global_vars.server.get_channel(GameSettings.load().get_st_channel(person.id))
+                st_channel = global_vars.server.get_channel(
+                    model.settings.GameSettings.load().get_st_channel(person.id))
                 if not st_channel:
                     await warn_missing_player_channels(message.author, [person])
                     return
@@ -1427,15 +1128,15 @@ async def on_message(message):
 
                 text = text.content
 
-                role = str_cleanup(text, [",", " ", "-", "'"])
+                role = text_utils.str_cleanup(text, [",", " ", "-", "'"])
 
                 try:
-                    role = str_to_class(role)
+                    role = character_utils.str_to_class(role)
                 except AttributeError:
                     await message_utils.safe_send(message.author, "Role not found: {}.".format(text))
                     return
 
-                if not issubclass(role, Traveler):
+                if not issubclass(role, model.characters.Traveler):
                     await message_utils.safe_send(message.author, "{} is not a traveler role.".format(text))
                     return
 
@@ -1462,7 +1163,7 @@ async def on_message(message):
                 try:
                     pos = int(pos) - 1
                 except ValueError:
-                    player = await select_player(message.author, pos, global_vars.game.seatingOrder)
+                    player = await player_utils.select_player(message.author, pos, global_vars.game.seatingOrder)
                     if player is None:
                         return
                     pos = player.position + 1
@@ -1492,16 +1193,16 @@ async def on_message(message):
                     return
 
                 await global_vars.game.add_traveler(
-                    Player(role, alignment.content.lower(), person, st_channel, position=pos)
+                    model.player.Player(role, alignment.content.lower(), person, st_channel, position=pos)
                 )
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 return
 
             # Removes traveler
             elif command == "removetraveler" or command == "removetraveller":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1509,20 +1210,20 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "You don't have permission to remove travelers.")
                     return
 
-                person = await select_player(
+                person = await player_utils.select_player(
                     message.author, argument, global_vars.game.seatingOrder
                 )
                 if person is None:
                     return
 
                 await global_vars.game.remove_traveler(person)
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 return
 
             # Resets the seating chart
             elif command == "resetseats":
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
 
                 if not global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
@@ -1536,7 +1237,7 @@ async def on_message(message):
             # Changes seating chart
             elif command == "reseat":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
 
                 if not global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
@@ -1565,20 +1266,20 @@ async def on_message(message):
                     await global_vars.game.reseat(global_vars.game.seatingOrder)
 
                 order = [
-                    await select_player(message.author, person, global_vars.game.seatingOrder)
+                    await player_utils.select_player(message.author, person, global_vars.game.seatingOrder)
                     for person in order_message.content.split("\n")
                 ]
                 if None in order:
                     return
 
                 await global_vars.game.reseat(order)
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 return
 
             # Poisons
             elif command == "poison":
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1586,7 +1287,7 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "You don't have permission to poison players.")
                     return
 
-                person = await select_player(
+                person = await player_utils.select_player(
                     message.author, argument, global_vars.game.seatingOrder
                 )
                 if person is None:
@@ -1599,7 +1300,7 @@ async def on_message(message):
 
             # Unpoisons
             elif command == "unpoison":
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1607,7 +1308,7 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "You don't have permission to revive players.")
                     return
 
-                person = await select_player(
+                person = await player_utils.select_player(
                     message.author, argument, global_vars.game.seatingOrder
                 )
                 if person is None:
@@ -1619,7 +1320,7 @@ async def on_message(message):
 
             # Cancels a nomination
             elif command == "cancelnomination":
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1653,13 +1354,13 @@ async def on_message(message):
                 await global_vars.game.days[-1].open_pms()
                 await global_vars.game.days[-1].open_noms()
                 await message_utils.safe_send(global_vars.channel, "Nomination canceled!")
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 return
 
             # Sets a deadline
             elif command == "setdeadline":
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1671,7 +1372,7 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "It's not day right now.")
                     return
 
-                deadline = parse_deadline(argument)
+                deadline = time_utils.parse_deadline(argument)
 
                 if deadline is None:
                     await message_utils.safe_send(message.author,
@@ -1702,7 +1403,7 @@ async def on_message(message):
 
             # Gives a dead vote
             elif command == "givedeadvote":
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1710,20 +1411,20 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "You don't have permission to give dead votes.")
                     return
 
-                person = await select_player(
+                person = await player_utils.select_player(
                     message.author, argument, global_vars.game.seatingOrder
                 )
                 if person is None:
                     return
 
                 await person.add_dead_vote()
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 return
 
             # Removes a dead vote
             elif command == "removedeadvote":
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1731,20 +1432,20 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "You don't have permission to remove dead votes.")
                     return
 
-                person = await select_player(
+                person = await player_utils.select_player(
                     message.author, argument, global_vars.game.seatingOrder
                 )
                 if person is None:
                     return
 
                 await person.remove_dead_vote()
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 return
 
             # Sends a message tally
             elif command == "messagetally":
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1801,11 +1502,11 @@ async def on_message(message):
                         await message_utils.safe_send(message.author, "Usage: @whispers <player>")
                         return
                     if len(argument) == 1:
-                        person = await select_player(
+                        person = await player_utils.select_player(
                             message.author, argument[0], global_vars.game.seatingOrder + global_vars.game.storytellers
                         )
                 else:
-                    person = await get_player(message.author)
+                    person = await player_utils.get_player(message.author)
                 if not person:
                     await message_utils.safe_send(message.author,
                                                   "You are not in the game. You have no message history.")
@@ -1842,7 +1543,7 @@ async def on_message(message):
                 return
             # Views relevant information about a player
             elif command == "info":
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1851,7 +1552,7 @@ async def on_message(message):
                                                   "You don't have permission to view player information.")
                     return
 
-                person = await select_player(
+                person = await player_utils.select_player(
                     message.author, argument, global_vars.game.seatingOrder
                 )
                 if person is None:
@@ -1895,7 +1596,7 @@ async def on_message(message):
                 return
             # Views relevant information about a player
             elif command == "votehistory":
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1906,7 +1607,7 @@ async def on_message(message):
 
                 for index, day in enumerate(global_vars.game.days):
                     votes_for_day = f"Day {index + 1}\n"
-                    for vote in day.votes:  # type: Vote
+                    for vote in day.votes:  # type: model.Vote
                         nominator_name = vote.nominator.display_name if vote.nominator else "the storytellers"
                         nominee_name = vote.nominee.display_name if vote.nominee else "the storytellers"
                         voters = ", ".join([voter.display_name for voter in vote.voted])
@@ -1915,7 +1616,7 @@ async def on_message(message):
                 return
             # Views the grimoire
             elif command == "grimoire":
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1945,7 +1646,7 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "You don't have permission to view that information.")
                     return
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -1956,7 +1657,7 @@ async def on_message(message):
                 notActive = [
                     player
                     for player in global_vars.game.seatingOrder
-                    if player.is_active == False and player.alignment != STORYTELLER_ALIGNMENT
+                    if player.is_active == False and player.alignment != model.player.STORYTELLER_ALIGNMENT
                 ]
 
                 if notActive == []:
@@ -1973,7 +1674,7 @@ async def on_message(message):
             # Checks who can nominate
             elif command == "tocheckin":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -2004,7 +1705,7 @@ async def on_message(message):
             # Checks who can nominate
             elif command == "cannominate":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -2017,7 +1718,7 @@ async def on_message(message):
                     for player in global_vars.game.seatingOrder
                     if player.can_nominate == True
                        and player.has_skipped == False
-                       and player.alignment != STORYTELLER_ALIGNMENT
+                       and player.alignment != model.player.STORYTELLER_ALIGNMENT
                        and player.is_ghost == False
                 ]
                 if can_nominate == []:
@@ -2034,7 +1735,7 @@ async def on_message(message):
             # Checks who can be nominated
             elif command == "canbenominated":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -2060,7 +1761,7 @@ async def on_message(message):
 
             # Checks when a given player was last active
             elif command == "lastactive":
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -2083,7 +1784,7 @@ async def on_message(message):
             # Nominates
             elif command == "nominate":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -2095,15 +1796,16 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "Nominations aren't open right now.")
                     return
 
-                nominator_player = await get_player(message.author)
-                story_teller_is_nominated = await is_storyteller(argument)
-                person = await select_player(
+                nominator_player = await player_utils.get_player(message.author)
+                story_teller_is_nominated = await model.game.vote.is_storyteller(argument)
+                person = await player_utils.select_player(
                     message.author, argument, global_vars.game.seatingOrder
                 ) if not story_teller_is_nominated else None
 
-                traveler_called = person is not None and isinstance(person.character, Traveler)
+                traveler_called = person is not None and isinstance(person.character, model.characters.Traveler)
 
-                banshee_ability_of_player = the_ability(nominator_player.character, Banshee) if nominator_player else None
+                banshee_ability_of_player = character_utils.the_ability(nominator_player.character,
+                                                                        model.characters.Banshee) if nominator_player else None
                 banshee_override = banshee_ability_of_player is not None and banshee_ability_of_player.is_screaming
 
                 if not nominator_player:
@@ -2171,8 +1873,8 @@ async def on_message(message):
                             await message.unpin()
                             return
                         await global_vars.game.days[-1].nomination(None, nominator_player)
-                        if global_vars.game is not NULL_GAME:
-                            backup("current_game.pckl")
+                        if global_vars.game is not game.NULL_GAME:
+                            game_utils.backup("current_game.pckl")
                         await message.unpin()
                         return
 
@@ -2181,8 +1883,8 @@ async def on_message(message):
 
                 if global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
                     await global_vars.game.days[-1].nomination(person, None)
-                    if global_vars.game is not NULL_GAME:
-                        backup("current_game.pckl")
+                    if global_vars.game is not game.NULL_GAME:
+                        game_utils.backup("current_game.pckl")
                     return
 
                 #  make sure that the nominee has not been nominated yet
@@ -2191,17 +1893,17 @@ async def on_message(message):
                                                   "{} has already been nominated".format(person.display_name))
                     return
 
-                remove_banshee_nomination(banshee_ability_of_player)
+                model.game.vote.remove_banshee_nomination(banshee_ability_of_player)
 
                 await global_vars.game.days[-1].nomination(person, nominator_player)
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 return
 
             # Votes
             elif command == "vote":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -2224,7 +1926,7 @@ async def on_message(message):
                                                       argument))
                     return
 
-                voudon_in_play = in_play_voudon()
+                voudon_in_play = model.game.vote.in_play_voudon()
 
                 vote = global_vars.game.days[-1].votes[-1]
 
@@ -2247,7 +1949,7 @@ async def on_message(message):
 
                     reply = reply.content.lower()
 
-                    person = await select_player(
+                    person = await player_utils.select_player(
                         message.author, reply, global_vars.game.seatingOrder
                     )
                     if person is None:
@@ -2266,11 +1968,11 @@ async def on_message(message):
                         return
 
                     await vote.vote(vt, operator=message.author)
-                    if global_vars.game is not NULL_GAME:
-                        backup("current_game.pckl")
+                    if global_vars.game is not game.NULL_GAME:
+                        game_utils.backup("current_game.pckl")
                     return
 
-                voting_player = (await get_player(message.author))
+                voting_player = (await player_utils.get_player(message.author))
                 if vote.order[vote.position].user != voting_player.user:
                     await message_utils.safe_send(message.author,
                                                   "It's not your vote right now. Do you mean @presetvote?")
@@ -2284,14 +1986,14 @@ async def on_message(message):
                     return
 
                 await vote.vote(vt)
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 return
 
             # Presets a vote
             elif command == "presetvote" or command == "prevote":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -2317,7 +2019,7 @@ async def on_message(message):
                     return
 
                 vote = global_vars.game.days[-1].votes[-1]
-                voudon_in_play = in_play_voudon()
+                voudon_in_play = model.game.vote.in_play_voudon()
 
                 if global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
                     msg = await message_utils.safe_send(message.author, "Whose vote is this?")
@@ -2338,13 +2040,13 @@ async def on_message(message):
 
                     reply = reply.content.lower()
 
-                    person = await select_player(
+                    person = await player_utils.select_player(
                         message.author, reply, global_vars.game.seatingOrder
                     )
                     if person is None:
                         return
 
-                    player_banshee_ability = the_ability(person.character, Banshee)
+                    player_banshee_ability = character_utils.the_ability(person.character, model.characters.Banshee)
                     banshee_override = player_banshee_ability and player_banshee_ability.is_screaming
 
                     if argument in ["0", "1", "2"]:
@@ -2366,8 +2068,8 @@ async def on_message(message):
                         await message_utils.safe_send(message.author, "Successfully preset to {}!".format(vt))
                     else:
                         await message_utils.safe_send(message.author, "Successfully preset to {}!".format(argument))
-                    if global_vars.game is not NULL_GAME:
-                        backup("current_game.pckl")
+                    if global_vars.game is not game.NULL_GAME:
+                        game_utils.backup("current_game.pckl")
 
                     # Prompt for hand status (Storyteller context)
                     try:
@@ -2392,8 +2094,8 @@ async def on_message(message):
 
                         if choice_content_st in ["up", "down"]:
                             await global_vars.game.update_seating_order_message()
-                            if global_vars.game is not NULL_GAME:
-                                backup("current_game.pckl")
+                            if global_vars.game is not game.NULL_GAME:
+                                game_utils.backup("current_game.pckl")
 
                     except asyncio.TimeoutError:
                         await message_utils.safe_send(message.author, "Timed out. Hand status not changed.")
@@ -2401,8 +2103,8 @@ async def on_message(message):
                         bot_client.logger.error(f"Error during hand status prompt for ST in presetvote: {e}")
                     return
 
-                the_player = await get_player(message.author)
-                player_banshee_ability = the_ability(the_player.character, Banshee)
+                the_player = await player_utils.get_player(message.author)
+                player_banshee_ability = character_utils.the_ability(the_player.character, model.characters.Banshee)
                 banshee_override = player_banshee_ability and player_banshee_ability.is_screaming
 
                 if argument in ["0", "1", "2"]:
@@ -2423,8 +2125,8 @@ async def on_message(message):
                 await vote.preset_vote(the_player, vt)
                 await message_utils.safe_send(message.author,
                                               "Successfully preset! For more nuanced presets, contact the storytellers.")
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
 
                 # Prompt for hand status
                 try:
@@ -2449,8 +2151,8 @@ async def on_message(message):
 
                     if choice_content in ["up", "down"]:
                         await global_vars.game.update_seating_order_message()
-                        if global_vars.game is not NULL_GAME:
-                            backup("current_game.pckl")
+                        if global_vars.game is not game.NULL_GAME:
+                            game_utils.backup("current_game.pckl")
 
                 except asyncio.TimeoutError:
                     await message_utils.safe_send(message.author, "Timed out. Hand status not changed.")
@@ -2461,7 +2163,7 @@ async def on_message(message):
             # Cancels a preset vote
             elif command == "cancelpreset" or command == "cancelprevote":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -2494,7 +2196,7 @@ async def on_message(message):
 
                     reply = reply.content.lower()
 
-                    person = await select_player(
+                    person = await player_utils.select_player(
                         message.author, reply, global_vars.game.seatingOrder
                     )
                     if person is None:
@@ -2502,8 +2204,8 @@ async def on_message(message):
 
                     await vote.cancel_preset(person)
                     await message_utils.safe_send(message.author, "Successfully canceled!")
-                    if global_vars.game is not NULL_GAME:
-                        backup("current_game.pckl")
+                    if global_vars.game is not game.NULL_GAME:
+                        game_utils.backup("current_game.pckl")
 
                     # Prompt for hand status (Storyteller context)
                     try:
@@ -2528,8 +2230,8 @@ async def on_message(message):
 
                         if choice_content_st in ["up", "down"]:
                             await global_vars.game.update_seating_order_message()
-                            if global_vars.game is not NULL_GAME:
-                                backup("current_game.pckl")
+                            if global_vars.game is not game.NULL_GAME:
+                                game_utils.backup("current_game.pckl")
 
                     except asyncio.TimeoutError:
                         await message_utils.safe_send(message.author, "Timed out. Hand status not changed.")
@@ -2537,12 +2239,12 @@ async def on_message(message):
                         bot_client.logger.error(f"Error during hand status prompt for ST in cancelpreset: {e}")
                     return
 
-                the_player = await get_player(message.author)
+                the_player = await player_utils.get_player(message.author)
                 await vote.cancel_preset(the_player)
                 await message_utils.safe_send(message.author,
                                               "Successfully canceled! For more nuanced presets, contact the storytellers.")
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
 
                 # Prompt for hand status
                 try:
@@ -2567,8 +2269,8 @@ async def on_message(message):
 
                     if choice_content in ["up", "down"]:
                         await global_vars.game.update_seating_order_message()
-                        if global_vars.game is not NULL_GAME:
-                            backup("current_game.pckl")
+                        if global_vars.game is not game.NULL_GAME:
+                            game_utils.backup("current_game.pckl")
 
                 except asyncio.TimeoutError:
                     await message_utils.safe_send(message.author, "Timed out. Hand status not changed.")
@@ -2577,7 +2279,8 @@ async def on_message(message):
                 return
 
             elif command == "adjustvotes" or command == "adjustvote":
-                if global_vars.game is NULL_GAME or global_vars.gamemaster_role not in global_vars.server.get_member(message.author.id).roles:
+                if global_vars.game is game.NULL_GAME or global_vars.gamemaster_role not in global_vars.server.get_member(
+                        message.author.id).roles:
                     await message_utils.safe_send(message.author,
                                                   "Command {} not recognized. For a list of commands, type @help.".format(
                                                       command))
@@ -2592,11 +2295,12 @@ async def on_message(message):
                 except ValueError:
                     await message_utils.safe_send(message.author, "The third argument must be a whole number")
                     return
-                amnesiac = await select_player(message.author, argument[0], global_vars.game.seatingOrder)
-                target_player = await select_player(message.author, argument[1], global_vars.game.seatingOrder)
+                amnesiac = await player_utils.select_player(message.author, argument[0], global_vars.game.seatingOrder)
+                target_player = await player_utils.select_player(message.author, argument[1],
+                                                                 global_vars.game.seatingOrder)
                 if not amnesiac or not target_player:
                     return
-                if not isinstance(amnesiac.character, Amnesiac):
+                if not isinstance(amnesiac.character, model.characters.Amnesiac):
                     await message_utils.safe_send(message.author, "{} isn't an amnesiac".format(amnesiac.display_name))
                     return
                 amnesiac.character.enhance_votes(target_player, multiplier)
@@ -2607,7 +2311,7 @@ async def on_message(message):
             # Set a default vote
             elif command == "defaultvote":
 
-                global_settings: GlobalSettings = GlobalSettings.load()
+                global_settings: model.settings.GlobalSettings = model.settings.GlobalSettings.load()
 
                 if argument == "":
                     if global_settings.get_default_vote(message.author.id):
@@ -2660,7 +2364,7 @@ async def on_message(message):
             # Sends pm
             elif command == "pm" or command == "message":
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -2672,12 +2376,13 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "PMs are closed.")
                     return
 
-                if not await get_player(message.author):
+                if not await player_utils.get_player(message.author):
                     await message_utils.safe_send(message.author, "You are not in the game. You may not send messages.")
                     return
 
-                candidates_for_whispers = await chose_whisper_candidates(global_vars.game, message.author)
-                person = await select_player(
+                candidates_for_whispers = await model.game.whisper_mode.choose_whisper_candidates(global_vars.game,
+                                                                                                  message.author)
+                person = await player_utils.select_player(
                     # fixme: get players from everyone and then provide feedback if it is not appropriate
                     message.author, argument, global_vars.game.seatingOrder + global_vars.game.storytellers
                 )
@@ -2712,19 +2417,19 @@ async def on_message(message):
                     return
 
                 await person.message(
-                    await get_player(message.author),
+                    await player_utils.get_player(message.author),
                     intendedMessage.content,
                     message.jump_url,
                 )
 
-                await make_active(message.author)
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                await player_utils.make_active(message.author)
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 return
 
             # Message history
             elif command == "history":
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -2738,7 +2443,7 @@ async def on_message(message):
                         return
 
                     if len(argument) == 1:
-                        person = await select_player(
+                        person = await player_utils.select_player(
                             message.author, argument[0], global_vars.game.seatingOrder + global_vars.game.storytellers
                         )
                         if person is None:
@@ -2770,13 +2475,13 @@ async def on_message(message):
                         await message_utils.safe_send(message.author, message_text)
                         return
 
-                    person1 = await select_player(
+                    person1 = await player_utils.select_player(
                         message.author, argument[0], global_vars.game.seatingOrder + global_vars.game.storytellers
                     )
                     if person1 is None:
                         return
 
-                    person2 = await select_player(
+                    person2 = await player_utils.select_player(
                         message.author, argument[1], global_vars.game.seatingOrder + global_vars.game.storytellers
                     )
                     if person2 is None:
@@ -2810,12 +2515,12 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, message_text)
                     return
 
-                if not await get_player(message.author):
+                if not await player_utils.get_player(message.author):
                     await message_utils.safe_send(message.author,
                                                   "You are not in the game. You have no message history.")
                     return
 
-                person = await select_player(
+                person = await player_utils.select_player(
                     message.author, argument, global_vars.game.seatingOrder + global_vars.game.storytellers
                 )
                 if person is None:
@@ -2827,7 +2532,7 @@ async def on_message(message):
                     )
                 )
                 day = 1
-                for msg in (await get_player(message.author)).message_history:
+                for msg in (await player_utils.get_player(message.author)).message_history:
                     if not msg["from_player"] == person and not msg["to_player"] == person:
                         continue
                     if len(message_text) > 1500:
@@ -2850,7 +2555,7 @@ async def on_message(message):
 
             # Message search
             elif command == "search":
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -2888,7 +2593,7 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, message_text)
                     return
 
-                if not await get_player(message.author):
+                if not await player_utils.get_player(message.author):
                     await message_utils.safe_send(message.author,
                                                   "You are not in the game. You have no message history.")
                     return
@@ -2899,7 +2604,7 @@ async def on_message(message):
                     )
                 )
                 day = 1
-                for msg in (await get_player(message.author)).message_history:
+                for msg in (await player_utils.get_player(message.author)).message_history:
                     if not (argument.lower() in msg["content"].lower()):
                         continue
                     while msg["day"] != day:
@@ -2917,12 +2622,12 @@ async def on_message(message):
 
             # Hand up
             elif command == "handup" or command == "handdown":
-                player = await get_player(message.author)
+                player = await player_utils.get_player(message.author)
                 if not player:
                     await message_utils.safe_send(message.author, "You are not a player in the game.")
                     return
 
-                if global_vars.game is NULL_GAME:
+                if global_vars.game is game.NULL_GAME:
                     await message_utils.safe_send(message.author, "There's no game right now.")
                     return
 
@@ -2943,7 +2648,7 @@ async def on_message(message):
                 if command == "handdown":
                     player.hand_raised = False
                     await message_utils.safe_send(message.author, "Your hand is lowered.")
-                    backup("current_game.pckl") # Backup for hand_raised change
+                    game_utils.backup("current_game.pckl")  # Backup for hand_raised change
                     await global_vars.game.update_seating_order_message()
 
                     active_vote = None
@@ -2963,23 +2668,24 @@ async def on_message(message):
 
                             if prevote_choice in ["yes", "y"]:
                                 vt = 1  # Default to 'yes'
-                                banshee_ability = the_ability(player.character, Banshee)
+                                banshee_ability = character_utils.the_ability(player.character,
+                                                                              model.characters.Banshee)
                                 if banshee_ability and banshee_ability.is_screaming:
                                     vt = 2
                                 await active_vote.preset_vote(player, vt)
                                 await message_utils.safe_send(message.author, "Your vote has been preset to YES.")
-                                if global_vars.game is not NULL_GAME:
-                                    backup("current_game.pckl")
+                                if global_vars.game is not game.NULL_GAME:
+                                    game_utils.backup("current_game.pckl")
                             elif prevote_choice in ["no", "n"]:
                                 await active_vote.preset_vote(player, 0)
                                 await message_utils.safe_send(message.author, "Your vote has been preset to NO.")
-                                if global_vars.game is not NULL_GAME:
-                                    backup("current_game.pckl")
+                                if global_vars.game is not game.NULL_GAME:
+                                    game_utils.backup("current_game.pckl")
                             elif prevote_choice == "cancel":
                                 await active_vote.cancel_preset(player)
                                 await message_utils.safe_send(message.author, "Your preset vote has been cancelled.")
-                                if global_vars.game is not NULL_GAME:
-                                    backup("current_game.pckl")
+                                if global_vars.game is not game.NULL_GAME:
+                                    game_utils.backup("current_game.pckl")
                             else:
                                 await message_utils.safe_send(message.author,
                                                               "Invalid prevote choice. Prevote not changed.")
@@ -2998,7 +2704,7 @@ async def on_message(message):
 
                 player.hand_raised = True
                 await message_utils.safe_send(message.author, "Your hand is raised.")  # Initial confirmation
-                backup("current_game.pckl") # Backup for hand_raised change
+                game_utils.backup("current_game.pckl")  # Backup for hand_raised change
                 await global_vars.game.update_seating_order_message()
 
                 if active_vote:
@@ -3014,23 +2720,23 @@ async def on_message(message):
 
                         if prevote_choice in ["yes", "y"]:
                             vt = 1  # Default to 'yes'
-                            banshee_ability = the_ability(player.character, Banshee)
+                            banshee_ability = character_utils.the_ability(player.character, model.characters.Banshee)
                             if banshee_ability and banshee_ability.is_screaming:
                                 vt = 2 # Banshee scream with hand up is a 'yes' vote of 2
                             await active_vote.preset_vote(player, vt)
                             await message_utils.safe_send(message.author, "Your vote has been preset to YES.")
-                            if global_vars.game is not NULL_GAME:
-                                backup("current_game.pckl")
+                            if global_vars.game is not game.NULL_GAME:
+                                game_utils.backup("current_game.pckl")
                         elif prevote_choice in ["no", "n"]:
                             await active_vote.preset_vote(player, 0)
                             await message_utils.safe_send(message.author, "Your vote has been preset to NO.")
-                            if global_vars.game is not NULL_GAME:
-                                backup("current_game.pckl")
+                            if global_vars.game is not game.NULL_GAME:
+                                game_utils.backup("current_game.pckl")
                         elif prevote_choice == "cancel":
                             await active_vote.cancel_preset(player)
                             await message_utils.safe_send(message.author, "Your preset vote has been cancelled.")
-                            if global_vars.game is not NULL_GAME:
-                                backup("current_game.pckl")
+                            if global_vars.game is not game.NULL_GAME:
+                                game_utils.backup("current_game.pckl")
                         else:
                             await message_utils.safe_send(message.author,
                                                           "Invalid prevote choice. Prevote not changed.")
@@ -3063,7 +2769,7 @@ async def check_and_print_if_one_or_zero_to_check_in():
     not_checked_in = [
         player
         for player in global_vars.game.seatingOrder
-        if not player.has_checked_in and player.alignment != STORYTELLER_ALIGNMENT
+        if not player.has_checked_in and player.alignment != model.player.STORYTELLER_ALIGNMENT
     ]
     if len(not_checked_in) == 1:
         for memb in global_vars.gamemaster_role.members:
@@ -3075,9 +2781,6 @@ async def check_and_print_if_one_or_zero_to_check_in():
             await message_utils.safe_send(memb, "Everyone has checked in!")
 
 
-from model.game.vote import is_storyteller
-
-
 @bot_client.client.event
 async def on_message_edit(before, after):
     # Handles messages on modification
@@ -3085,7 +2788,7 @@ async def on_message_edit(before, after):
         return
 
     # On pin
-    message_author_player = await get_player(after.author)
+    message_author_player = await player_utils.get_player(after.author)
     if before.channel == global_vars.channel and before.pinned == False and after.pinned == True:
 
         # Nomination
@@ -3093,7 +2796,7 @@ async def on_message_edit(before, after):
 
             argument = after.content.lower()[after.content.lower().index("nominate ") + 9:]
 
-            if global_vars.game is NULL_GAME:
+            if global_vars.game is game.NULL_GAME:
                 await message_utils.safe_send(global_vars.channel, "There's no game right now.")
                 await after.unpin()
                 return
@@ -3115,10 +2818,11 @@ async def on_message_edit(before, after):
                 await after.unpin()
                 return
 
-            names = await generate_possibilities(argument, global_vars.game.seatingOrder)
-            traveler_called = len(names) == 1 and isinstance(names[0].character, Traveler)
+            names = await player_utils.generate_possibilities(argument, global_vars.game.seatingOrder)
+            traveler_called = len(names) == 1 and isinstance(names[0].character, model.characters.Traveler)
 
-            banshee_ability_of_player = the_ability(message_author_player.character, Banshee) if message_author_player else None
+            banshee_ability_of_player = character_utils.the_ability(message_author_player.character,
+                                                                    model.characters.Banshee) if message_author_player else None
             banshee_override = banshee_ability_of_player and banshee_ability_of_player.is_screaming and not banshee_ability_of_player.is_poisoned
 
             if message_author_player.is_ghost and not traveler_called and not message_author_player.riot_nominee and not banshee_override:
@@ -3139,7 +2843,7 @@ async def on_message_edit(before, after):
                 return
 
             if global_vars.game.script.is_atheist:
-                storyteller_nomination = await is_storyteller(argument)
+                storyteller_nomination = await model.game.vote.is_storyteller(argument)
                 if storyteller_nomination:
                     if None in [x.nominee for x in global_vars.game.days[-1].votes]:
                         await message_utils.safe_send(
@@ -3148,10 +2852,10 @@ async def on_message_edit(before, after):
                         )
                         await after.unpin()
                         return
-                    remove_banshee_nomination(banshee_ability_of_player)
+                    model.game.vote.remove_banshee_nomination(banshee_ability_of_player)
                     await global_vars.game.days[-1].nomination(None, message_author_player)
-                    if global_vars.game is not NULL_GAME:
-                        backup("current_game.pckl")
+                    if global_vars.game is not game.NULL_GAME:
+                        game_utils.backup("current_game.pckl")
                     await after.unpin()
                     return
 
@@ -3164,11 +2868,11 @@ async def on_message_edit(before, after):
                     await after.unpin()
                     return
 
-                remove_banshee_nomination(banshee_ability_of_player)
+                model.game.vote.remove_banshee_nomination(banshee_ability_of_player)
 
                 await global_vars.game.days[-1].nomination(names[0], message_author_player)
-                if global_vars.game is not NULL_GAME:
-                    backup("current_game.pckl")
+                if global_vars.game is not game.NULL_GAME:
+                    game_utils.backup("current_game.pckl")
                 await after.unpin()
                 return
 
@@ -3187,7 +2891,7 @@ async def on_message_edit(before, after):
         # Skip
         elif "skip" in after.content.lower():
 
-            if global_vars.game is NULL_GAME:
+            if global_vars.game is game.NULL_GAME:
                 await message_utils.safe_send(global_vars.channel, "There's no game right now.")
                 await after.unpin()
                 return
@@ -3205,15 +2909,15 @@ async def on_message_edit(before, after):
                 return
 
             (message_author_player).has_skipped = True
-            if global_vars.game is not NULL_GAME:
-                backup("current_game.pckl")
+            if global_vars.game is not game.NULL_GAME:
+                game_utils.backup("current_game.pckl")
 
             can_nominate = [
                 player
                 for player in global_vars.game.seatingOrder
                 if player.can_nominate == True
                    and player.has_skipped == False
-                   and player.alignment != STORYTELLER_ALIGNMENT
+                   and player.alignment != model.player.STORYTELLER_ALIGNMENT
                    and player.is_ghost == False
             ]
             if len(can_nominate) == 1:
@@ -3238,8 +2942,8 @@ async def on_message_edit(before, after):
         # Unskip
         if "skip" in after.content.lower():
             (message_author_player).has_skipped = False
-            if global_vars.game is not NULL_GAME:
-                backup("current_game.pckl")
+            if global_vars.game is not game.NULL_GAME:
+                game_utils.backup("current_game.pckl")
 
 
 # remove_banshee_nomination has been moved to model/characters/specific.py
@@ -3251,28 +2955,19 @@ async def on_member_update(before, after):
     if after == bot_client.client.user:
         return
 
-    if global_vars.game is not NULL_GAME:
-        player = await get_player(after)
+    if global_vars.game is not game.NULL_GAME:
+        player = await player_utils.get_player(after)
         if player and player.display_name != after.display_name:
             player.display_name = after.display_name
             await global_vars.game.reseat(global_vars.game.seatingOrder)
             await message_utils.safe_send(after, "Your nickname has been updated.")
-            backup("current_game.pckl")
+            game_utils.backup("current_game.pckl")
 
         if global_vars.gamemaster_role in after.roles and global_vars.gamemaster_role not in before.roles:
-            st_player = Player(Storyteller, STORYTELLER_ALIGNMENT, after, st_channel=None, position=None)
+            st_player = model.player.Player(model.characters.Storyteller, model.player.STORYTELLER_ALIGNMENT, after,
+                                            st_channel=None, position=None)
             global_vars.game.storytellers.append(st_player)
         elif global_vars.gamemaster_role in before.roles and global_vars.gamemaster_role not in after.roles:
             for st in global_vars.game.storytellers:
                 if st.user.id == after.id:
                     global_vars.game.storytellers.remove(st)
-
-
-#######################
-# TypeVar Magic
-#######################
-class HasNick(Protocol):
-    nick: Optional[str]
-
-
-T = TypeVar('T', bound=HasNick)

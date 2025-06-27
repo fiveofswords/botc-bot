@@ -1,3 +1,6 @@
+from utils import player_utils
+
+
 class WhisperMode:
     """Enum-like class for whisper modes.
     
@@ -39,7 +42,7 @@ def to_whisper_mode(argument):
         return None
 
 
-async def chose_whisper_candidates(game, author):
+async def choose_whisper_candidates(game, author):
     """Determine which players the author can whisper to based on the current whisper mode.
     
     Args:
@@ -49,7 +52,6 @@ async def chose_whisper_candidates(game, author):
     Returns:
         List of players that the author can whisper to
     """
-    from bot_impl import get_player
 
     if game.whisper_mode == WhisperMode.ALL:
         return game.seatingOrder + game.storytellers
@@ -57,7 +59,7 @@ async def chose_whisper_candidates(game, author):
         return game.storytellers
     if game.whisper_mode == WhisperMode.NEIGHBORS:
         # determine neighbors
-        player_self = await get_player(author)
+        player_self = await player_utils.get_player(author)
         author_index = game.seatingOrder.index(player_self)
         neighbor_left = game.seatingOrder[(author_index - 1) % len(game.seatingOrder)]
         neighbor_right = game.seatingOrder[(author_index + 1) % len(game.seatingOrder)]

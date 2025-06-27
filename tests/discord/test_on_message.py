@@ -23,7 +23,7 @@ from tests.fixtures.game_fixtures import setup_test_game
 async def test_on_message_bot_message(mock_discord_setup):
     """Test that bot ignores its own messages."""
     # Initialize global_vars.game to NULL_GAME
-    from bot_impl import NULL_GAME
+    from model import NULL_GAME
     global_vars.game = NULL_GAME
 
     # Create a message from the bot
@@ -36,7 +36,7 @@ async def test_on_message_bot_message(mock_discord_setup):
     )
 
     # Set up spy on backup function
-    with patch('bot_impl.backup') as mock_backup:
+    with patch('utils.game_utils.backup') as mock_backup:
         # Process the message with client set as author
         with patch('bot_client.client') as mock_client:
             mock_client.user = bot_message.author  # This makes the bot recognize itself
@@ -63,8 +63,8 @@ async def test_on_message_town_square_activity(mock_discord_setup, setup_test_ga
     )
 
     # Set up mock for make_active function
-    with patch('bot_impl.make_active') as mock_make_active:
-        with patch('bot_impl.backup') as mock_backup:
+    with patch('utils.player_utils.make_active') as mock_make_active:
+        with patch('utils.game_utils.backup') as mock_backup:
             # Process the message
             await on_message(alice_message)
 
@@ -95,9 +95,9 @@ async def test_on_message_storyteller_channel(mock_discord_setup, setup_test_gam
     )
 
     # Process the message
-    with patch('bot_impl.backup') as mock_backup:
+    with patch('utils.game_utils.backup') as mock_backup:
         with patch('model.settings.game_settings.GameSettings.load', return_value=mock_game_settings):
-            with patch('bot_impl.active_in_st_chat') as mock_active_in_st_chat:
+            with patch('utils.player_utils.active_in_st_chat') as mock_active_in_st_chat:
                 await on_message(alice_message)
 
                 # Verify active_in_st_chat was called for Alice
@@ -108,7 +108,7 @@ async def test_on_message_storyteller_channel(mock_discord_setup, setup_test_gam
 async def test_on_message_vote_command_no_game(mock_discord_setup):
     """Test handling vote command when no game is active."""
     # Set up global variables
-    from bot_impl import NULL_GAME
+    from model.game import NULL_GAME
     global_vars.game = NULL_GAME  # Use NULL_GAME instead of None
     global_vars.channel = mock_discord_setup['channels']['town_square']
 
@@ -122,7 +122,7 @@ async def test_on_message_vote_command_no_game(mock_discord_setup):
     )
 
     # Process the message
-    with patch('bot_impl.backup') as mock_backup:
+    with patch('utils.game_utils.backup') as mock_backup:
         with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
             await on_message(alice_message)
 
@@ -153,7 +153,7 @@ async def test_on_message_vote_command_nighttime(mock_discord_setup, setup_test_
     )
 
     # Process the message
-    with patch('bot_impl.backup') as mock_backup:
+    with patch('utils.game_utils.backup') as mock_backup:
         with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
             await on_message(alice_message)
 
@@ -186,7 +186,7 @@ async def test_on_message_vote_command_no_votes(mock_discord_setup, setup_test_g
     )
 
     # Process the message
-    with patch('bot_impl.backup') as mock_backup:
+    with patch('utils.game_utils.backup') as mock_backup:
         with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
             await on_message(alice_message)
 
@@ -220,7 +220,7 @@ async def test_on_message_vote_invalid_format(mock_discord_setup, setup_test_gam
     )
 
     # Process the message
-    with patch('bot_impl.backup') as mock_backup:
+    with patch('utils.game_utils.backup') as mock_backup:
         with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
             await on_message(alice_message)
 
@@ -260,9 +260,9 @@ async def test_on_message_vote_not_player_turn(mock_discord_setup, setup_test_ga
     )
 
     # Process the message
-    with patch('bot_impl.backup') as mock_backup:
+    with patch('utils.game_utils.backup') as mock_backup:
         with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
-            with patch('bot_impl.get_player', return_value=setup_test_game['players']['alice']):
+            with patch('utils.player_utils.get_player', return_value=setup_test_game['players']['alice']):
                 await on_message(alice_message)
 
                 # Verify error message was sent
@@ -302,9 +302,9 @@ async def test_on_message_vote_successful(mock_discord_setup, setup_test_game):
     )
 
     # Process the message
-    with patch('bot_impl.backup') as mock_backup:
-        with patch('bot_impl.get_player', return_value=setup_test_game['players']['alice']):
-            with patch('bot_impl.in_play_voudon', return_value=None):  # No Voudon in play
+    with patch('utils.game_utils.backup') as mock_backup:
+        with patch('utils.player_utils.get_player', return_value=setup_test_game['players']['alice']):
+            with patch('model.game.vote.in_play_voudon', return_value=None):  # No Voudon in play
                 await on_message(alice_message)
 
                 # Verify vote was called with 1 (yes)
@@ -334,7 +334,7 @@ async def test_direct_message_command_processing(mock_discord_setup, setup_test_
     global_vars.server = mock_server
 
     # Process the message
-    with patch('bot_impl.backup') as mock_backup:
+    with patch('utils.game_utils.backup') as mock_backup:
         with patch('discord.Embed') as mock_embed:
             mock_embed_instance = MagicMock()
             mock_embed.return_value = mock_embed_instance
@@ -392,10 +392,11 @@ async def test_pm_command_during_day(mock_discord_setup, setup_test_game):
     )
 
     # Process the message
-    with patch('bot_impl.backup') as mock_backup:
-        with patch('bot_impl.get_player', return_value=setup_test_game['players']['alice']):
-            with patch('bot_impl.select_player', return_value=setup_test_game['players']['bob']):
-                with patch('bot_impl.chose_whisper_candidates', return_value=[setup_test_game['players']['bob']]):
+    with patch('utils.game_utils.backup') as mock_backup:
+        with patch('utils.player_utils.get_player', return_value=setup_test_game['players']['alice']):
+            with patch('utils.player_utils.select_player', return_value=setup_test_game['players']['bob']):
+                with patch('model.game.whisper_mode.choose_whisper_candidates',
+                           return_value=[setup_test_game['players']['bob']]):
                     with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                         # Create a proper async mock for client.wait_for
                         wait_for_mock = AsyncMock()
@@ -439,8 +440,8 @@ async def test_pm_command_when_pms_closed(mock_discord_setup, setup_test_game):
     )
 
     # Process the message
-    with patch('bot_impl.backup') as mock_backup:
-        with patch('bot_impl.get_player', return_value=setup_test_game['players']['alice']):
+    with patch('utils.game_utils.backup') as mock_backup:
+        with patch('utils.player_utils.get_player', return_value=setup_test_game['players']['alice']):
             with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 await on_message(alice_message)
 
@@ -457,7 +458,7 @@ async def test_command_parser_handles_nominate(mock_discord_setup):
 
     # This is a very simplified test that just verifies command recognition
     # Set up global variables for this test
-    from bot_impl import NULL_GAME
+    from model.game import NULL_GAME
     global_vars.game = NULL_GAME
 
     # Create a nominate message from Alice (but without all the game setup)
@@ -471,7 +472,7 @@ async def test_command_parser_handles_nominate(mock_discord_setup):
 
     # Since we're not really trying to properly test the full nomination functionality
     # we'll just track that the backup function got called, indicating message processing ran
-    with patch('bot_impl.backup') as mock_backup:
+    with patch('utils.game_utils.backup') as mock_backup:
         await on_message(alice_message)
 
         # If this assertion passes, it means on_message recognized the command
@@ -511,7 +512,7 @@ async def test_openpms_command_from_storyteller(mock_discord_setup, setup_test_g
     global_vars.gamemaster_role = mock_member.roles[0]
 
     # Process the message
-    with patch('bot_impl.backup') as mock_backup:
+    with patch('utils.game_utils.backup') as mock_backup:
         with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
             await on_message(st_message)
 
@@ -553,8 +554,8 @@ async def test_whispers_command(mock_discord_setup, setup_test_game):
     )
 
     # Process the message
-    with patch('bot_impl.backup') as mock_backup:
-        with patch('bot_impl.get_player', return_value=setup_test_game['players']['alice']):
+    with patch('utils.game_utils.backup') as mock_backup:
+        with patch('utils.player_utils.get_player', return_value=setup_test_game['players']['alice']):
             with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 # Create OrderedDict for counts (this is used in the function)
                 with patch('bot_impl.OrderedDict', return_value={}):
@@ -593,7 +594,7 @@ async def test_default_vote_command(mock_discord_setup):
     mock_global_settings.get_alias = MagicMock(return_value=None)  # Important! This was missing
 
     # Process the message
-    with patch('bot_impl.backup') as mock_backup:
+    with patch('utils.game_utils.backup') as mock_backup:
         with patch('model.settings.global_settings.GlobalSettings.load', return_value=mock_global_settings):
             with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 # Execute the message handling function
@@ -636,9 +637,9 @@ async def test_history_command(mock_discord_setup, setup_test_game):
     )
 
     # Process the message
-    with patch('bot_impl.backup') as mock_backup:
-        with patch('bot_impl.get_player', return_value=setup_test_game['players']['alice']):
-            with patch('bot_impl.select_player', return_value=setup_test_game['players']['bob']):
+    with patch('utils.game_utils.backup') as mock_backup:
+        with patch('utils.player_utils.get_player', return_value=setup_test_game['players']['alice']):
+            with patch('utils.player_utils.select_player', return_value=setup_test_game['players']['bob']):
                 with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                     await on_message(alice_message)
 
@@ -672,8 +673,8 @@ async def test_skip_command(mock_discord_setup, setup_test_game):
     alice_message.pin = AsyncMock()
 
     # Process the message
-    with patch('bot_impl.backup') as mock_backup:
-        with patch('bot_impl.get_player', return_value=setup_test_game['players']['alice']):
+    with patch('utils.game_utils.backup') as mock_backup:
+        with patch('utils.player_utils.get_player', return_value=setup_test_game['players']['alice']):
             with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 await on_message(alice_message)
 
@@ -698,7 +699,7 @@ async def test_clear_command(mock_discord_setup):
     )
 
     # Process the message
-    with patch('bot_impl.backup') as mock_backup:
+    with patch('utils.game_utils.backup') as mock_backup:
         with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
             await on_message(alice_message)
 

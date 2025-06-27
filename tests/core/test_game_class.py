@@ -8,9 +8,9 @@ import discord.errors
 import pytest
 
 import global_vars
-from bot_impl import Game, Player, Script
+from model import Game, Player
 from model.characters import Character
-from model.game import Day
+from model.game import Day, Script
 from tests.fixtures.discord_mocks import mock_discord_setup, MockChannel
 from tests.fixtures.game_fixtures import setup_test_game
 

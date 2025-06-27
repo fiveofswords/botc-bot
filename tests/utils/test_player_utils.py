@@ -8,10 +8,12 @@ from unittest.mock import AsyncMock, MagicMock, patch, Mock, call
 import discord
 import pytest
 
-from bot_impl import generate_possibilities, select_player, choices, yes_no, get_player
-from utils.player_utils import (is_player, find_player_by_nick, who_by_id,
-                                who_by_character, who, get_neighbors,
-                                check_and_print_if_one_or_zero_to_check_in)
+from utils.interaction_utils import yes_no
+from utils.player_utils import (
+    is_player, find_player_by_nick, who_by_id, who_by_character, who, get_neighbors,
+    check_and_print_if_one_or_zero_to_check_in, generate_possibilities,
+    select_player, choices, get_player
+)
 
 
 # Common test fixtures and setup
@@ -173,9 +175,9 @@ async def test_select_player_exact_match(mock_players):
     user = MagicMock()
 
     # Patch generate_possibilities to return a single player
-    with patch('bot_impl.generate_possibilities', new_callable=AsyncMock) as mock_gen_poss:
+    with patch('utils.player_utils.generate_possibilities', new_callable=AsyncMock) as mock_gen_poss:
         with patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
-            with patch('bot_impl.choices', new_callable=AsyncMock) as mock_choices:
+            with patch('utils.player_utils.choices', new_callable=AsyncMock) as mock_choices:
                 # Mock return value
                 mock_gen_poss.return_value = [mock_players[0]]
 
@@ -201,7 +203,7 @@ async def test_select_player_no_match():
     players = []
 
     # Patch generate_possibilities to return empty list
-    with patch('bot_impl.generate_possibilities', new_callable=AsyncMock) as mock_gen_poss:
+    with patch('utils.player_utils.generate_possibilities', new_callable=AsyncMock) as mock_gen_poss:
         with patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
             # Mock return value
             mock_gen_poss.return_value = []
@@ -225,8 +227,8 @@ async def test_select_player_multiple_matches(mock_players):
     user = MagicMock()
 
     # Patch generate_possibilities and choices
-    with patch('bot_impl.generate_possibilities', new_callable=AsyncMock) as mock_gen_poss:
-        with patch('bot_impl.choices', new_callable=AsyncMock) as mock_choices:
+    with patch('utils.player_utils.generate_possibilities', new_callable=AsyncMock) as mock_gen_poss:
+        with patch('utils.player_utils.choices', new_callable=AsyncMock) as mock_choices:
             # Mock generate_possibilities to return multiple players
             mock_gen_poss.return_value = mock_players[:2]  # Alice and Bob
 
@@ -288,7 +290,7 @@ async def test_get_player_found(mock_wait_for, mock_safe_send):
     player = MagicMock()
 
     # Mock the global game object and seating order
-    with patch('bot_impl.global_vars') as mock_global_vars:
+    with patch('utils.player_utils.global_vars') as mock_global_vars:
         mock_global_vars.game.seatingOrder = [player]
         player.user = user
 
@@ -310,7 +312,7 @@ async def test_get_player_not_found(mock_wait_for, mock_safe_send):
     player = MagicMock()
 
     # Mock the global game object and seating order
-    with patch('bot_impl.global_vars') as mock_global_vars:
+    with patch('utils.player_utils.global_vars') as mock_global_vars:
         mock_global_vars.game.seatingOrder = [player]
         player.user = other_user  # Different user
 
