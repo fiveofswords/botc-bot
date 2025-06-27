@@ -1,13 +1,13 @@
 """Enhanced help commands that use the registry system."""
-import logging
 from typing import NamedTuple, Optional
 
 import discord
 
+import bot_client
 import global_vars
+import model.settings.global_settings
 from commands.command_enums import HelpSection, UserType
 from commands.registry import registry, CommandInfo, CommandArgument
-from model.settings.global_settings import GlobalSettings
 
 # Type alias for user-defined aliases (alias_name -> command_name)
 UserAliases = dict[str, str]
@@ -21,8 +21,6 @@ except ImportError:
 
     config = types.ModuleType('config')
     config.PREFIXES = (',', '@')
-
-logging = logging.getLogger('discord')
 
 
 # =============================================================================
@@ -270,10 +268,10 @@ async def help_command(message: discord.Message, argument: str):
     # Load user aliases
     user_aliases = None
     try:
-        user_aliases = GlobalSettings.load().get_aliases(message.author.id)
+        user_aliases = model.settings.global_settings.GlobalSettings.load().get_aliases(message.author.id)
     except Exception as e:
         # If there's any error loading user aliases, continue without them
-        logging.warning(f"Failed to load user aliases for {message.author.id}: {e}")
+        bot_client.logging.warning(f"Failed to load user aliases for {message.author.id}: {e}")
         pass
 
     # Determine user type
@@ -309,4 +307,4 @@ async def help_command(message: discord.Message, argument: str):
     try:
         await message.author.send(embed=embed)
     except discord.Forbidden:
-        logging.warning(f"Failed to send help DM to {message.author}. User has DMs disabled.")
+        bot_client.logging.warning(f"Failed to send help DM to {message.author}. User has DMs disabled.")

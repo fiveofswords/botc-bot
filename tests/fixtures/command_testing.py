@@ -148,7 +148,7 @@ def patch_vote_testing(vote, game, mock_discord_setup, additional_patches=None):
     from tests.fixtures.common_patches import vote_execution_patches
 
     patches = vote_execution_patches(vote, game)
-    patches['bot_impl.client'] = mock_discord_setup['client']
+    patches['bot_client.client'] = mock_discord_setup['client']
 
     if additional_patches:
         patches.update(additional_patches)
@@ -176,7 +176,7 @@ async def execute_command_with_wait_for(command_function, message, mock_discord_
     # Use individual patches for command execution
     with patch('bot_impl.backup'), \
             patch('utils.message_utils.safe_send', AsyncMock()), \
-            patch('bot_impl.client', mock_discord_setup['client']):
+            patch('bot_client.client', mock_discord_setup['client']):
         await command_function(message)
 
 

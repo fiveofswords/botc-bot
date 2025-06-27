@@ -202,7 +202,7 @@ class TestPlayer:
         assert self.player.has_skipped
         assert self.player.has_checked_in
 
-    @mock.patch('model.player.ChannelManager')
+    @mock.patch('model.channels.ChannelManager')
     @mock.patch('utils.message_utils.safe_send')
     @pytest.mark.asyncio
     async def test_kill(self, mock_safe_send, mock_channel_manager):
@@ -233,7 +233,7 @@ class TestPlayer:
         # Verify result
         assert result
 
-    @mock.patch('model.player.ChannelManager')
+    @mock.patch('model.channels.ChannelManager')
     @mock.patch('utils.message_utils.safe_send')
     @pytest.mark.asyncio
     async def test_kill_with_no_st_channel(self, mock_safe_send, mock_channel_manager):
@@ -301,7 +301,7 @@ class TestPlayer:
         # Verify result
         assert not result
 
-    @mock.patch('model.player.client')
+    @mock.patch('bot_client.client')
     @mock.patch('utils.message_utils.safe_send')
     @pytest.mark.asyncio
     async def test_execute_die_and_end(self, mock_safe_send, mock_client):
@@ -326,7 +326,7 @@ class TestPlayer:
         # Verify execution flag was set
         assert self.mock_global_vars.game.days[0].isExecutionToday
 
-    @mock.patch('model.player.client')
+    @mock.patch('bot_client.client')
     @mock.patch('utils.message_utils.safe_send')
     @pytest.mark.asyncio
     async def test_execute_no_die(self, mock_safe_send, mock_client):
@@ -345,7 +345,7 @@ class TestPlayer:
         assert self.mock_global_vars.game.days[0].isExecutionToday
         assert mock_safe_send.call_count == 3
 
-    @mock.patch('model.player.client')
+    @mock.patch('bot_client.client')
     @mock.patch('utils.message_utils.safe_send')
     @pytest.mark.asyncio
     async def test_execute_timeout(self, mock_safe_send, mock_client):
@@ -368,7 +368,7 @@ class TestPlayer:
             mock.call(mock_user, "Message timed out!")
         ])
 
-    @mock.patch('model.player.client')
+    @mock.patch('bot_client.client')
     @mock.patch('utils.message_utils.safe_send')
     @pytest.mark.asyncio
     async def test_execute_cancel(self, mock_safe_send, mock_client):
@@ -393,7 +393,7 @@ class TestPlayer:
             mock.call(mock_user, "Action cancelled!")
         ])
 
-    @mock.patch('model.player.ChannelManager')
+    @mock.patch('model.channels.ChannelManager')
     @mock.patch('utils.message_utils.safe_send')
     @pytest.mark.asyncio
     async def test_revive(self, mock_safe_send, mock_channel_manager):
@@ -522,7 +522,7 @@ class TestPlayer:
 
         # Set up logger
         mock_logger = mock.MagicMock()
-        mock_player = mock.patch('model.player.logger', mock_logger)
+        mock_player = mock.patch('bot_client.logger', mock_logger)
         mock_player.start()
         request.addfinalizer(mock_player.stop)
 
@@ -702,7 +702,7 @@ class TestPlayer:
             mock_global_vars.dead_vote_role
         )
 
-    @mock.patch('model.player.logger')
+    @mock.patch('bot_client.logger')
     @pytest.mark.asyncio
     async def test_wipe_roles_http_exception(self, mock_logger):
         """Test wiping roles with HTTP exception."""

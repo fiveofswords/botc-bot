@@ -14,4 +14,5 @@ __all__ = [
     'Script',
     'Day',
     'Vote',
+    'TravelerVote',
 ]

@@ -96,7 +96,7 @@ async def test_choices_with_number(mock_players):
 
     # Patch the necessary functions
     with patch('utils.message_utils.safe_send', return_value=mock_reply) as mock_safe_send:
-        with patch('bot_impl.client') as mock_client:
+        with patch('bot_client.client') as mock_client:
             # Setup the wait_for mock
             mock_client.wait_for = AsyncMock(return_value=mock_choice)
 
@@ -132,7 +132,7 @@ async def test_choices_with_cancel(mock_players):
 
     # Patch the necessary functions
     with patch('utils.message_utils.safe_send', return_value=mock_reply) as mock_safe_send:
-        with patch('bot_impl.client') as mock_client:
+        with patch('bot_client.client') as mock_client:
             # Setup the wait_for mock
             mock_client.wait_for = AsyncMock(return_value=mock_choice)
 
@@ -145,7 +145,7 @@ async def test_choices_with_cancel(mock_players):
 
 @pytest.mark.asyncio
 @patch('utils.message_utils.safe_send')
-@patch('bot_impl.client.wait_for')
+@patch('bot_client.client.wait_for')
 async def test_choices_with_timeout(mock_wait_for, mock_safe_send, mock_players):
     """Test the choices function when it times out."""
     # Setup
@@ -263,7 +263,7 @@ async def test_yes_no_with_yes():
 
     # Patch the necessary functions
     with patch('utils.message_utils.safe_send', return_value=mock_reply) as mock_safe_send:
-        with patch('bot_impl.client') as mock_client:
+        with patch('bot_client.client') as mock_client:
             # Setup the wait_for mock
             mock_client.wait_for = AsyncMock(return_value=mock_choice)
 
@@ -280,7 +280,7 @@ async def test_yes_no_with_yes():
 
 @pytest.mark.asyncio
 @patch('utils.message_utils.safe_send')
-@patch('bot_impl.client.wait_for')
+@patch('bot_client.client.wait_for')
 async def test_get_player_found(mock_wait_for, mock_safe_send):
     """Test get_player when player is found."""
     # Setup
@@ -301,7 +301,7 @@ async def test_get_player_found(mock_wait_for, mock_safe_send):
 
 @pytest.mark.asyncio
 @patch('utils.message_utils.safe_send')
-@patch('bot_impl.client.wait_for')
+@patch('bot_client.client.wait_for')
 async def test_get_player_not_found(mock_wait_for, mock_safe_send):
     """Test get_player when player is not found."""
     # Setup

@@ -1,13 +1,11 @@
 import discord.errors
 
+import bot_client
 import global_vars
-from bot_client import client
-from model.channels.channel_utils import reorder_channels
-from model.characters import Storyteller, SeatingOrderModifier, DayStartModifier
+from model.channels import channel_utils
+from model.characters import DayStartModifier, Storyteller, SeatingOrderModifier
 from model.game.whisper_mode import WhisperMode
-from model.player import Player, STORYTELLER_ALIGNMENT
-from utils import message_utils
-from utils.game_utils import update_presence, remove_backup
+from utils import message_utils, game_utils
 
 
 class Game:
@@ -36,6 +34,8 @@ class Game:
             script: The script being used
             skip_storytellers: Whether to skip adding storytellers
         """
+        # Dynamic import to avoid circular import
+        from model import player
         self.days = []
         self.isDay = False
         self.script = script
@@ -44,7 +44,7 @@ class Game:
         self.seatingOrderMessage = seating_order_message
         self.info_channel_seating_order_message = info_channel_seating_order_message
         self.storytellers = [
-            Player(Storyteller, STORYTELLER_ALIGNMENT, person, st_channel=None, position=None)
+            player.Player(Storyteller, player.STORYTELLER_ALIGNMENT, person, st_channel=None, position=None)
             for person in global_vars.gamemaster_role.members
         ] if not skip_storytellers else []
         self.show_tally = False
@@ -138,11 +138,11 @@ class Game:
         """
 
         # delete old backup
-        remove_backup("current_game.pckl")
+        game_utils.remove_backup("current_game.pckl")
 
         # turn off
         global_vars.game = NULL_GAME
-        await update_presence(client)
+        await game_utils.update_presence(bot_client.client)
 
     async def reseat(self, new_seating_order):
         """Reseats the table.
@@ -160,7 +160,7 @@ class Game:
         # Update the seating order message using the dedicated method
         await self.update_seating_order_message()
 
-        await reorder_channels([x.st_channel for x in self.seatingOrder])
+        await channel_utils.reorder_channels([x.st_channel for x in self.seatingOrder])
 
     async def add_traveler(self, person):
         """Add a traveler to the game.
@@ -219,18 +219,18 @@ class Game:
             ),
         )
 
-        self.days.append(Day())
+        self.days.append(model.game.day.Day())
         self.isDay = True
 
         if global_vars.whisper_channel:
             message = await message_utils.safe_send(global_vars.whisper_channel, f"Start of day {len(self.days)}")
             await message.pin()
 
-        await update_presence(client)
+        await game_utils.update_presence(bot_client.client)
 
 
 # Import at the end to avoid circular imports
-from model.game.day import Day
+import model.game.day
 
 # Create a null game to use as a placeholder
 NULL_GAME = Game(seating_order=[], seating_order_message=None, info_channel_seating_order_message=None, script=[],

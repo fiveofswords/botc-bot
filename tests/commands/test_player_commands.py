@@ -333,7 +333,7 @@ async def test_presetvote_player_context_hand_up(mock_discord_setup, setup_test_
          patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_seating, \
          patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_utils, \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_impl, \
-            patch('bot_impl.client', mock_discord_setup['client']):
+            patch('bot_client.client', mock_discord_setup['client']):
 
         # Simulate that the first safe_send returns a channel where client.wait_for will listen
         mock_safe_send_impl.return_value.channel = mock_safe_send_channel
@@ -386,7 +386,7 @@ async def test_cancelpreset_player_context_hand_up(mock_discord_setup, setup_tes
          patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_seating, \
          patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_utils, \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_impl, \
-            patch('bot_impl.client', mock_discord_setup['client']):
+            patch('bot_client.client', mock_discord_setup['client']):
 
         mock_safe_send_impl.return_value.channel = mock_safe_send_channel
         mock_discord_setup['client'].wait_for = AsyncMock(return_value=mock_user_message_hand_up)
@@ -436,7 +436,7 @@ async def test_handup_prevote_yes(mock_discord_setup, setup_test_game):
          patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_seating, \
          patch.object(vote, 'preset_vote', wraps=vote.preset_vote) as mock_preset_vote_method, \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_impl, \
-            patch('bot_impl.client', mock_discord_setup['client']):
+            patch('bot_client.client', mock_discord_setup['client']):
 
         mock_safe_send_impl.return_value.channel = mock_safe_send_channel
         mock_discord_setup['client'].wait_for = AsyncMock(return_value=mock_user_prevote_yes)
@@ -480,7 +480,7 @@ async def test_handup_no_active_vote(mock_discord_setup, setup_test_game):
          patch('bot_impl.backup') as mock_backup, \
          patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_seating, \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_impl, \
-            patch('bot_impl.client', mock_discord_setup['client']):
+            patch('bot_client.client', mock_discord_setup['client']):
 
         # client.wait_for should not be called if there's no active vote for prevote prompt
         mock_discord_setup['client'].wait_for = AsyncMock()

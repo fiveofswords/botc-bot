@@ -5,11 +5,19 @@ Character registry for str_to_class conversions.
 import inspect
 from typing import Dict, Type
 
-from .base import Character, Storyteller
 import model.characters.specific as specific_module
+from model.characters.base import Character, Storyteller, Townsfolk, Outsider, Minion, Demon, Traveler
 
 # Automatically build character registry by inspecting module contents
-CHARACTER_REGISTRY: Dict[str, Type[Character]] = {'Character': Character, 'Storyteller': Storyteller}
+CHARACTER_REGISTRY: Dict[str, Type[Character]] = {
+    'Character': Character,
+    'Storyteller': Storyteller,
+    'Townsfolk': Townsfolk,
+    'Outsider': Outsider,
+    'Minion': Minion,
+    'Demon': Demon,
+    'Traveler': Traveler
+}
 
 # Add base classes
 

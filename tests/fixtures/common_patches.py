@@ -104,7 +104,7 @@ def command_execution_patches(mock_discord_setup=None):
     patches = base_bot_patches().copy()
     
     if mock_discord_setup:
-        patches['bot_impl.client'] = mock_discord_setup['client']
+        patches['bot_client.client'] = mock_discord_setup['client']
 
     return patches
 
@@ -113,7 +113,7 @@ def hand_status_patches(mock_discord_setup):
     """Return patches commonly needed for hand status testing."""
     patches = base_bot_patches().copy()
     patches.update({
-        'bot_impl.client': mock_discord_setup['client'],
+        'bot_client.client': mock_discord_setup['client'],
         'game.update_seating_order_message': AsyncMock(),
     })
     return patches
@@ -141,7 +141,7 @@ def storyteller_command_patches(mock_discord_setup):
     """Return patches commonly needed for storyteller command tests."""
     patches = base_bot_patches().copy()
     patches.update({
-        'bot_impl.client': mock_discord_setup['client'],
+        'bot_client.client': mock_discord_setup['client'],
         'bot_impl.select_player': AsyncMock(),
         'bot_impl.update_presence': AsyncMock(),
     })
@@ -182,7 +182,7 @@ def full_bot_setup_patches_combined(mock_discord_setup, with_backup=False, backu
     patches.extend([
         patch('utils.message_utils.safe_send', AsyncMock()),
         patch('utils.message_utils.safe_send_dm', AsyncMock()),
-        patch('bot_impl.client', mock_discord_setup['client']),
+        patch('bot_client.client', mock_discord_setup['client']),
     ])
 
     # Config patches

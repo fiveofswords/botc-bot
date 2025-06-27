@@ -1,8 +1,8 @@
 import discord
 
+import model.settings
 from commands.command_enums import HelpSection, UserType
 from commands.registry import registry, CommandArgument
-from model.settings import GlobalSettings
 from utils import message_utils
 
 
@@ -22,7 +22,7 @@ async def makealias_command(message: discord.Message, argument: str):
         - Two arguments: Create a per-user alias.
     """
     args = argument.split() if argument.strip() else []
-    global_settings: GlobalSettings = GlobalSettings.load()
+    global_settings: model.settings.GlobalSettings = model.settings.GlobalSettings.load()
     user_id = message.author.id
 
     # If no arguments are provided, list all aliases for the user.

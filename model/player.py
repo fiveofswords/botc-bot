@@ -9,11 +9,10 @@ from datetime import datetime
 from typing import Any, Dict, Optional, TypedDict
 
 import discord
-from discord import Member, TextChannel
 
+import bot_client
 import global_vars
-from bot_client import client, logger
-from model.channels import ChannelManager
+import model.channels
 
 # Constants
 STORYTELLER_ALIGNMENT = "neutral"
@@ -36,8 +35,8 @@ class Player:
             self,
             character_class: type,
             alignment: str,
-            user: Member,
-            st_channel: Optional[TextChannel],
+            user: discord.Member,
+            st_channel: Optional[discord.TextChannel],
             position: Optional[int]):
         """Initialize a Player.
         
@@ -136,7 +135,7 @@ class Player:
 
         await self.user.add_roles(global_vars.ghost_role, global_vars.dead_vote_role)
         if self.st_channel:
-            await ChannelManager(client).set_ghost(self.st_channel.id)
+            await model.channels.ChannelManager(bot_client.client).set_ghost(self.st_channel.id)
         else:
         #     inform storytellers that the player is dead, but that the st channel has not been updated to reflect that
             for user in global_vars.gamemaster_role.members:
@@ -148,7 +147,7 @@ class Player:
 
         return dies
 
-    async def execute(self, user: Member, force: bool = False) -> None:
+    async def execute(self, user: discord.Member, force: bool = False) -> None:
         """Execute the player.
         
         Args:
@@ -160,7 +159,7 @@ class Player:
         msg = await message_utils.safe_send(user, "Do they die? yes or no")
 
         try:
-            choice = await client.wait_for(
+            choice = await bot_client.client.wait_for(
                 "message",
                 check=(lambda x: x.author == user and x.channel == msg.channel),
                 timeout=200,
@@ -188,7 +187,7 @@ class Player:
         msg = await message_utils.safe_send(user, "Does the day end? yes or no")
 
         try:
-            choice = await client.wait_for(
+            choice = await bot_client.client.wait_for(
                 "message",
                 check=(lambda x: x.author == user and x.channel == msg.channel),
                 timeout=200,
@@ -270,7 +269,7 @@ class Player:
         self.character.refresh()
         await self.user.remove_roles(global_vars.ghost_role, global_vars.dead_vote_role)
         if self.st_channel:
-            await ChannelManager(client).remove_ghost(self.st_channel.id)
+            await model.channels.ChannelManager(bot_client.client).remove_ghost(self.st_channel.id)
         else:
             # Inform storytellers that the player is dead, but that the st channel has not been updated to reflect that
             for user in global_vars.gamemaster_role.members:
@@ -317,7 +316,7 @@ class Player:
                 from_player.user,
                 f"Something went wrong with your message to {self.display_name}! Please try again"
             )
-            logger.info(
+            bot_client.logger.info(
                 f"could not send message to {self.display_name}; "
                 f"it is {len(content)} characters long; error {e.text}"
             )
@@ -447,4 +446,4 @@ class Player:
             )
         except discord.HTTPException as e:
             # Cannot remove role from user who doesn't exist on the server
-            logger.info("could not remove roles for %s: %s", self.display_name, e.text)
+            bot_client.logger.info("could not remove roles for %s: %s", self.display_name, e.text)

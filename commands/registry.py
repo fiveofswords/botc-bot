@@ -6,11 +6,9 @@ from typing import Dict, Callable, Awaitable, Optional, Union, NamedTuple
 import discord
 
 import global_vars
-from commands.command_enums import (
-    HelpSection, UserType, GamePhase
-)
-from model.game import NULL_GAME
-from model.player import Player
+import model.game
+import model.player
+from commands.command_enums import HelpSection, UserType, GamePhase
 
 
 # =============================================================================
@@ -115,9 +113,9 @@ class CommandInfo(NamedTuple):
 # Validation Functions
 # =============================================================================
 
-async def get_player(user) -> Optional[Player]:
+async def get_player(user) -> Optional[model.player.Player]:
     """Get player object for a Discord user."""
-    if global_vars.game is NULL_GAME:
+    if global_vars.game is model.game.NULL_GAME:
         return None
 
     for person in global_vars.game.seatingOrder:
@@ -197,7 +195,7 @@ def validate_game_phase(required_phases: tuple[GamePhase, ...]) -> None:
         return  # No phase restriction
 
     # Check if game exists
-    if global_vars.game is NULL_GAME:
+    if global_vars.game is model.game.NULL_GAME:
         raise ValidationError("There's no game right now.")
 
     # Check day phase

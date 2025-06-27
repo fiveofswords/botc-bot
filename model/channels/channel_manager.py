@@ -2,32 +2,28 @@ import re
 from typing import Optional
 
 import discord
-import logging
 
-from discord import Guild, CategoryChannel, Member, TextChannel, Client
-
+import bot_client
 import global_vars
-from model.settings import GameSettings
-
-logger = logging.getLogger('discord')
+import model.settings
 
 
 class ChannelManager:
     """Encapsulates logic for managing Discord Channels."""
 
-    _client: Client
-    _server: Guild
-    _in_play_category: Optional[CategoryChannel]
-    _out_of_play_category: Optional[CategoryChannel]
-    _hands_channel: TextChannel
-    _observer_channel: TextChannel
-    _info_channel: TextChannel
-    _whisper_channel: TextChannel
-    _town_square_channel: TextChannel
+    _client: discord.Client
+    _server: discord.Guild
+    _in_play_category: Optional[discord.CategoryChannel]
+    _out_of_play_category: Optional[discord.CategoryChannel]
+    _hands_channel: discord.TextChannel
+    _observer_channel: discord.TextChannel
+    _info_channel: discord.TextChannel
+    _whisper_channel: discord.TextChannel
+    _town_square_channel: discord.TextChannel
     _st_role: discord.Role
     _channel_suffix: str
 
-    def __init__(self, client: Client):
+    def __init__(self, client: discord.Client):
         self._client = client
         self._server = global_vars.server
         self._in_play_category = global_vars.game_category
@@ -40,7 +36,8 @@ class ChannelManager:
         self._channel_suffix = global_vars.channel_suffix
         self._st_role = global_vars.gamemaster_role
 
-    async def create_channel(self, game_settings: GameSettings, player: Member) -> TextChannel:
+    async def create_channel(self, game_settings: model.settings.GameSettings,
+                             player: discord.Member) -> discord.TextChannel:
         """
         Creates a new text for the given player, and puts it in the out of play category.
         """
@@ -54,7 +51,7 @@ class ChannelManager:
                 self._client.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
                 player: discord.PermissionOverwrite(read_messages=True, send_messages=True)
             })
-        logger.info(f"Channel {new_channel.name} has been created.")
+        bot_client.logger.info(f"Channel {new_channel.name} has been created.")
         game_settings.set_st_channel(player.id, new_channel.id).save()
         return new_channel
 
@@ -80,7 +77,7 @@ class ChannelManager:
         # Retrieve the channel object using the channel ID
         channel = self._client.get_channel(channel_id)
         if channel is None:
-            logger.info(f"Channel with ID {channel_id} not found.")
+            bot_client.logger.info(f"Channel with ID {channel_id} not found.")
             return
 
         new_name = None
@@ -89,9 +86,9 @@ class ChannelManager:
             if "👤" in channel.name:
                 new_name = channel.name.replace("👤", "👻")
             elif "👻" in channel.name:
-                logger.info("Player is currently 👻 and not 👤.")
+                bot_client.logger.info("Player is currently 👻 and not 👤.")
             else:
-                logger.warning("No emoji found to toggle.")
+                bot_client.logger.warning("No emoji found to toggle.")
                 return
 
             # Update the channel name
@@ -108,7 +105,7 @@ class ChannelManager:
         # Retrieve the channel object using the channel ID
         channel = self._client.get_channel(channel_id)
         if channel is None:
-            logger.info(f"Channel with ID {channel_id} not found.")
+            bot_client.logger.info(f"Channel with ID {channel_id} not found.")
             return
 
         new_name = None
@@ -117,36 +114,37 @@ class ChannelManager:
             if "👻" in channel.name:
                 new_name = channel.name.replace("👻", "👤")
             elif "👤" in channel.name:
-                logger.info("Player is currently 👤 and not 👻.")
+                bot_client.logger.info("Player is currently 👤 and not 👻.")
             else:
-                logger.warning("No emoji found to toggle.")
+                bot_client.logger.warning("No emoji found to toggle.")
                 return
 
             # Update the channel name
             if new_name:
                 await channel.edit(name=new_name)
 
-    async def setup_channels_in_order(self, ordered_player_channels: list[TextChannel]):
-        ordered_channels: list[TextChannel] = [self._hands_channel, self._observer_channel,
-                                               self._info_channel, self._whisper_channel] + ordered_player_channels + [
+    async def setup_channels_in_order(self, ordered_player_channels: list[discord.TextChannel]):
+        ordered_channels: list[discord.TextChannel] = [self._hands_channel, self._observer_channel,
+                                                       self._info_channel,
+                                                       self._whisper_channel] + ordered_player_channels + [
                                                   self._town_square_channel]
         ordered_channels_set = set(ordered_channels)
-        to_move_out: list[TextChannel] = [channel for channel in self._in_play_category.channels if
-                                          channel not in ordered_channels_set]
-        to_move_in: list[TextChannel] = [channel for channel in ordered_channels if
-                                         channel.category != self._in_play_category]
+        to_move_out: list[discord.TextChannel] = [channel for channel in self._in_play_category.channels if
+                                                  channel not in ordered_channels_set]
+        to_move_in: list[discord.TextChannel] = [channel for channel in ordered_channels if
+                                                 channel.category != self._in_play_category]
 
         for channel in to_move_in:
             if channel.category != self._in_play_category:
                 await channel.move(category=self._in_play_category, end=True)
-                logger.debug(f"Channel {channel.name} has been moved to In Play category.")
+                bot_client.logger.debug(f"Channel {channel.name} has been moved to In Play category.")
             else:
-                logger.debug(f"Channel {channel.name} is already in the correct category.")
+                bot_client.logger.debug(f"Channel {channel.name} is already in the correct category.")
 
         # Move unused channels out of play
         for channel in to_move_out:
             await channel.move(category=self._out_of_play_category, end=True)
-            logger.debug(f"Channel {channel.name} has been moved to Out of Play category.")
+            bot_client.logger.debug(f"Channel {channel.name} has been moved to Out of Play category.")
 
 
         num_needing_changed = None
@@ -186,9 +184,10 @@ class ChannelManager:
 
             # discord channels are 1 indexed
             await channel.edit(position=current_position_for_index[idx] + 1)
-            logger.debug(f"{channel.name} has been moved to position {idx} of {self._in_play_category.name}.")
+            bot_client.logger.debug(
+                f"{channel.name} has been moved to position {idx} of {self._in_play_category.name}.")
         else:
-            logger.warning("Channel positions could not be set correctly after 5 attempts.")
+            bot_client.logger.warning("Channel positions could not be set correctly after 5 attempts.")
             return False
         return True
 #
