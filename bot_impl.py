@@ -189,7 +189,7 @@ async def on_message(message):
 
                 vote = global_vars.game.days[-1].votes[-1]
 
-                voting_player = (await player_utils.get_player(message.author))
+                voting_player = player_utils.get_player(message.author)
                 if not voting_player:
                     await message_utils.safe_send(global_vars.channel, "You are not a player in the game.")
                     return
@@ -1100,7 +1100,7 @@ async def on_message(message):
                 if person is None:
                     return
 
-                if await player_utils.get_player(person) is not None:
+                if player_utils.get_player(person) is not None:
                     await message_utils.safe_send(message.author, "{} is already in the game.".format(
                         person.display_name if person.display_name else person.name))
                     return
@@ -1506,7 +1506,7 @@ async def on_message(message):
                             message.author, argument[0], global_vars.game.seatingOrder + global_vars.game.storytellers
                         )
                 else:
-                    person = await player_utils.get_player(message.author)
+                    person = player_utils.get_player(message.author)
                 if not person:
                     await message_utils.safe_send(message.author,
                                                   "You are not in the game. You have no message history.")
@@ -1796,7 +1796,7 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "Nominations aren't open right now.")
                     return
 
-                nominator_player = await player_utils.get_player(message.author)
+                nominator_player = player_utils.get_player(message.author)
                 story_teller_is_nominated = await model.game.vote.is_storyteller(argument)
                 person = await player_utils.select_player(
                     message.author, argument, global_vars.game.seatingOrder
@@ -1972,7 +1972,7 @@ async def on_message(message):
                         game_utils.backup("current_game.pckl")
                     return
 
-                voting_player = (await player_utils.get_player(message.author))
+                voting_player = player_utils.get_player(message.author)
                 if vote.order[vote.position].user != voting_player.user:
                     await message_utils.safe_send(message.author,
                                                   "It's not your vote right now. Do you mean @presetvote?")
@@ -2103,7 +2103,7 @@ async def on_message(message):
                         bot_client.logger.error(f"Error during hand status prompt for ST in presetvote: {e}")
                     return
 
-                the_player = await player_utils.get_player(message.author)
+                the_player = player_utils.get_player(message.author)
                 player_banshee_ability = character_utils.the_ability(the_player.character, model.characters.Banshee)
                 banshee_override = player_banshee_ability and player_banshee_ability.is_screaming
 
@@ -2239,7 +2239,7 @@ async def on_message(message):
                         bot_client.logger.error(f"Error during hand status prompt for ST in cancelpreset: {e}")
                     return
 
-                the_player = await player_utils.get_player(message.author)
+                the_player = player_utils.get_player(message.author)
                 await vote.cancel_preset(the_player)
                 await message_utils.safe_send(message.author,
                                               "Successfully canceled! For more nuanced presets, contact the storytellers.")
@@ -2376,7 +2376,7 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "PMs are closed.")
                     return
 
-                if not await player_utils.get_player(message.author):
+                if not player_utils.get_player(message.author):
                     await message_utils.safe_send(message.author, "You are not in the game. You may not send messages.")
                     return
 
@@ -2417,7 +2417,7 @@ async def on_message(message):
                     return
 
                 await person.message(
-                    await player_utils.get_player(message.author),
+                    player_utils.get_player(message.author),
                     intendedMessage.content,
                     message.jump_url,
                 )
@@ -2515,7 +2515,7 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, message_text)
                     return
 
-                if not await player_utils.get_player(message.author):
+                if not player_utils.get_player(message.author):
                     await message_utils.safe_send(message.author,
                                                   "You are not in the game. You have no message history.")
                     return
@@ -2532,7 +2532,7 @@ async def on_message(message):
                     )
                 )
                 day = 1
-                for msg in (await player_utils.get_player(message.author)).message_history:
+                for msg in player_utils.get_player(message.author).message_history:
                     if not msg["from_player"] == person and not msg["to_player"] == person:
                         continue
                     if len(message_text) > 1500:
@@ -2593,7 +2593,7 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, message_text)
                     return
 
-                if not await player_utils.get_player(message.author):
+                if not player_utils.get_player(message.author):
                     await message_utils.safe_send(message.author,
                                                   "You are not in the game. You have no message history.")
                     return
@@ -2604,7 +2604,7 @@ async def on_message(message):
                     )
                 )
                 day = 1
-                for msg in (await player_utils.get_player(message.author)).message_history:
+                for msg in player_utils.get_player(message.author).message_history:
                     if not (argument.lower() in msg["content"].lower()):
                         continue
                     while msg["day"] != day:
@@ -2622,7 +2622,7 @@ async def on_message(message):
 
             # Hand up
             elif command == "handup" or command == "handdown":
-                player = await player_utils.get_player(message.author)
+                player = player_utils.get_player(message.author)
                 if not player:
                     await message_utils.safe_send(message.author, "You are not a player in the game.")
                     return
@@ -2788,7 +2788,7 @@ async def on_message_edit(before, after):
         return
 
     # On pin
-    message_author_player = await player_utils.get_player(after.author)
+    message_author_player = player_utils.get_player(after.author)
     if before.channel == global_vars.channel and before.pinned == False and after.pinned == True:
 
         # Nomination
@@ -2956,7 +2956,7 @@ async def on_member_update(before, after):
         return
 
     if global_vars.game is not game.NULL_GAME:
-        player = await player_utils.get_player(after)
+        player = player_utils.get_player(after)
         if player and player.display_name != after.display_name:
             player.display_name = after.display_name
             await global_vars.game.reseat(global_vars.game.seatingOrder)
