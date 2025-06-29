@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ._base_settings import _BaseSettings
+from model.settings._base_settings import _BaseSettings
 
 _SETTINGS_FILENAME = '../preferences.json'
 

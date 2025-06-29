@@ -2856,7 +2856,7 @@ async def test_on_message_startgame_hand_raised_display(mock_discord_setup):
                                       author=mock_discord_setup['members']['storyteller'],
                                       channel=storyteller_dm_channel)
 
-    with patch('bot_impl.client.wait_for', new_callable=AsyncMock) as mock_wait_for, \
+    with patch('bot_client.client.wait_for', new_callable=AsyncMock) as mock_wait_for, \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send, \
             patch('model.player.Player.__init__') as mock_player_init, \
             patch('bot_impl.backup') as mock_backup, \

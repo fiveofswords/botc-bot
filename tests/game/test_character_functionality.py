@@ -9,9 +9,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import pytest_asyncio
 
-from model.characters.base import Character, VoteModifier, NominationModifier, DeathModifier, Storyteller
+from model.characters.base import Character, VoteModifier, NominationModifier, DeathModifier, Storyteller, Demon
 from model.characters.registry import CHARACTER_REGISTRY
-from model.characters.specific import Washerwoman, FortuneTeller, Demon
+from model.characters.specific import Washerwoman, FortuneTeller
 from model.player import Player, STORYTELLER_ALIGNMENT
 from tests.fixtures.discord_mocks import MockMember, MockChannel
 

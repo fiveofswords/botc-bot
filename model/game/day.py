@@ -3,12 +3,11 @@ import math
 
 import discord
 
+import bot_client
 import global_vars
-from bot_client import client
-from model.characters import NomsCalledModifier, NominationModifier, DayEndModifier, Traveler
-from model.game.whisper_mode import WhisperMode
-from utils import message_utils
-from utils.game_utils import update_presence
+import model.characters
+import model.game.whisper_mode
+from utils import message_utils, game_utils
 
 
 class Day:
@@ -46,19 +45,19 @@ class Day:
         for memb in global_vars.gamemaster_role.members:
             await message_utils.safe_send(memb, "PMs are now open.")
 
-        await update_presence(client)
+        await game_utils.update_presence(bot_client.client)
 
     async def open_noms(self):
         """Opens nominations."""
         self.isNoms = True
         if len(self.votes) == 0:
             for person in global_vars.game.seatingOrder:
-                if isinstance(person.character, NomsCalledModifier):
+                if isinstance(person.character, model.characters.NomsCalledModifier):
                     person.character.on_noms_called()
         for memb in global_vars.gamemaster_role.members:
             await message_utils.safe_send(memb, "Nominations are now open.")
 
-        await update_presence(client)
+        await game_utils.update_presence(bot_client.client)
 
     async def close_pms(self):
         """Closes PMs."""
@@ -66,7 +65,7 @@ class Day:
         for memb in global_vars.gamemaster_role.members:
             await message_utils.safe_send(memb, "PMs are now closed.")
 
-        await update_presence(client)
+        await game_utils.update_presence(bot_client.client)
 
     async def close_noms(self):
         """Closes nominations."""
@@ -74,7 +73,7 @@ class Day:
         for memb in global_vars.gamemaster_role.members:
             await message_utils.safe_send(memb, "Nominations are now closed.")
 
-        await update_presence(client)
+        await game_utils.update_presence(bot_client.client)
 
     async def nomination(self, nominee, nominator):
         """Handle a nomination.
@@ -84,7 +83,7 @@ class Day:
             nominator: The player making the nomination
         """
 
-        global_vars.game.whisper_mode = WhisperMode.NEIGHBORS
+        global_vars.game.whisper_mode = model.game.whisper_mode.WhisperMode.NEIGHBORS
         await self.close_noms()
 
         # todo: if organ grinder ability is active, then this first message should not be output.
@@ -119,21 +118,21 @@ class Day:
                     ),
                 )
             await announcement.pin()
-            if nominator and nominee and not isinstance(nominee.character, Traveler):
+            if nominator and nominee and not isinstance(nominee.character, model.characters.Traveler):
                 nominator.can_nominate = False
             proceed = True
             # FIXME:there might be a case where a player earlier in the seating order makes the nomination not proceed
             #  but one later in the seating order may be relevant. Short circuit here stops two Riot messages, e.g.
             #  There may need to be some rework based on NominationModifier priority
             for person in global_vars.game.seatingOrder:
-                if isinstance(person.character, NominationModifier) and proceed:
+                if isinstance(person.character, model.characters.NominationModifier) and proceed:
                     proceed = await person.character.on_nomination(
                         nominee, nominator, proceed
                     )
             if not proceed:
                 # do not proceed with collecting votes
                 return
-        elif isinstance(nominee.character, Traveler):
+        elif isinstance(nominee.character, model.characters.Traveler):
             nominee.can_be_nominated = False
             self.votes.append(TravelerVote(nominee, nominator))
             announcement = await message_utils.safe_send(
@@ -154,7 +153,7 @@ class Day:
             #  There may need to be some rework based on NominationModifier priority
             proceed = True
             for person in global_vars.game.seatingOrder:
-                if isinstance(person.character, NominationModifier) and proceed:
+                if isinstance(person.character, model.characters.NominationModifier) and proceed:
                     proceed = await person.character.on_nomination(
                         nominee, nominator, proceed
                     )
@@ -203,7 +202,7 @@ class Day:
             #  but one later in the seating order may be relevant. Short circuit here stops two Riot messages, e.g.
             #  There may need to be some rework based on NominationModifier priority
             for person in global_vars.game.seatingOrder:
-                if isinstance(person.character, NominationModifier) and proceed:
+                if isinstance(person.character, model.characters.NominationModifier) and proceed:
                     proceed = await person.character.on_nomination(
                         nominee, nominator, proceed
                     )
@@ -255,7 +254,7 @@ class Day:
     async def end(self):
         """Ends the day."""
         for person in global_vars.game.seatingOrder:
-            if isinstance(person.character, DayEndModifier):
+            if isinstance(person.character, model.characters.DayEndModifier):
                 person.character.on_day_end()
 
         for msg in self.voteEndMessages:
@@ -283,7 +282,7 @@ class Day:
                 print("Discord server error: ", str(msg))
 
         global_vars.game.isDay = False
-        global_vars.game.whisper_mode = WhisperMode.ALL
+        global_vars.game.whisper_mode = model.game.whisper_mode.WhisperMode.ALL
         self.isNoms = False
         self.isPms = False
 
@@ -333,7 +332,7 @@ class Day:
                         break
                 await message_utils.safe_send(global_vars.channel, messageText)
 
-        await update_presence(client)
+        await game_utils.update_presence(bot_client.client)
 
 
 # Import at the end to avoid circular imports

@@ -4,8 +4,8 @@ from collections import OrderedDict
 import discord
 
 import global_vars
-from model.characters import Banshee, VoteBeginningModifier, VoteModifier, Voudon
-from model.settings import GlobalSettings
+import model.characters
+import model.settings
 from utils import message_utils
 from utils.character_utils import the_ability
 
@@ -16,7 +16,8 @@ def in_play_voudon():
     Returns:
         The Voudon player if one is in play and not a ghost, otherwise None
     """
-    return next((x for x in global_vars.game.seatingOrder if the_ability(x.character, Voudon) and not x.is_ghost), None)
+    return next((x for x in global_vars.game.seatingOrder if
+                 the_ability(x.character, model.characters.Voudon) and not x.is_ghost), None)
 
 
 def remove_banshee_nomination(banshee_ability_of_player):
@@ -67,7 +68,7 @@ class Vote:
         order_with_banshees = []
         for person in ordered_voters:
             order_with_banshees.append(person)
-            banshee_ability = the_ability(person.character, Banshee)
+            banshee_ability = the_ability(person.character, model.characters.Banshee)
             if banshee_ability and banshee_ability.is_screaming:
                 order_with_banshees.append(person)
 
@@ -84,7 +85,7 @@ class Vote:
             if not person.is_ghost:
                 self.majority += 0.5
         for person in global_vars.game.seatingOrder:
-            if isinstance(person.character, VoteBeginningModifier):
+            if isinstance(person.character, model.characters.VoteBeginningModifier):
                 (
                     self.order,
                     self.values,
@@ -98,11 +99,11 @@ class Vote:
     async def call_next(self):
         """Calls for person to vote."""
         toCall = self.order[self.position]
-        player_banshee_ability = the_ability(toCall.character, Banshee)
+        player_banshee_ability = the_ability(toCall.character, model.characters.Banshee)
         player_is_active_banshee = player_banshee_ability and player_banshee_ability.is_screaming
         voudon_is_active = in_play_voudon()
         for person in global_vars.game.seatingOrder:
-            if isinstance(person.character, VoteModifier):
+            if isinstance(person.character, model.characters.VoteModifier):
                 person.character.on_vote_call(toCall)
         if toCall.is_ghost and toCall.dead_votes < 1 and not player_is_active_banshee and not voudon_is_active:
             await self.vote(0)
@@ -119,7 +120,7 @@ class Vote:
                 self.nominee.display_name if self.nominee else "the storytellers",
             ),
         )
-        global_settings: GlobalSettings = GlobalSettings.load()
+        global_settings: model.settings.GlobalSettings = model.settings.GlobalSettings.load()
         default = global_settings.get_default_vote(toCall.user.id)
         if default:
             time = default[1]
@@ -164,7 +165,7 @@ class Vote:
         # Update seating order message immediately
         await global_vars.game.update_seating_order_message()
 
-        potential_banshee = the_ability(voter.character, Banshee)
+        potential_banshee = the_ability(voter.character, model.characters.Banshee)
 
         # see if a Voudon is in play
         voudon_in_play = in_play_voudon()
@@ -189,7 +190,7 @@ class Vote:
 
         # On vote character powers
         for person in global_vars.game.seatingOrder:
-            if isinstance(person.character, VoteModifier):
+            if isinstance(person.character, model.characters.VoteModifier):
                 person.character.on_vote()
 
         # Vote tracking
@@ -234,7 +235,7 @@ class Vote:
         else:
             dies = False
         for person in global_vars.game.seatingOrder:
-            if isinstance(person.character, VoteModifier):
+            if isinstance(person.character, model.characters.VoteModifier):
                 dies, tie = person.character.on_vote_conclusion(dies, tie)
         for person in global_vars.game.seatingOrder:
             person.riot_nominee = False
@@ -333,7 +334,7 @@ class Vote:
             operator: The operator making the preset
         """
         # Check dead votes
-        banshee_ability = the_ability(person.character, Banshee)
+        banshee_ability = the_ability(person.character, model.characters.Banshee)
         banshee_override = banshee_ability and banshee_ability.is_screaming
         if vt > 0 and person.is_ghost and person.dead_votes < 1 and not banshee_override:
             if not operator:

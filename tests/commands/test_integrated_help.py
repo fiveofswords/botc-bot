@@ -195,7 +195,7 @@ class TestIntegratedHelp:
 
         # Should not raise an exception - just log a warning
         with patch('commands.help_commands.global_vars', global_vars):
-            with patch('commands.help_commands.logging') as mock_logging:
+            with patch('bot_client.logging') as mock_logging:
                 await help_command(mock_env['message'], "")
 
                 # Should log a warning about DM failure

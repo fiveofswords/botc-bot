@@ -10,10 +10,9 @@ from typing import Optional, TypeVar, Protocol, Sequence
 
 import dill
 import discord
-from discord import User, Member, TextChannel
 
+import bot_client
 import global_vars
-from bot_client import client, logger
 
 # Try to import config, create a mock config module if not available
 try:
@@ -104,7 +103,7 @@ async def generate_possibilities(text: str, people: Sequence[T]) -> list[T]:
     return possibilities
 
 
-async def choices(user: User, possibilities: list[Player], text: str) -> Optional[Player]:
+async def choices(user: discord.User, possibilities: list[Player], text: str) -> Optional[Player]:
     # Clarifies which user is indended when there are multiple matches
 
     # Generate clarification message
@@ -120,7 +119,7 @@ async def choices(user: User, possibilities: list[Player], text: str) -> Optiona
     # Request clarifciation from user
     reply = await message_utils.safe_send(user, message_text)
     try:
-        choice = await client.wait_for(
+        choice = await bot_client.client.wait_for(
             "message",
             check=(lambda x: x.author == user and x.channel == reply.channel),
             timeout=200,
@@ -144,7 +143,7 @@ async def choices(user: User, possibilities: list[Player], text: str) -> Optiona
         return await select_player(user, choice.content, possibilities)
 
 
-async def select_player(user: User, text: str, possibilities: Sequence[T]) -> Optional[T]:
+async def select_player(user: discord.User, text: str, possibilities: Sequence[T]) -> Optional[T]:
     # Finds a player from players matching a string
 
     new_possibilities = await generate_possibilities(text, possibilities)
@@ -168,7 +167,7 @@ async def yes_no(user, text):
 
     reply = await message_utils.safe_send(user, "{}? yes or no".format(text))
     try:
-        choice = await client.wait_for(
+        choice = await bot_client.client.wait_for(
             "message",
             check=(lambda x: x.author == user and x.channel == reply.channel),
             timeout=200,
@@ -369,7 +368,7 @@ async def aexec(code):
 # NULL_GAME is imported from model.game
 
 ### Event Handling
-@client.event
+@bot_client.client.event
 async def on_ready():
     # On startup
     from model.game.game import NULL_GAME
@@ -377,16 +376,16 @@ async def on_ready():
     global_vars.game = NULL_GAME
     global_vars.observer_role = None
 
-    global_vars.server = client.get_guild(config.SERVER_ID)
-    global_vars.game_category = client.get_channel(config.GAME_CATEGORY_ID)
-    global_vars.hands_channel = client.get_channel(config.HANDS_CHANNEL_ID)
-    global_vars.observer_channel = client.get_channel(config.OBSERVER_CHANNEL_ID)
-    global_vars.info_channel = client.get_channel(config.INFO_CHANNEL_ID)
-    global_vars.whisper_channel = client.get_channel(config.WHISPER_CHANNEL_ID)
-    global_vars.channel = client.get_channel(config.TOWN_SQUARE_CHANNEL_ID)
-    global_vars.out_of_play_category = client.get_channel(config.OUT_OF_PLAY_CATEGORY_ID)
+    global_vars.server = bot_client.client.get_guild(config.SERVER_ID)
+    global_vars.game_category = bot_client.client.get_channel(config.GAME_CATEGORY_ID)
+    global_vars.hands_channel = bot_client.client.get_channel(config.HANDS_CHANNEL_ID)
+    global_vars.observer_channel = bot_client.client.get_channel(config.OBSERVER_CHANNEL_ID)
+    global_vars.info_channel = bot_client.client.get_channel(config.INFO_CHANNEL_ID)
+    global_vars.whisper_channel = bot_client.client.get_channel(config.WHISPER_CHANNEL_ID)
+    global_vars.channel = bot_client.client.get_channel(config.TOWN_SQUARE_CHANNEL_ID)
+    global_vars.out_of_play_category = bot_client.client.get_channel(config.OUT_OF_PLAY_CATEGORY_ID)
     global_vars.channel_suffix = config.CHANNEL_SUFFIX
-    logger.info(
+    bot_client.logger.info(
         f"server: {global_vars.server.name}, "
         f"game_category: {global_vars.game_category.name if global_vars.game_category else None}, "
         f"hands_channel: {global_vars.hands_channel.name if global_vars.hands_channel else None}, "
@@ -420,25 +419,25 @@ async def on_ready():
     else:
         print("No backup found.")
 
-    await update_presence(client)
+    await update_presence(bot_client.client)
 
     # Log all registered commands
-    registry.log_registered_commands(logger)
+    registry.log_registered_commands(bot_client.logger)
 
     print("Logged in as")
-    print(client.user.name)
-    print(client.user.id)
+    print(bot_client.client.user.name)
+    print(bot_client.client.user.id)
     print("------")
 
 
-@client.event
+@bot_client.client.event
 async def on_message(message):
     # Handles messages
 
     backup("current_game.pckl")
 
     # Don't respond to self
-    if message.author == client.user:
+    if message.author == bot_client.client.user:
         return
 
     # Update activity from town square message
@@ -668,7 +667,7 @@ async def on_message(message):
                     await message_utils.safe_send(message.author, "You don't have permission to do that.")
                     return
 
-                bot_nick = global_vars.server.get_member(client.user.id).display_name
+                bot_nick = global_vars.server.get_member(bot_client.client.user.id).display_name
                 channel_name = global_vars.channel.name
                 server_name = global_vars.server.name
                 storytellers = [st.display_name for st in global_vars.gamemaster_role.members]
@@ -685,9 +684,9 @@ async def on_message(message):
                     )
 
                 game_settings = GameSettings.load()
-                st_channel = client.get_channel(game_settings.get_st_channel(player.id))
+                st_channel = bot_client.client.get_channel(game_settings.get_st_channel(player.id))
                 if not st_channel:
-                    st_channel = await ChannelManager(client).create_channel(game_settings, player)
+                    st_channel = await ChannelManager(bot_client.client).create_channel(game_settings, player)
                     await message_utils.safe_send(message.author,
                                     f'Successfully created the channel https://discord.com/channels/{global_vars.server.id}/{st_channel.id}!')
 
@@ -723,7 +722,7 @@ async def on_message(message):
                 msg = await message_utils.safe_send(message.author,
                                                     "What is the seating order? (separate users with line breaks)")
                 try:
-                    order_message = await client.wait_for(
+                    order_message = await bot_client.client.wait_for(
                         "message",
                         check=(lambda x: x.author == message.author and x.channel == msg.channel),
                         timeout=200,
@@ -738,15 +737,16 @@ async def on_message(message):
 
                 order: list[str] = order_message.content.split("\n")
 
-                users: list[Member] = []
+                users: list[discord.Member] = []
                 for person in order:
                     name = await select_player(message.author, person, global_vars.server.members)
                     if name is None:
                         return
                     users.append(name)
 
-                st_channels: list[TextChannel] = [client.get_channel(game_settings.get_st_channel(x.id)) for
-                                                  x in users]
+                st_channels: list[discord.TextChannel] = [
+                    bot_client.client.get_channel(game_settings.get_st_channel(x.id)) for
+                    x in users]
 
                 players_missing_channels = [users[index] for index, channel in enumerate(st_channels) if channel is None]
                 if players_missing_channels:
@@ -756,7 +756,7 @@ async def on_message(message):
                 await message_utils.safe_send(message.author,
                                               "What are the corresponding roles? (also separated with line breaks)")
                 try:
-                    roles_message = await client.wait_for(
+                    roles_message = await bot_client.client.wait_for(
                         "message",
                         check=(lambda x: x.author == message.author and x.channel == msg.channel),
                         timeout=200,
@@ -814,7 +814,7 @@ async def on_message(message):
                             "What alignment is the {}?".format(role(None).role_name)
                         )
                         try:
-                            alignment = await client.wait_for(
+                            alignment = await bot_client.client.wait_for(
                                 "message",
                                 check=(lambda x: x.author == message.author and x.channel == msg.channel),
                                 timeout=200,
@@ -856,7 +856,7 @@ async def on_message(message):
                     "What roles are on the script? (send the text of the json file from the script creator)"
                 )
                 try:
-                    script_message = await client.wait_for(
+                    script_message = await bot_client.client.wait_for(
                         "message",
                         check=(lambda x: x.author == message.author and x.channel == msg.channel),
                         timeout=200,
@@ -874,7 +874,7 @@ async def on_message(message):
                 script = Script(script_list)
 
                 # Setup ST channels
-                tasks = [ChannelManager(client).remove_ghost(st_channel.id) for st_channel in st_channels]
+                tasks = [ChannelManager(bot_client.client).remove_ghost(st_channel.id) for st_channel in st_channels]
                 await asyncio.gather(*tasks)
                 await reorder_channels(st_channels)
 
@@ -928,7 +928,7 @@ async def on_message(message):
                 global_vars.game = Game(seating_order, seating_order_message, info_channel_message, script)
 
                 backup("current_game.pckl")
-                await update_presence(client)
+                await update_presence(bot_client.client)
 
                 return
 
@@ -1132,7 +1132,7 @@ async def on_message(message):
 
                 msg = await message_utils.safe_send(message.author, "What is the new role?")
                 try:
-                    role = await client.wait_for(
+                    role = await bot_client.client.wait_for(
                         "message",
                         check=(lambda x: x.author == message.author and x.channel == msg.channel),
                         timeout=200,
@@ -1179,7 +1179,7 @@ async def on_message(message):
 
                 msg = await message_utils.safe_send(message.author, "What is the new alignment?")
                 try:
-                    alignment = await client.wait_for(
+                    alignment = await bot_client.client.wait_for(
                         "message",
                         check=(lambda x: x.author == message.author and x.channel == msg.channel),
                         timeout=200,
@@ -1227,7 +1227,7 @@ async def on_message(message):
 
                 msg = await message_utils.safe_send(message.author, "What is the new ability role?")
                 try:
-                    role = await client.wait_for(
+                    role = await bot_client.client.wait_for(
                         "message",
                         check=(lambda x: x.author == message.author and x.channel == msg.channel),
                         timeout=200,
@@ -1412,7 +1412,7 @@ async def on_message(message):
 
                 msg = await message_utils.safe_send(message.author, "What role?")
                 try:
-                    text = await client.wait_for(
+                    text = await bot_client.client.wait_for(
                         "message",
                         check=(lambda x: x.author == message.author and x.channel == msg.channel),
                         timeout=200,
@@ -1443,7 +1443,7 @@ async def on_message(message):
                 msg = await message_utils.safe_send(message.author,
                                                     "Where in the order are they? (send the player before them or a one-indexed integer)")
                 try:
-                    pos = await client.wait_for(
+                    pos = await bot_client.client.wait_for(
                         "message",
                         check=(lambda x: x.author == message.author and x.channel == msg.channel),
                         timeout=200,
@@ -1470,7 +1470,7 @@ async def on_message(message):
                 # Determine alignment
                 msg = await message_utils.safe_send(message.author, "What alignment are they?")
                 try:
-                    alignment = await client.wait_for(
+                    alignment = await bot_client.client.wait_for(
                         "message",
                         check=(lambda x: x.author == message.author and x.channel == msg.channel),
                         timeout=200,
@@ -1547,7 +1547,7 @@ async def on_message(message):
                 msg = await message_utils.safe_send(message.author,
                                                     "What is the seating order? (separate users with line breaks)")
                 try:
-                    order_message = await client.wait_for(
+                    order_message = await bot_client.client.wait_for(
                         "message",
                         check=(lambda x: x.author == message.author and x.channel == msg.channel),
                         timeout=200,
@@ -2121,7 +2121,7 @@ async def on_message(message):
                             st_user = message.author
                             msg = await message_utils.safe_send(st_user, "Do they die? yes or no")
                             try:
-                                choice = await client.wait_for(
+                                choice = await bot_client.client.wait_for(
                                     "message",
                                     check=(lambda x: x.author == st_user and x.channel == msg.channel),
                                     timeout=200,
@@ -2231,7 +2231,7 @@ async def on_message(message):
                 if global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
                     msg = await message_utils.safe_send(message.author, "Whose vote is this?")
                     try:
-                        reply = await client.wait_for(
+                        reply = await bot_client.client.wait_for(
                             "message",
                             check=(lambda x: x.author == message.author and x.channel == msg.channel),
                             timeout=200,
@@ -2322,7 +2322,7 @@ async def on_message(message):
                 if global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
                     msg = await message_utils.safe_send(message.author, "Whose vote is this?")
                     try:
-                        reply = await client.wait_for(
+                        reply = await bot_client.client.wait_for(
                             "message",
                             check=(lambda x: x.author == message.author and x.channel == msg.channel),
                             timeout=200,
@@ -2373,7 +2373,7 @@ async def on_message(message):
                     try:
                         hand_status_prompt_st = await message_utils.safe_send(message.author,
                                                                               f"Hand up or down for {person.display_name}? (up/down/cancel)")
-                        hand_status_choice_st = await client.wait_for(
+                        hand_status_choice_st = await bot_client.client.wait_for(
                             "message",
                             check=(lambda x: x.author == message.author and x.channel == hand_status_prompt_st.channel),
                             timeout=200,
@@ -2398,7 +2398,7 @@ async def on_message(message):
                     except asyncio.TimeoutError:
                         await message_utils.safe_send(message.author, "Timed out. Hand status not changed.")
                     except Exception as e:
-                        logger.error(f"Error during hand status prompt for ST in presetvote: {e}")
+                        bot_client.logger.error(f"Error during hand status prompt for ST in presetvote: {e}")
                     return
 
                 the_player = await get_player(message.author)
@@ -2430,7 +2430,7 @@ async def on_message(message):
                 try:
                     hand_status_prompt = await message_utils.safe_send(message.author,
                                                                        "Hand up or down? (up/down/cancel)")
-                    hand_status_choice = await client.wait_for(
+                    hand_status_choice = await bot_client.client.wait_for(
                         "message",
                         check=(lambda x: x.author == message.author and x.channel == hand_status_prompt.channel),
                         timeout=200,  # 200 seconds to respond
@@ -2455,7 +2455,7 @@ async def on_message(message):
                 except asyncio.TimeoutError:
                     await message_utils.safe_send(message.author, "Timed out. Hand status not changed.")
                 except Exception as e:
-                    logger.error(f"Error during hand status prompt after presetvote: {e}")
+                    bot_client.logger.error(f"Error during hand status prompt after presetvote: {e}")
                 return
 
             # Cancels a preset vote
@@ -2478,7 +2478,7 @@ async def on_message(message):
                 if global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
                     msg = await message_utils.safe_send(message.author, "Whose vote do you want to cancel?")
                     try:
-                        reply = await client.wait_for(
+                        reply = await bot_client.client.wait_for(
                             "message",
                             check=(lambda x: x.author == message.author and x.channel == msg.channel),
                             timeout=200,
@@ -2509,7 +2509,7 @@ async def on_message(message):
                     try:
                         hand_status_prompt_st = await message_utils.safe_send(message.author,
                                                                               f"Hand up or down for {person.display_name}? (up/down/cancel)")
-                        hand_status_choice_st = await client.wait_for(
+                        hand_status_choice_st = await bot_client.client.wait_for(
                             "message",
                             check=(lambda x: x.author == message.author and x.channel == hand_status_prompt_st.channel),
                             timeout=200,
@@ -2534,7 +2534,7 @@ async def on_message(message):
                     except asyncio.TimeoutError:
                         await message_utils.safe_send(message.author, "Timed out. Hand status not changed.")
                     except Exception as e:
-                        logger.error(f"Error during hand status prompt for ST in cancelpreset: {e}")
+                        bot_client.logger.error(f"Error during hand status prompt for ST in cancelpreset: {e}")
                     return
 
                 the_player = await get_player(message.author)
@@ -2548,7 +2548,7 @@ async def on_message(message):
                 try:
                     hand_status_prompt = await message_utils.safe_send(message.author,
                                                                        "Hand up or down? (up/down/cancel)")
-                    hand_status_choice = await client.wait_for(
+                    hand_status_choice = await bot_client.client.wait_for(
                         "message",
                         check=(lambda x: x.author == message.author and x.channel == hand_status_prompt.channel),
                         timeout=200,  # 200 seconds to respond
@@ -2573,7 +2573,7 @@ async def on_message(message):
                 except asyncio.TimeoutError:
                     await message_utils.safe_send(message.author, "Timed out. Hand status not changed.")
                 except Exception as e:
-                    logger.error(f"Error during hand status prompt after cancelpreset: {e}")
+                    bot_client.logger.error(f"Error during hand status prompt after cancelpreset: {e}")
                 return
 
             elif command == "adjustvotes" or command == "adjustvote":
@@ -2695,7 +2695,7 @@ async def on_message(message):
 
                 # Process reply
                 try:
-                    intendedMessage = await client.wait_for(
+                    intendedMessage = await bot_client.client.wait_for(
                         "message",
                         check=(lambda x: x.author == message.author and x.channel == reply.channel),
                         timeout=200,
@@ -2954,7 +2954,7 @@ async def on_message(message):
                         try:
                             prevote_prompt_msg = await message_utils.safe_send(message.author,
                                                                                "Preset vote to YES, NO, or CANCEL existing prevote? (yes/no/cancel)")
-                            prevote_choice_msg = await client.wait_for(
+                            prevote_choice_msg = await bot_client.client.wait_for(
                                 "message",
                                 check=(lambda x: x.author == message.author and x.channel == prevote_prompt_msg.channel),
                                 timeout=200,
@@ -2986,7 +2986,7 @@ async def on_message(message):
                         except asyncio.TimeoutError:
                             await message_utils.safe_send(message.author, "Timed out. Prevote not changed.")
                         except Exception as e:
-                            logger.error(f"Error during prevote prompt after handdown: {e}")
+                            bot_client.logger.error(f"Error during prevote prompt after handdown: {e}")
                     return
 
                 # command == "handup"
@@ -3005,7 +3005,7 @@ async def on_message(message):
                     try:
                         prevote_prompt_msg = await message_utils.safe_send(message.author,
                                                                            "Preset vote to YES, NO, or CANCEL existing prevote? (yes/no/cancel)")
-                        prevote_choice_msg = await client.wait_for(
+                        prevote_choice_msg = await bot_client.client.wait_for(
                             "message",
                             check=(lambda x: x.author == message.author and x.channel == prevote_prompt_msg.channel),
                             timeout=200,
@@ -3037,7 +3037,7 @@ async def on_message(message):
                     except asyncio.TimeoutError:
                         await message_utils.safe_send(message.author, "Timed out. Prevote not changed.")
                     except Exception as e:
-                        logger.error(f"Error during prevote prompt after handup: {e}")
+                        bot_client.logger.error(f"Error during prevote prompt after handup: {e}")
                 return
 
 
@@ -3078,10 +3078,10 @@ async def check_and_print_if_one_or_zero_to_check_in():
 from model.game.vote import is_storyteller
 
 
-@client.event
+@bot_client.client.event
 async def on_message_edit(before, after):
     # Handles messages on modification
-    if after.author == client.user:
+    if after.author == bot_client.client.user:
         return
 
     # On pin
@@ -3245,10 +3245,10 @@ async def on_message_edit(before, after):
 # remove_banshee_nomination has been moved to model/characters/specific.py
 
 
-@client.event
+@bot_client.client.event
 async def on_member_update(before, after):
     # Handles member-level modifications
-    if after == client.user:
+    if after == bot_client.client.user:
         return
 
     if global_vars.game is not NULL_GAME:

@@ -3,7 +3,7 @@ import asyncio
 import discord
 
 import global_vars
-from model.settings import GlobalSettings
+import model.settings
 from utils import message_utils
 
 
@@ -61,7 +61,7 @@ class TravelerVote:
                 self.nominee.display_name if self.nominee else "the storytellers",
             ),
         )
-        global_settings: GlobalSettings = GlobalSettings.load()
+        global_settings: model.settings.GlobalSettings = model.settings.GlobalSettings.load()
         default = global_settings.get_default_vote(toCall.user.id)
         if default:
             time = default[1]

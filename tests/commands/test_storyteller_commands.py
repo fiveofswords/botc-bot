@@ -1121,7 +1121,7 @@ async def test_presetvote_storyteller_context_hand_down(mock_discord_setup, setu
             patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_seating, \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_utils, \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_impl, \
-            patch('bot_impl.client', mock_discord_setup['client']):
+            patch('bot_client.client', mock_discord_setup['client']):
         mock_safe_send_impl.return_value.channel = mock_safe_send_channel
         # Order of return values for client.wait_for: 1. ST chooses player, 2. ST chooses hand status
         mock_discord_setup['client'].wait_for = AsyncMock(side_effect=[
@@ -1195,7 +1195,7 @@ async def test_cancelpreset_storyteller_context_hand_down(mock_discord_setup, se
             patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_seating, \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_utils, \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_impl, \
-            patch('bot_impl.client', mock_discord_setup['client']):
+            patch('bot_client.client', mock_discord_setup['client']):
         # Set up wait_for responses
         mock_discord_setup['client'].wait_for = AsyncMock(side_effect=[
             player_choice_msg, hand_status_msg

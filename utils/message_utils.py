@@ -6,7 +6,7 @@ from typing import Optional, List, Union
 
 import discord
 
-from bot_client import logger
+import bot_client
 
 
 def _split_text(text: str, max_length: int = 2000) -> List[str]:
@@ -60,10 +60,10 @@ async def safe_send(
         # Regular send
         return await channel.send(content, **kwargs)
     except discord.HTTPException as e:
-        logger.error(f"Failed to send message: {e}")
+        bot_client.logger.error(f"Failed to send message: {e}")
         return None
     except Exception as e:
-        logger.error(f"Unexpected error sending message: {e}")
+        bot_client.logger.error(f"Unexpected error sending message: {e}")
         return None
 
 
@@ -92,10 +92,10 @@ async def safe_send_dm(
         # Send the message
         return await safe_send(dm_channel, content, **kwargs)
     except discord.HTTPException as e:
-        logger.error(f"Failed to send DM to {user.display_name}: {e}")
+        bot_client.logger.error(f"Failed to send DM to {user.display_name}: {e}")
         return None
     except Exception as e:
-        logger.error(f"Unexpected error sending DM to {user.display_name}: {e}")
+        bot_client.logger.error(f"Unexpected error sending DM to {user.display_name}: {e}")
         return None
 
 
@@ -132,7 +132,7 @@ async def notify_storytellers(message: str, **kwargs) -> None:
 
     # If neither is available, log a warning
     else:
-        logger.warning(f"Could not notify storytellers: {message}")
+        bot_client.logger.warning(f"Could not notify storytellers: {message}")
 
 
 async def notify_storytellers_about_action(author: Union[discord.Member, discord.User], action_description: str,

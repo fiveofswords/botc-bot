@@ -53,7 +53,7 @@ class TestSafeSend:
     def setup_test(self):
         self.channel = AsyncMock(spec=discord.TextChannel)
 
-    @patch('utils.message_utils.logger')
+    @patch('bot_client.logger')
     @pytest.mark.asyncio
     async def test_send_normal_message(self, mock_logger):
         """Test sending a normal message."""
@@ -65,7 +65,7 @@ class TestSafeSend:
         assert result is not None
         mock_logger.error.assert_not_called()
 
-    @patch('utils.message_utils.logger')
+    @patch('bot_client.logger')
     @pytest.mark.asyncio
     async def test_send_empty_message(self, mock_logger):
         """Test sending an empty message adds zero-width space."""
@@ -77,7 +77,7 @@ class TestSafeSend:
         assert result is not None
         mock_logger.error.assert_not_called()
 
-    @patch('utils.message_utils.logger')
+    @patch('bot_client.logger')
     @patch('utils.message_utils._split_text')
     @pytest.mark.asyncio
     async def test_send_long_message(self, mock_split_text, mock_logger):
@@ -96,7 +96,7 @@ class TestSafeSend:
         assert result == first_message
         mock_logger.error.assert_not_called()
 
-    @patch('utils.message_utils.logger')
+    @patch('bot_client.logger')
     @pytest.mark.asyncio
     async def test_handle_http_exception(self, mock_logger):
         """Test handling HTTP exceptions."""
@@ -107,7 +107,7 @@ class TestSafeSend:
         assert result is None
         mock_logger.error.assert_called_once()
 
-    @patch('utils.message_utils.logger')
+    @patch('bot_client.logger')
     @pytest.mark.asyncio
     async def test_handle_generic_exception(self, mock_logger):
         """Test handling generic exceptions."""
@@ -154,7 +154,7 @@ class TestSafeSendDM:
         mock_safe_send.assert_called_once_with(self.dm_channel, "Test DM")
         assert result is not None
 
-    @patch('utils.message_utils.logger')
+    @patch('bot_client.logger')
     @pytest.mark.asyncio
     async def test_handle_http_exception(self, mock_logger):
         """Test handling HTTP exceptions."""
@@ -167,7 +167,7 @@ class TestSafeSendDM:
         assert result is None
         mock_logger.error.assert_called_once()
 
-    @patch('utils.message_utils.logger')
+    @patch('bot_client.logger')
     @pytest.mark.asyncio
     async def test_handle_generic_exception(self, mock_logger):
         """Test handling generic exceptions."""

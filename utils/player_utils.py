@@ -7,7 +7,7 @@ from typing import List, Optional
 import discord
 
 import global_vars
-from model.player import Player
+import model.player
 from utils import message_utils
 
 
@@ -24,7 +24,7 @@ def is_player(member: discord.Member) -> bool:
     return global_vars.player_role in member.roles
 
 
-def find_player_by_nick(nick: str) -> Optional['Player']:
+def find_player_by_nick(nick: str) -> Optional[model.player.Player]:
     """
     Find a player by their display name (case-insensitive).
     
@@ -49,7 +49,7 @@ def find_player_by_nick(nick: str) -> Optional['Player']:
     return None
 
 
-def who_by_id(user_id: int) -> Optional['Player']:
+def who_by_id(user_id: int) -> Optional[model.player.Player]:
     """
     Find a player by their Discord user ID.
     
@@ -65,7 +65,7 @@ def who_by_id(user_id: int) -> Optional['Player']:
     return None
 
 
-def who_by_name(name: str) -> Optional['Player']:
+def who_by_name(name: str) -> Optional[model.player.Player]:
     """
     Find a player by their name.
     
@@ -78,7 +78,7 @@ def who_by_name(name: str) -> Optional['Player']:
     return find_player_by_nick(name)
 
 
-def who_by_character(character_name: str) -> Optional['Player']:
+def who_by_character(character_name: str) -> Optional[model.player.Player]:
     """
     Find a player by their character name.
     
@@ -95,7 +95,7 @@ def who_by_character(character_name: str) -> Optional['Player']:
     return None
 
 
-def who(arg) -> Optional['Player']:
+def who(arg) -> Optional[model.player.Player]:
     """
     Find a player by various identifiers.
     
@@ -119,7 +119,7 @@ def who(arg) -> Optional['Player']:
     return None
 
 
-def get_neighbors(player: 'Player') -> List['Player']:
+def get_neighbors(player: model.player.Player) -> List[model.player.Player]:
     """
     Get the neighboring players for a given player.
     

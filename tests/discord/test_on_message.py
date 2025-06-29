@@ -402,7 +402,7 @@ async def test_pm_command_during_day(mock_discord_setup, setup_test_game):
                         wait_for_mock.return_value = mock_response
 
                         # Mock the bot client with a properly configured wait_for method
-                        with patch('bot_impl.client.wait_for', wait_for_mock):
+                        with patch('bot_client.client.wait_for', wait_for_mock):
                             # Mock player.message method
                             setup_test_game['players']['bob'].message = AsyncMock()
 

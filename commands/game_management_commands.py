@@ -5,10 +5,10 @@ import discord
 
 import bot_client
 import global_vars
+import model.game.whisper_mode
 import utils.game_utils
 from commands.command_enums import HelpSection, UserType, GamePhase
 from commands.registry import registry, CommandArgument
-from model.game.whisper_mode import to_whisper_mode
 from utils import message_utils
 
 
@@ -132,7 +132,7 @@ async def exile_command(message: discord.Message, argument: str):
 )
 async def whispermode_command(message: discord.Message, argument: str):
     """Set whisper mode for the game."""
-    new_mode = to_whisper_mode(argument)
+    new_mode = model.game.whisper_mode.to_whisper_mode(argument)
 
     if new_mode:
         global_vars.game.whisper_mode = new_mode

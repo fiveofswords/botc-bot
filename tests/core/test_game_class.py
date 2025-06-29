@@ -2,7 +2,6 @@
 Tests for the Game class in bot_impl.py
 """
 
-import datetime
 from unittest.mock import AsyncMock, patch, Mock
 
 import discord.errors
@@ -104,7 +103,7 @@ async def test_reseat_method(mock_discord_setup, setup_test_game):
 
     # Test reseat with new order
     # reseat now calls game.update_seating_order_message, which in turn calls game.seatingOrderMessage.edit
-    with patch('model.game.game.reorder_channels', new_callable=AsyncMock) as mock_reorder:
+    with patch('model.channels.channel_utils.reorder_channels', new_callable=AsyncMock) as mock_reorder:
         # Don't mock update_seating_order_message to avoid recursion
         # Let it call the real method which will edit the mock message
         await game.reseat(new_order)
@@ -379,7 +378,7 @@ async def test_game_functions_correctly_with_none_info_channel_message(mock_info
     # Test reseat method works with info channel message
     new_seating_order = [bob, alice]  # Swap order
     with patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update, \
-            patch('model.game.game.reorder_channels', new_callable=AsyncMock) as mock_reorder:
+            patch('model.channels.channel_utils.reorder_channels', new_callable=AsyncMock) as mock_reorder:
         await game.reseat(new_seating_order)
         mock_update.assert_called_once()
         mock_reorder.assert_called_once()
