@@ -295,7 +295,7 @@ async def test_get_player_found(mock_wait_for, mock_safe_send):
         player.user = user
 
         # Call get_player
-        result = await get_player(user)
+        result = get_player(user)
 
         # Verify correct player was returned
         assert result == player
@@ -317,7 +317,7 @@ async def test_get_player_not_found(mock_wait_for, mock_safe_send):
         player.user = other_user  # Different user
 
         # Call get_player
-        result = await get_player(user)
+        result = get_player(user)
 
         # Verify None was returned
         assert result is None
