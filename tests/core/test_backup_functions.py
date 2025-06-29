@@ -7,8 +7,10 @@ from unittest.mock import patch, MagicMock, mock_open, AsyncMock
 import pytest
 
 import global_vars
-from bot_impl import backup, load, remove_backup, Game, Script
+from model import Game
+from model.game import Script
 from tests.fixtures.discord_mocks import mock_discord_setup
+from utils import backup, load, remove_backup
 
 
 def test_backup():

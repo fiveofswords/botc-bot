@@ -6,9 +6,9 @@ from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 
-from bot_impl import chose_whisper_candidates
+from model import Game, Vote
 from model.game import WhisperMode
-from model.game.whisper_mode import to_whisper_mode
+from model.game.whisper_mode import to_whisper_mode, choose_whisper_candidates
 
 
 def test_to_whisper_mode():
@@ -49,9 +49,9 @@ def test_to_whisper_mode():
 
 
 @pytest.mark.asyncio
-@patch('bot_impl.get_player')
-async def test_chose_whisper_candidates_all_mode(mock_get_player):
-    """Test chose_whisper_candidates function with WhisperMode.ALL."""
+@patch('utils.player_utils.get_player')
+async def test_choose_whisper_candidates_all_mode(mock_get_player):
+    """Test choose_whisper_candidates function with WhisperMode.ALL."""
     # Setup
     game = MagicMock()
     game.whisper_mode = WhisperMode.ALL
@@ -66,7 +66,7 @@ async def test_chose_whisper_candidates_all_mode(mock_get_player):
     author = MagicMock()
 
     # Test WhisperMode.ALL - should return all players and storytellers
-    candidates = await chose_whisper_candidates(game, author)
+    candidates = await choose_whisper_candidates(game, author)
 
     # Verify
     assert candidates == game.seatingOrder + game.storytellers
@@ -75,9 +75,9 @@ async def test_chose_whisper_candidates_all_mode(mock_get_player):
 
 
 @pytest.mark.asyncio
-@patch('bot_impl.get_player')
-async def test_chose_whisper_candidates_storytellers_mode(mock_get_player):
-    """Test chose_whisper_candidates function with WhisperMode.STORYTELLERS."""
+@patch('utils.player_utils.get_player')
+async def test_choose_whisper_candidates_storytellers_mode(mock_get_player):
+    """Test choose_whisper_candidates function with WhisperMode.STORYTELLERS."""
     # Setup
     game = MagicMock()
     game.whisper_mode = WhisperMode.STORYTELLERS
@@ -92,7 +92,7 @@ async def test_chose_whisper_candidates_storytellers_mode(mock_get_player):
     author = MagicMock()
 
     # Test WhisperMode.STORYTELLERS - should return only storytellers
-    candidates = await chose_whisper_candidates(game, author)
+    candidates = await choose_whisper_candidates(game, author)
 
     # Verify
     assert candidates == game.storytellers
@@ -101,9 +101,9 @@ async def test_chose_whisper_candidates_storytellers_mode(mock_get_player):
 
 
 @pytest.mark.asyncio
-@patch('bot_impl.get_player')
-async def test_chose_whisper_candidates_neighbors_mode(mock_get_player):
-    """Test chose_whisper_candidates function with WhisperMode.NEIGHBORS."""
+@patch('utils.player_utils.get_player')
+async def test_choose_whisper_candidates_neighbors_mode(mock_get_player):
+    """Test choose_whisper_candidates function with WhisperMode.NEIGHBORS."""
     # Setup
     game = MagicMock()
     game.whisper_mode = WhisperMode.NEIGHBORS
@@ -122,7 +122,7 @@ async def test_chose_whisper_candidates_neighbors_mode(mock_get_player):
     mock_get_player.return_value = player_self
 
     # Test WhisperMode.NEIGHBORS - should return left neighbor, self, right neighbor, and storytellers
-    candidates = await chose_whisper_candidates(game, author)
+    candidates = await choose_whisper_candidates(game, author)
 
     # Verify - with player2 as self, neighbors are player1 and player3
     assert candidates == [player1, player_self, player3] + game.storytellers
@@ -131,9 +131,9 @@ async def test_chose_whisper_candidates_neighbors_mode(mock_get_player):
 
 
 @pytest.mark.asyncio
-@patch('bot_impl.get_player')
-async def test_chose_whisper_candidates_edge_case_two_players(mock_get_player):
-    """Test chose_whisper_candidates function with only two players."""
+@patch('utils.player_utils.get_player')
+async def test_choose_whisper_candidates_edge_case_two_players(mock_get_player):
+    """Test choose_whisper_candidates function with only two players."""
     # Setup
     game = MagicMock()
     game.whisper_mode = WhisperMode.NEIGHBORS
@@ -151,7 +151,7 @@ async def test_chose_whisper_candidates_edge_case_two_players(mock_get_player):
     mock_get_player.return_value = player_self
 
     # Test WhisperMode.NEIGHBORS with only two players
-    candidates = await chose_whisper_candidates(game, author)
+    candidates = await choose_whisper_candidates(game, author)
 
     # Verify - with player1 as self, only neighbor is player2
     # The order may vary based on implementation, so just check that we got the right players
@@ -161,9 +161,9 @@ async def test_chose_whisper_candidates_edge_case_two_players(mock_get_player):
 
 
 @pytest.mark.asyncio
-@patch('bot_impl.get_player')
-async def test_chose_whisper_candidates_edge_case_circular(mock_get_player):
-    """Test chose_whisper_candidates function with circular neighbors (first and last player)."""
+@patch('utils.player_utils.get_player')
+async def test_choose_whisper_candidates_edge_case_circular(mock_get_player):
+    """Test choose_whisper_candidates function with circular neighbors (first and last player)."""
     # Setup for first player (should get last player as left neighbor)
     game = MagicMock()
     game.whisper_mode = WhisperMode.NEIGHBORS
@@ -182,7 +182,7 @@ async def test_chose_whisper_candidates_edge_case_circular(mock_get_player):
     mock_get_player.return_value = player_self
 
     # Test WhisperMode.NEIGHBORS with player1 (first player)
-    candidates = await chose_whisper_candidates(game, author)
+    candidates = await choose_whisper_candidates(game, author)
 
     # Verify - with player1 as self, neighbors should be player3 (last) and player2
     assert candidates == [player3, player_self, player2] + game.storytellers
@@ -195,7 +195,7 @@ async def test_chose_whisper_candidates_edge_case_circular(mock_get_player):
     mock_get_player.return_value = player_self
 
     # Test WhisperMode.NEIGHBORS with player3 (last player)
-    candidates = await chose_whisper_candidates(game, author)
+    candidates = await choose_whisper_candidates(game, author)
 
     # Verify - with player3 as self, neighbors should be player2 and player1 (first)
     assert candidates == [player2, player_self, player1] + game.storytellers
@@ -205,7 +205,6 @@ async def test_chose_whisper_candidates_edge_case_circular(mock_get_player):
 async def test_whisper_mode_transitions():
     """Test that whisper mode changes correctly during game phase transitions."""
     # Import game classes
-    from bot_impl import Game, Vote
     from model.game import Day
     import global_vars
 
@@ -225,8 +224,8 @@ async def test_whisper_mode_transitions():
     game.days[-1].votes = []
 
     # Test that whisper mode changes to NEIGHBORS during a nomination
-    with patch('bot_impl.backup'), \
-            patch('bot_impl.update_presence'), \
+    with patch('utils.game_utils.backup'), \
+            patch('utils.game_utils.update_presence'), \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock):
         # Create a vote
         vote = MagicMock(spec=Vote)
@@ -245,8 +244,8 @@ async def test_whisper_mode_transitions():
         assert game.whisper_mode == WhisperMode.NEIGHBORS
 
     # Test that whisper mode changes back to ALL when the day ends
-    with patch('bot_impl.backup'), \
-            patch('bot_impl.update_presence'), \
+    with patch('utils.game_utils.backup'), \
+            patch('utils.game_utils.update_presence'), \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock):
         # Call end method directly
         game.days[-1].end = AsyncMock()

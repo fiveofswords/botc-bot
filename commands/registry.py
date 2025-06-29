@@ -9,6 +9,7 @@ import global_vars
 import model.game
 import model.player
 from commands.command_enums import HelpSection, UserType, GamePhase
+from utils import player_utils
 
 
 # =============================================================================
@@ -113,16 +114,6 @@ class CommandInfo(NamedTuple):
 # Validation Functions
 # =============================================================================
 
-async def get_player(user) -> Optional[model.player.Player]:
-    """Get player object for a Discord user."""
-    if global_vars.game is model.game.NULL_GAME:
-        return None
-
-    for person in global_vars.game.seatingOrder:
-        if person.user == user:
-            return person
-
-    return None
 
 
 async def validate_user_type(message: discord.Message, command_info: CommandInfo) -> None:
@@ -151,7 +142,7 @@ async def validate_user_type(message: discord.Message, command_info: CommandInfo
     # Determine what user type this person actually is
     is_storyteller = global_vars.gamemaster_role in member.roles
     is_observer = global_vars.observer_role in member.roles
-    player = await get_player(message.author)
+    player = await player_utils.get_player(message.author)
     is_player = player is not None
 
     # Check if user matches any of the required types

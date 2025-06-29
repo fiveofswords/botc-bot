@@ -6,8 +6,7 @@ import discord
 import global_vars
 import model.characters
 import model.settings
-from utils import message_utils
-from utils.character_utils import the_ability
+from utils import character_utils, message_utils, player_utils
 
 
 def in_play_voudon():
@@ -17,7 +16,7 @@ def in_play_voudon():
         The Voudon player if one is in play and not a ghost, otherwise None
     """
     return next((x for x in global_vars.game.seatingOrder if
-                 the_ability(x.character, model.characters.Voudon) and not x.is_ghost), None)
+                 character_utils.the_ability(x.character, model.characters.Voudon) and not x.is_ghost), None)
 
 
 def remove_banshee_nomination(banshee_ability_of_player):
@@ -68,7 +67,7 @@ class Vote:
         order_with_banshees = []
         for person in ordered_voters:
             order_with_banshees.append(person)
-            banshee_ability = the_ability(person.character, model.characters.Banshee)
+            banshee_ability = character_utils.the_ability(person.character, model.characters.Banshee)
             if banshee_ability and banshee_ability.is_screaming:
                 order_with_banshees.append(person)
 
@@ -99,7 +98,7 @@ class Vote:
     async def call_next(self):
         """Calls for person to vote."""
         toCall = self.order[self.position]
-        player_banshee_ability = the_ability(toCall.character, model.characters.Banshee)
+        player_banshee_ability = character_utils.the_ability(toCall.character, model.characters.Banshee)
         player_is_active_banshee = player_banshee_ability and player_banshee_ability.is_screaming
         voudon_is_active = in_play_voudon()
         for person in global_vars.game.seatingOrder:
@@ -165,7 +164,7 @@ class Vote:
         # Update seating order message immediately
         await global_vars.game.update_seating_order_message()
 
-        potential_banshee = the_ability(voter.character, model.characters.Banshee)
+        potential_banshee = character_utils.the_ability(voter.character, model.characters.Banshee)
 
         # see if a Voudon is in play
         voudon_in_play = in_play_voudon()
@@ -334,7 +333,7 @@ class Vote:
             operator: The operator making the preset
         """
         # Check dead votes
-        banshee_ability = the_ability(person.character, model.characters.Banshee)
+        banshee_ability = character_utils.the_ability(person.character, model.characters.Banshee)
         banshee_override = banshee_ability and banshee_ability.is_screaming
         if vt > 0 and person.is_ghost and person.dead_votes < 1 and not banshee_override:
             if not operator:
@@ -375,18 +374,7 @@ class Vote:
         global_vars.game.days[-1].votes.remove(self)
 
 
-async def _generate_member_possibilities(arg, server_members):
-    """Generate possibilities for member names.
-    
-    Args:
-        arg: The string to match against members
-        server_members: The list of members to search
-        
-    Returns:
-        List of members matching the string
-    """
-    from bot_impl import generate_possibilities
-    return await generate_possibilities(arg, server_members)
+# Removed: _generate_member_possibilities is now replaced with direct import
 
 
 async def is_storyteller(arg, member_possibilities_fn=None, server_members=None, server=None, gamemaster_role=None):
@@ -413,9 +401,9 @@ async def is_storyteller(arg, member_possibilities_fn=None, server_members=None,
     _server = server if server is not None else global_vars.server
     _gamemaster_role = gamemaster_role if gamemaster_role is not None else global_vars.gamemaster_role
 
-    # Use provided function or default to the internal one
+    # Use provided function or default to the imported one
     if member_possibilities_fn is None:
-        member_possibilities_fn = _generate_member_possibilities
+        member_possibilities_fn = player_utils.generate_possibilities
 
     # Use provided server_members or get from global_vars
     members = server_members if server_members is not None else _server.members

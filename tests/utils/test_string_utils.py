@@ -2,11 +2,11 @@
 Tests for string utility functions used in the BOTC bot
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
-from bot_impl import str_cleanup, find_all, is_storyteller
+from utils.text_utils import str_cleanup, find_all
 
 
 def test_str_cleanup():
@@ -52,9 +52,11 @@ def test_find_all():
 
 
 @pytest.mark.asyncio
-@patch('bot_impl.generate_possibilities')
-async def test_is_storyteller(mock_generate_possibilities):
+async def test_is_storyteller():
     """Test the is_storyteller function."""
+    # Import here to avoid circular import issues at module level
+    from model.game.vote import is_storyteller
+    
     # Test with direct storyteller references
     assert await is_storyteller("storytellers") is True
     assert await is_storyteller("the storytellers") is True
@@ -65,41 +67,61 @@ async def test_is_storyteller(mock_generate_possibilities):
     mock_server = MagicMock()
     mock_gamemaster_role = MagicMock()
 
-    # Save original global values if needed to restore later
-    import global_vars
-    original_server = global_vars.server
-    original_gamemaster_role = global_vars.gamemaster_role
+    # Create a mock member possibilities function
+    async def mock_member_possibilities_fn(arg, members):
+        # Simulate different scenarios based on the arg
+        if arg == "storyteller_name":
+            storyteller_member = MagicMock()
+            storyteller_member.id = 12345
+            return [storyteller_member]
+        elif arg == "player_name":
+            player_member = MagicMock()
+            player_member.id = 67890
+            return [player_member]
+        elif arg == "ambiguous_name":
+            return [MagicMock(), MagicMock()]  # Multiple matches
+        else:
+            return []  # No matches
 
-    try:
-        # Mock the global variables
-        global_vars.server = mock_server
-        global_vars.gamemaster_role = mock_gamemaster_role
+    # Case 1: Player is a storyteller
+    mock_member = MagicMock()
+    mock_member.id = 12345
+    mock_member.roles = [mock_gamemaster_role]
+    mock_server.get_member.return_value = mock_member
 
-        # Case 1: Player is a storyteller
-        mock_member = MagicMock()
-        mock_member.id = 12345
-        mock_server.get_member.return_value = mock_member
-        mock_member.roles = [mock_gamemaster_role]
+    # Test with player name that matches a storyteller
+    result = await is_storyteller(
+        "storyteller_name",
+        member_possibilities_fn=mock_member_possibilities_fn,
+        server=mock_server,
+        gamemaster_role=mock_gamemaster_role
+    )
+    assert result is True
 
-        # Mock generate_possibilities to return a player
-        mock_generate_possibilities.return_value = [mock_member]
+    # Case 2: Player is not a storyteller
+    mock_member.roles = []
+    result = await is_storyteller(
+        "player_name",
+        member_possibilities_fn=mock_member_possibilities_fn,
+        server=mock_server,
+        gamemaster_role=mock_gamemaster_role
+    )
+    assert result is False
 
-        # Test with player name that matches a storyteller
-        assert await is_storyteller("storyteller_name") is True
+    # Case 3: Multiple matches
+    result = await is_storyteller(
+        "ambiguous_name",
+        member_possibilities_fn=mock_member_possibilities_fn,
+        server=mock_server,
+        gamemaster_role=mock_gamemaster_role
+    )
+    assert result is False
 
-        # Case 2: Player is not a storyteller
-        mock_member.roles = []
-        assert await is_storyteller("player_name") is False
-
-        # Case 3: Multiple matches
-        mock_generate_possibilities.return_value = [mock_member, MagicMock()]
-        assert await is_storyteller("ambiguous_name") is False
-
-        # Case 4: No matches
-        mock_generate_possibilities.return_value = []
-        assert await is_storyteller("nonexistent_player") is False
-
-    finally:
-        # Restore global variables
-        global_vars.server = original_server
-        global_vars.gamemaster_role = original_gamemaster_role
+    # Case 4: No matches
+    result = await is_storyteller(
+        "nonexistent_player",
+        member_possibilities_fn=mock_member_possibilities_fn,
+        server=mock_server,
+        gamemaster_role=mock_gamemaster_role
+    )
+    assert result is False

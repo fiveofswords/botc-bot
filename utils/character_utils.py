@@ -1,5 +1,24 @@
 """Utilities for character-related functionality."""
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from model.characters.base import Character
+
+
+def str_to_class(role: str) -> type['Character']:
+    """
+    Convert a role string to a character class.
+    
+    Args:
+        role: The role string to convert
+        
+    Returns:
+        The character class corresponding to the role
+    """
+    from model.characters.registry import str_to_class as registry_str_to_class
+    return registry_str_to_class(role)
+
 
 def the_ability(character, ability_class):
     """Get an ability from a character if it has that ability.

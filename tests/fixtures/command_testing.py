@@ -15,7 +15,7 @@ from tests.fixtures.discord_mocks import MockMessage
 async def execute_command(command_function, message):
     """Execute a command with the given message."""
     # Patch multiple functions needed for commands to work
-    with patch('bot_impl.backup'), \
+    with patch('utils.game_utils.backup'), \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
         # Execute the command
         await command_function(message)
@@ -111,8 +111,8 @@ async def run_command_vote(vote_type, voter, vote, cmd_function=None):
     vote.vote = AsyncMock()
 
     # Mock get_player function to return the voter
-    with patch('bot_impl.get_player', return_value=voter), \
-            patch('bot_impl.backup', return_value=None), \
+    with patch('utils.player_utils.get_player', return_value=voter), \
+            patch('utils.game_utils.backup', return_value=None), \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock):
             # Process the message
             await cmd_function(message)
@@ -174,7 +174,7 @@ async def execute_command_with_wait_for(command_function, message, mock_discord_
             mock_discord_setup['client'].wait_for = AsyncMock(side_effect=wait_for_responses)
 
     # Use individual patches for command execution
-    with patch('bot_impl.backup'), \
+    with patch('utils.game_utils.backup'), \
             patch('utils.message_utils.safe_send', AsyncMock()), \
             patch('bot_client.client', mock_discord_setup['client']):
         await command_function(message)

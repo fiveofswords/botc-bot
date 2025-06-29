@@ -26,8 +26,8 @@ import pytest
 def backup_patches_combined():
     """Return patches that disable backup functionality."""
     return [
-        patch('bot_impl.backup', return_value=None),
-        patch('bot_impl.remove_backup', return_value=None),
+        patch('utils.game_utils.backup', return_value=None),
+        patch('utils.game_utils.remove_backup', return_value=None),
     ]
 
 
@@ -204,7 +204,7 @@ def full_bot_setup_patches_combined(mock_discord_setup, with_backup=False, backu
     if with_backup:
         patches.extend([
             patch('os.path.isfile', return_value=True),
-            patch('bot_impl.load', return_value=backup_game)
+            patch('utils.game_utils.load', return_value=backup_game)
         ])
     else:
         patches.append(patch('os.path.isfile', return_value=False))
