@@ -8,9 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 import global_vars
-from fixtures.discord_mocks import MockChannel
 from model import Vote
-from tests.fixtures.discord_mocks import mock_discord_setup, MockMessage
+from tests.fixtures.discord_mocks import mock_discord_setup, MockMessage, MockChannel
 from tests.fixtures.game_fixtures import setup_test_game, setup_test_vote
 
 
