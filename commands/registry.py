@@ -142,7 +142,7 @@ async def validate_user_type(message: discord.Message, command_info: CommandInfo
     # Determine what user type this person actually is
     is_storyteller = global_vars.gamemaster_role in member.roles
     is_observer = global_vars.observer_role in member.roles
-    player = await player_utils.get_player(message.author)
+    player = player_utils.get_player(message.author)
     is_player = player is not None
 
     # Check if user matches any of the required types

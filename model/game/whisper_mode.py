@@ -59,7 +59,7 @@ async def choose_whisper_candidates(game, author):
         return game.storytellers
     if game.whisper_mode == WhisperMode.NEIGHBORS:
         # determine neighbors
-        player_self = await player_utils.get_player(author)
+        player_self = player_utils.get_player(author)
         author_index = game.seatingOrder.index(player_self)
         neighbor_left = game.seatingOrder[(author_index - 1) % len(game.seatingOrder)]
         neighbor_right = game.seatingOrder[(author_index + 1) % len(game.seatingOrder)]

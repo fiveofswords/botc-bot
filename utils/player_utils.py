@@ -180,7 +180,7 @@ async def check_and_print_if_one_or_zero_to_check_in() -> None:
             await message_utils.safe_send(member, "Everyone has checked in!")
 
 
-async def get_player(user) -> Optional[model.player.Player]:
+def get_player(user) -> Optional[model.player.Player]:
     """
     Returns the Player object corresponding to user.
     
@@ -304,7 +304,7 @@ async def active_in_st_chat(user):
     Args:
         user: The Discord user
     """
-    person: model.player.Player = await get_player(user)
+    person: model.player.Player = get_player(user)
 
     if not person:
         return
@@ -326,10 +326,10 @@ async def make_active(user):
     Args:
         user: The Discord user
     """
-    if not await get_player(user):
+    if not get_player(user):
         return
 
-    person = await get_player(user)
+    person = get_player(user)
     person.update_last_active()
 
     if person.is_active or not global_vars.game.isDay:
@@ -360,7 +360,10 @@ async def cannot_nominate(user):
     Args:
         user: The Discord user
     """
-    (await get_player(user)).can_nominate = False
+    player = get_player(user)
+    if player is None:
+        return
+    player.can_nominate = False
     can_nominate = [
         player
         for player in global_vars.game.seatingOrder
