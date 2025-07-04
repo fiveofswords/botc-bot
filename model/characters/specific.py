@@ -1911,3 +1911,11 @@ class Summoner(base.Minion):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Summoner"
+
+
+class Wraith(base.Minion):
+    """The wraith."""
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Wraith"
