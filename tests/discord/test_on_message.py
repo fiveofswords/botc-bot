@@ -308,7 +308,7 @@ async def test_on_message_vote_successful(mock_discord_setup, setup_test_game):
                 await on_message(alice_message)
 
                 # Verify vote was called with 1 (yes)
-                mock_vote.vote.assert_called_once_with(1)
+                mock_vote.vote.assert_called_once_with(1, voter=setup_test_game['players']['alice'])
 
 
 @pytest.mark.asyncio
