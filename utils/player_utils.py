@@ -16,6 +16,18 @@ from utils import message_utils
 T = TypeVar('T')
 
 
+def get_player_display_name(player: Optional[model.player.Player]) -> str:
+    """Get the display name of a player or 'the storytellers' if None.
+    
+    Args:
+        player: The player to get the display name for, or None for storytellers
+        
+    Returns:
+        str: The player's display name or 'the storytellers'
+    """
+    return player.display_name if player else "the storytellers"
+
+
 def is_player(member: discord.Member) -> bool:
     """
     Check if a Discord member is a player in the current game.

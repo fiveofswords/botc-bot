@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 import global_vars
-from model import Vote
+from model import Vote, TravelerVote
 from tests.fixtures.discord_mocks import mock_discord_setup, MockMessage, MockChannel
 from tests.fixtures.game_fixtures import setup_test_game, setup_test_vote
 
@@ -101,6 +101,8 @@ async def test_vote_call_next():
     mock_game = MagicMock()
     mock_game.seatingOrder = [mock_nominee, mock_voter]
     mock_game.days = [mock_day]
+    # Set up storytellers list - None to force notify_storytellers to use gamemaster_role fallback
+    mock_game.storytellers = None
 
     # Set up the function under test with the mock objects
     with patch('global_vars.game', mock_game), \
@@ -126,8 +128,10 @@ async def test_vote_call_next():
 
             # Verify safe_send calls
             assert mock_safe_send.call_count == 2
-            mock_safe_send.assert_any_call(mock_channel, f"{mock_user.mention}, your vote on Alice.")
-            mock_safe_send.assert_any_call(mock_gm, "Bob's vote. They have no default.")
+            # Verify message sent to town square
+            mock_safe_send.assert_any_call(mock_channel, f"{mock_user.mention}, your vote on Alice. Current votes: 0.")
+            # Verify message sent to the Storytellers
+            mock_safe_send.assert_any_call(mock_gm, "Bob's vote on Alice. They have no default. Current votes: 0.")
 
 
 @pytest.mark.asyncio
@@ -1032,3 +1036,90 @@ async def test_vote_sets_hand_and_locks(mock_discord_setup, setup_test_game):
     assert not voting_player.hand_raised, "Hand was not lowered for a 'no' vote."
     assert voting_player.hand_locked_for_vote, "Hand was not locked for a 'no' vote (it should still be locked)."
     game_fixture.update_seating_order_message.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_traveler_vote_hand_management(mock_discord_setup, setup_test_game):
+    """Test that TravelerVote manages hand state when voting to exile a traveler."""
+    # Setup players including a traveler
+    alice = setup_test_game['players']['alice']  # Regular player
+    bob = setup_test_game['players']['bob']  # Regular player
+
+    # Create a traveler player (Charlie will be the traveler to be exiled)
+    charlie = setup_test_game['players']['charlie']
+
+    # Import and assign a traveler character to Charlie
+    from model.characters.specific import Beggar
+    charlie.character = Beggar(charlie)
+
+    global_vars.game = setup_test_game['game']
+    global_vars.game.seatingOrder = [alice, bob, charlie]
+    global_vars.channel = mock_discord_setup['channels']['town_square']
+
+    # Create a mock day
+    mock_day = MagicMock()
+    mock_day.open_noms = AsyncMock()
+    mock_day.open_pms = AsyncMock()
+    mock_day.voteEndMessages = []
+    global_vars.game.days = [mock_day]
+
+    # Create traveler vote instance - Charlie (traveler) is being voted for exile
+    vote = TravelerVote(charlie, alice)  # Alice nominates Charlie for exile
+
+    # Initial hand states
+    alice.hand_raised = False
+    alice.hand_locked_for_vote = False
+    bob.hand_raised = False
+    bob.hand_locked_for_vote = False
+    charlie.hand_raised = False
+    charlie.hand_locked_for_vote = False
+
+    # Mock message handling
+    mock_message = MockMessage(id=123, content="Exile vote announcement",
+                               channel=mock_discord_setup['channels']['town_square'],
+                               author=mock_discord_setup['members']['storyteller'])
+    mock_message.pin = AsyncMock()
+    mock_message.unpin = AsyncMock()
+
+    with patch('utils.message_utils.safe_send', return_value=mock_message), \
+            patch.object(global_vars.channel, 'fetch_message', AsyncMock(return_value=mock_message)), \
+            patch.object(global_vars.game, 'update_seating_order_message', AsyncMock()) as mock_update:
+        # Test the voting process: TravelerVote includes everyone in voting order
+        # With seating order [alice, bob, charlie], and Charlie being nominated,
+        # voting order should be [alice, bob, charlie] (nominee is included)
+        assert vote.order == [alice, bob, charlie]
+
+        # Alice votes "yes" to exile Charlie (first in voting order)
+        await vote.vote(1)
+
+        # Verify Alice's hand was raised and locked
+        assert alice.hand_raised is True
+        assert alice.hand_locked_for_vote is True
+        # Bob hasn't voted yet
+        assert bob.hand_raised is False
+        assert bob.hand_locked_for_vote is False
+        # Charlie hasn't voted yet
+        assert charlie.hand_raised is False
+        assert charlie.hand_locked_for_vote is False
+
+        # Bob votes "no" against the exile
+        await vote.vote(0)
+
+        # Verify Bob's hand was lowered and locked
+        assert bob.hand_raised is False
+        assert bob.hand_locked_for_vote is True
+        # Alice's hand should still be raised from previous vote
+        assert alice.hand_raised is True
+        assert bob.hand_locked_for_vote is True
+
+        # Charlie votes "no" against their own exile (final vote)
+        await vote.vote(0)
+
+        # After vote ends, all hands should be lowered and unlocked
+        # The end_vote() method resets all hands
+        for player in [alice, bob, charlie]:
+            assert player.hand_raised is False
+            assert player.hand_locked_for_vote is False
+
+        # Verify seating order message was updated during and after voting
+        assert mock_update.call_count >= 2  # At least once per vote, plus end_vote
