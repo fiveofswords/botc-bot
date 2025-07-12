@@ -71,6 +71,18 @@ class BaseVote(ABC):
         self.done = False
         self._vote_lock = asyncio.Lock()  # Prevent race conditions on voting
 
+    # Do not allow pickling of the vote lock
+    def __getstate__(self):
+        """Exclude _vote_lock from pickling since asyncio.Lock is not serializable."""
+        state = self.__dict__.copy()
+        state.pop('_vote_lock', None)
+        return state
+
+    def __setstate__(self, state):
+        """Recreate _vote_lock after unpickling."""
+        self.__dict__.update(state)
+        self._vote_lock = asyncio.Lock()
+
     # Abstract methods (must be implemented by subclasses)
     @abstractmethod
     def _get_voting_order(self) -> list[model.player.Player]:
@@ -215,7 +227,7 @@ class BaseVote(ABC):
             expected_voter = self.order[self.position]
 
             # Validate it's the correct player's turn
-            if voter != expected_voter:
+            if voter.user.id != expected_voter.user.id:
                 error_msg = f"It's {expected_voter.display_name}'s turn to vote, not {voter.display_name}'s."
                 if operator:
                     await message_utils.safe_send(operator, error_msg)
