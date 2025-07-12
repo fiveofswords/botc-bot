@@ -62,7 +62,7 @@ async def test_player_vote_command(mock_discord_setup, setup_test_game):
         )
 
         # Verify vote was called with 1 (yes)
-        vote_mock.assert_called_once_with(1)
+        vote_mock.assert_called_once_with(1, voter=alice)
 
     # Reset the vote state for the next test
     vote.position = 0
@@ -80,7 +80,7 @@ async def test_player_vote_command(mock_discord_setup, setup_test_game):
         )
 
         # Verify vote was called with 0 (no)
-        vote_mock.assert_called_once_with(0)
+        vote_mock.assert_called_once_with(0, voter=alice)
 
 
 @pytest.mark.asyncio

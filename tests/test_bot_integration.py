@@ -205,7 +205,7 @@ async def test_on_message_vote_command(mock_discord_setup, setup_test_game):
             await on_message(alice_vote)
 
             # Verify that vote was called with 1 (yes)
-            vote.vote.assert_called_once_with(1)
+            vote.vote.assert_called_once_with(1, voter=setup_test_game['players']['alice'])
 
     # Restore original vote method
     vote.vote = original_vote
@@ -300,7 +300,7 @@ async def test_on_message_vote_invalid_format(mock_discord_setup, setup_test_gam
             await on_message(alice_vote_no)
 
             # Verify that vote was called with 0 (no)
-            vote.vote.assert_called_once_with(0)
+            vote.vote.assert_called_once_with(0, voter=setup_test_game['players']['alice'])
 
     # Restore original vote method
     vote.vote = original_vote
@@ -897,7 +897,7 @@ async def test_complete_voting_workflow(mock_discord_setup, setup_test_game):
 
     # Add a side effect to simulate voter advancing and vote tallying
     @pytest.mark.usefixtures("setup_test_game")
-    async def vote_side_effect(vote_val):
+    async def vote_side_effect(vote_val, voter=None):
         # Initialize vote attributes if needed
         if not hasattr(vote, 'voted'):
             vote.voted = []
@@ -920,7 +920,7 @@ async def test_complete_voting_workflow(mock_discord_setup, setup_test_game):
             await on_message(alice_vote_msg)
 
             # Verify vote was called with 1 (yes)
-            vote.vote.assert_called_once_with(1)
+            vote.vote.assert_called_once_with(1, voter=setup_test_game['players']['alice'])
 
     # Clear the mock
     vote.vote.reset_mock()
@@ -936,7 +936,7 @@ async def test_complete_voting_workflow(mock_discord_setup, setup_test_game):
 
     # Add a side effect for Bob's vote that completes the vote
     @pytest.mark.usefixtures("setup_test_game")
-    async def final_vote_side_effect(vote_val):
+    async def final_vote_side_effect(vote_val, voter=None):
         # Initialize vote attributes if needed
         if not hasattr(vote, 'voted'):
             vote.voted = []
@@ -965,7 +965,7 @@ async def test_complete_voting_workflow(mock_discord_setup, setup_test_game):
             await on_message(bob_vote_msg)
 
             # Verify vote was called with 0 (no)
-            vote.vote.assert_called_once_with(0)
+            vote.vote.assert_called_once_with(0, voter=setup_test_game['players']['bob'])
 
     # 3. Test trying to vote on a completed vote
     alice_late_vote_msg = MockMessage(
@@ -1471,7 +1471,7 @@ async def test_end_to_end_nomination_vote_execution(mock_discord_setup, setup_te
 
     # Set up side effect to advance to next voter
     @pytest.mark.usefixtures("setup_test_game")
-    async def alice_vote_effect(vote_val):
+    async def alice_vote_effect(vote_val, voter=None):
         # Initialize vote attributes if needed
         if not hasattr(vote, 'voted'):
             vote.voted = []
@@ -1494,7 +1494,7 @@ async def test_end_to_end_nomination_vote_execution(mock_discord_setup, setup_te
             await on_message(alice_vote_msg)
 
             # Verify vote was called with 1 (yes)
-            vote.vote.assert_called_once_with(1)
+            vote.vote.assert_called_once_with(1, voter=setup_test_game['players']['alice'])
 
     # Reset mock for next vote
     vote.vote.reset_mock()
@@ -1510,7 +1510,7 @@ async def test_end_to_end_nomination_vote_execution(mock_discord_setup, setup_te
 
     # Configure vote execution with unanimous yes
     @pytest.mark.usefixtures("setup_test_game")
-    async def bob_vote_effect(vote_val):
+    async def bob_vote_effect(vote_val, voter=None):
         # Initialize vote attributes if needed
         if not hasattr(vote, 'voted'):
             vote.voted = []
@@ -1541,7 +1541,7 @@ async def test_end_to_end_nomination_vote_execution(mock_discord_setup, setup_te
             await on_message(bob_vote_msg)
 
             # Verify vote was called with 1 (yes)
-            vote.vote.assert_called_once_with(1)
+            vote.vote.assert_called_once_with(1, voter=setup_test_game['players']['bob'])
 
     # Verify Charlie was killed (would happen in a real execution)
     # In a complete end-to-end test, this would trigger kill logic

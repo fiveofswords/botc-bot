@@ -541,10 +541,10 @@ async def run_command_vote(mock_discord_setup, setup_test_game):
                     vote.vote = AsyncMock()
 
                     # Directly call the command logic
-                    await vote.vote(1)  # 1 = yes vote
+                    await vote.vote(1, voter=setup_test_game['players']['alice'])  # 1 = yes vote
 
                     # Verify that vote was called with 1 (yes)
-                    vote.vote.assert_called_once_with(1)
+                    vote.vote.assert_called_once_with(1, voter=setup_test_game['players']['alice'])
 
                     # Restore original vote method
                     vote.vote = original_vote
