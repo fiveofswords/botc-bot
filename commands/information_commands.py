@@ -115,7 +115,7 @@ async def resetseats_command(message: discord.Message, argument: str):
 
 @registry.command(
     name="messagetally",
-    description="Report message count tallies between pairs of players since a particular message. CAUTION: This prints publicly.",
+    description="Report of message count tallies between pairs of players since a particular message.",
     help_sections=[HelpSection.INFO],
     user_types=[UserType.STORYTELLER],
     arguments=[CommandArgument("message_id")],
