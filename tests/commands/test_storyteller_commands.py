@@ -853,8 +853,8 @@ def test_storyteller_setatheist_command(mock_discord_setup, setup_test_game):
             assert setup_test_game['game'].is_atheist is False
 
 
-# TODO: add relevant test using st command
-def test_storyteller_tally_commands(mock_discord_setup, setup_test_game):
+@pytest.mark.asyncio
+async def test_storyteller_tally_commands(mock_discord_setup, setup_test_game):
     """Test tally-related commands as storyteller."""
     # Create a direct message channel for storyteller
     st_dm_channel = MockChannel(400, "dm-storyteller")
@@ -867,7 +867,13 @@ def test_storyteller_tally_commands(mock_discord_setup, setup_test_game):
     with patch('utils.game_utils.backup') as mock_backup:
         with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
             # Enable tally
-            setup_test_game['game'].show_tally = True
+            mock_safe_send = await run_command_storyteller(
+                command="enabletally",
+                args="",
+                st_player=setup_test_game['players']['storyteller'],
+                channel=setup_test_game['players']['storyteller'].user.dm_channel,
+                command_function=on_message
+            )
 
             # Verify tally was enabled
             assert setup_test_game['game'].show_tally is True
@@ -875,22 +881,37 @@ def test_storyteller_tally_commands(mock_discord_setup, setup_test_game):
     # Test disabletally command
     with patch('utils.game_utils.backup') as mock_backup:
         with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
-            # Disable tally
-            setup_test_game['game'].show_tally = False
+            setup_test_game['game'].show_tally = True  # Ensure tally is enabled first
+            await run_command_storyteller(
+                command="disabletally",
+                args="",
+                st_player=setup_test_game['players']['storyteller'],
+                channel=setup_test_game['players']['storyteller'].user.dm_channel,
+                command_function=on_message
+            )
 
             # Verify tally was disabled
             assert setup_test_game['game'].show_tally is False
 
     # Test messagetally command with valid ID
     with patch('utils.game_utils.backup') as mock_backup:
-        with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
-            # Set tally message ID
-            tally_message_id = 1000  # Mock message ID
-            setup_test_game['game'].tally_message_id = tally_message_id
+        # with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
+        # Set tally message ID
+        print(f"mock safe send : {mock_safe_send}")
+        tally_message_id = 1000  # Mock message ID
+        mock_safe_send = await run_command_storyteller(
+            command="messagetally",
+            args=str(tally_message_id),
+            st_player=setup_test_game['players']['storyteller'],
+            channel=setup_test_game['players']['storyteller'].user.dm_channel,
+            command_function=on_message
+        )
 
-            # Verify tally message ID was set
-            assert setup_test_game['game'].tally_message_id == tally_message_id
-
+        # make sure that safe_send was called with the correct channel
+        mock_safe_send.assert_called_once_with(
+            setup_test_game['players']['storyteller'].user,
+            "Message Tally:\n> All other pairs: 0"
+        )
 
 # TODO: add relevant test using st command
 def test_storyteller_reseat_commands(mock_discord_setup, setup_test_game):
@@ -1194,7 +1215,6 @@ async def test_cancelpreset_storyteller_context_hand_down(mock_discord_setup, se
     with patch('utils.player_utils.select_player', return_value=alice), \
             patch('utils.game_utils.backup') as mock_backup, \
             patch.object(game, 'update_seating_order_message', new_callable=AsyncMock) as mock_update_seating, \
-            patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_utils, \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send_impl, \
             patch('bot_client.client', mock_discord_setup['client']):
         # Set up wait_for responses

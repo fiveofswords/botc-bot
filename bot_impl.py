@@ -1493,7 +1493,7 @@ async def on_message(message):
                     else:
                         message_text += "\n> All other pairs: 0"
                         break
-                await message_utils.safe_send(global_vars.channel, message_text)
+                await message_utils.safe_send(message.author, message_text)
             elif command == "whispers":
                 person = None
                 if global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
