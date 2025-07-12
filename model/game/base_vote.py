@@ -71,6 +71,15 @@ class BaseVote(ABC):
         self.done = False
         self._vote_lock = asyncio.Lock()  # Prevent race conditions on voting
 
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state.pop('_MyClass__lock', None)  # Exclude the mangled name
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self.__lock = asyncio.Lock()
+
     # Abstract methods (must be implemented by subclasses)
     @abstractmethod
     def _get_voting_order(self) -> list[model.player.Player]:
