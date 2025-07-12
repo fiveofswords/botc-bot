@@ -2,6 +2,7 @@
 Tests for the Vote class in bot_impl.py
 """
 
+import asyncio
 from typing import cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -164,7 +165,7 @@ async def test_vote_call_next_with_preset(mock_discord_setup, setup_test_game):
             await vote.call_next()
 
             # Verify vote was automatically cast with correct value
-            mock_vote_method.assert_called_once_with(1)
+            mock_vote_method.assert_called_once_with(1, voter=bob)
 
 
 @pytest.mark.asyncio
@@ -201,7 +202,7 @@ async def test_vote_with_yes(mock_discord_setup, setup_test_game):
         with patch.object(vote, 'call_next', AsyncMock()), \
                 patch.object(vote, 'end_vote', AsyncMock()):
             # Call the method under test - Bob votes yes
-            await vote.vote(1)
+            await vote.vote(1, voter=bob)
 
             # Verify vote count was updated
             assert vote.votes == 1
@@ -247,7 +248,7 @@ async def test_vote_with_no(mock_discord_setup, setup_test_game):
         with patch.object(vote, 'call_next', AsyncMock()), \
                 patch.object(vote, 'end_vote', AsyncMock()):
             # Call the method under test - Bob votes no
-            await vote.vote(0)
+            await vote.vote(0, voter=bob)
 
             # Verify vote count was NOT updated (since it's a 'no' vote)
             assert vote.votes == 0
@@ -648,7 +649,7 @@ async def test_voting_process(mock_discord_setup, setup_test_game):
         vote.position = 0
 
         # Test voting yes
-        await vote.vote(1)
+        await vote.vote(1, voter=voter)
 
         # Verify history was updated
         assert vote.history == [1]
@@ -678,7 +679,7 @@ async def test_voting_process(mock_discord_setup, setup_test_game):
         with patch('utils.character_utils.the_ability', return_value=None):
             with patch('model.game.vote.in_play_voudon', return_value=False):
                 # Vote yes as a ghost
-                await vote.vote(1)
+                await vote.vote(1, voter=ghost_player)
 
                 # Verify dead vote was used
                 ghost_player.remove_dead_vote.assert_called_once()
@@ -851,7 +852,7 @@ async def test_voudon_in_play(mock_discord_setup, setup_test_game):
         }
 
         # Create test method to simulate voting
-        async def mock_vote(value):
+        async def mock_vote(value, voter=None):
             if value == 1:  # Yes vote
                 vote.votes += vote.values[charlie][1]  # Add vote value
                 vote.history.append(1)
@@ -868,7 +869,7 @@ async def test_voudon_in_play(mock_discord_setup, setup_test_game):
         with patch.object(global_vars.channel, 'fetch_message',
                           AsyncMock(return_value=mock_message)):
             # Call the vote method - Charlie votes yes
-            await vote.vote(1)
+            await vote.vote(1, voter=charlie)
 
             # Verify vote count reflects Voudon's double vote
             assert vote.votes == 2  # One yes vote from Voudon counts as 2
@@ -1006,7 +1007,7 @@ async def test_vote_sets_hand_and_locks(mock_discord_setup, setup_test_game):
     with patch('utils.message_utils.safe_send', new_callable=AsyncMock,
                return_value=mock_pinned_message) as mock_safe_send_vote, \
             patch.object(global_vars.channel, 'fetch_message', AsyncMock(return_value=mock_pinned_message)):
-        await vote_fixture.vote(1) # Simulate a 'yes' vote
+        await vote_fixture.vote(1, voter=voting_player)  # Simulate a 'yes' vote
 
     # Assert for 'yes' vote
     assert voting_player.hand_raised, "Hand was not raised for a 'yes' vote."
@@ -1030,7 +1031,7 @@ async def test_vote_sets_hand_and_locks(mock_discord_setup, setup_test_game):
     with patch('utils.message_utils.safe_send', new_callable=AsyncMock,
                return_value=mock_pinned_message) as mock_safe_send_vote_no, \
             patch.object(global_vars.channel, 'fetch_message', AsyncMock(return_value=mock_pinned_message)):
-        await vote_fixture.vote(0) # Simulate a 'no' vote
+        await vote_fixture.vote(0, voter=voting_player)  # Simulate a 'no' vote
 
     # Assert for 'no' vote
     assert not voting_player.hand_raised, "Hand was not lowered for a 'no' vote."
@@ -1090,7 +1091,7 @@ async def test_traveler_vote_hand_management(mock_discord_setup, setup_test_game
         assert vote.order == [alice, bob, charlie]
 
         # Alice votes "yes" to exile Charlie (first in voting order)
-        await vote.vote(1)
+        await vote.vote(1, voter=alice)
 
         # Verify Alice's hand was raised and locked
         assert alice.hand_raised is True
@@ -1103,7 +1104,7 @@ async def test_traveler_vote_hand_management(mock_discord_setup, setup_test_game
         assert charlie.hand_locked_for_vote is False
 
         # Bob votes "no" against the exile
-        await vote.vote(0)
+        await vote.vote(0, voter=bob)
 
         # Verify Bob's hand was lowered and locked
         assert bob.hand_raised is False
@@ -1113,7 +1114,7 @@ async def test_traveler_vote_hand_management(mock_discord_setup, setup_test_game
         assert bob.hand_locked_for_vote is True
 
         # Charlie votes "no" against their own exile (final vote)
-        await vote.vote(0)
+        await vote.vote(0, voter=charlie)
 
         # After vote ends, all hands should be lowered and unlocked
         # The end_vote() method resets all hands
@@ -1123,3 +1124,208 @@ async def test_traveler_vote_hand_management(mock_discord_setup, setup_test_game
 
         # Verify seating order message was updated during and after voting
         assert mock_update.call_count >= 2  # At least once per vote, plus end_vote
+
+
+class TestVoteRaceConditions:
+    @pytest.mark.asyncio
+    async def test_vote_lock_initialization(self, mock_discord_setup, setup_test_game):
+        """Test that the vote lock is properly initialized."""
+        alice = setup_test_game['players']['alice']
+        bob = setup_test_game['players']['bob']
+
+        # Create vote instance using fixture
+        vote = setup_test_vote(setup_test_game['game'], alice, bob)
+
+        # Verify the lock exists and is an AsyncLock
+        assert hasattr(vote, '_vote_lock')
+        assert isinstance(vote._vote_lock, asyncio.Lock)
+        assert not vote._vote_lock.locked()
+
+
+    @pytest.mark.asyncio
+    async def test_vote_lock_prevents_race_condition_state_corruption(self, mock_discord_setup, setup_test_game):
+        """Test that the lock prevents state corruption from race conditions."""
+        alice = setup_test_game['players']['alice']  # nominee
+        bob = setup_test_game['players']['bob']  # voter
+
+        # Create a mock message for vote announcements
+        mock_message = MockMessage(id=123, content="Vote announcement",
+                                   channel=mock_discord_setup['channels']['town_square'],
+                                   author=mock_discord_setup['members']['storyteller'])
+        mock_message.pin = AsyncMock()
+
+        with patch('utils.message_utils.safe_send', return_value=mock_message), \
+                patch.object(mock_discord_setup['channels']['town_square'], 'fetch_message',
+                             AsyncMock(return_value=mock_message)):
+            # Set up global variables
+            global_vars.channel = mock_discord_setup['channels']['town_square']
+            global_vars.game = setup_test_game['game']
+            global_vars.gamemaster_role = mock_discord_setup['roles']['gamemaster']
+
+            # Create vote instance using fixture with only one voter
+            vote = setup_test_vote(setup_test_game['game'], alice, bob, [bob])
+            vote.position = 0  # Bob is the only voter
+
+            # Mock the methods called after voting
+            vote.end_vote = AsyncMock()
+            vote.call_next = AsyncMock()
+
+            # Simulate many concurrent voting attempts for the same voter
+            storyteller = mock_discord_setup['members']['storyteller']
+
+            async def concurrent_vote(vote_value):
+                await vote.vote(vote_value, voter=bob, operator=storyteller)
+
+            # Create multiple tasks trying to vote simultaneously
+            tasks = [
+                concurrent_vote(1),  # Yes vote
+                concurrent_vote(0),  # No vote
+                concurrent_vote(1),  # Yes vote
+                concurrent_vote(0),  # No vote
+                concurrent_vote(1),  # Yes vote
+            ]
+
+            # Run all votes concurrently
+            await asyncio.gather(*tasks)
+
+            # Verify only one vote was processed despite multiple attempts
+            assert len(vote.history) == 1, f"Expected 1 vote, got {len(vote.history)}: {vote.history}"
+            assert vote.position == 1, f"Expected position 1, got {vote.position}"
+
+            # Verify the vote value is valid (0 or 1)
+            assert vote.history[0] in [0, 1], f"Invalid vote value: {vote.history[0]}"
+
+    @pytest.mark.asyncio
+    async def test_vote_lock_does_not_block_valid_sequential_votes(self, mock_discord_setup, setup_test_game):
+        """Test that the lock doesn't interfere with normal sequential voting."""
+        alice = setup_test_game['players']['alice']  # nominee
+        bob = setup_test_game['players']['bob']  # first voter
+        charlie = setup_test_game['players']['charlie']  # second voter
+
+        # Create a mock message for vote announcements
+        mock_message = MockMessage(id=123, content="Vote announcement",
+                                   channel=mock_discord_setup['channels']['town_square'],
+                                   author=mock_discord_setup['members']['storyteller'])
+        mock_message.pin = AsyncMock()
+
+        with patch('utils.message_utils.safe_send', return_value=mock_message), \
+                patch.object(mock_discord_setup['channels']['town_square'], 'fetch_message',
+                             AsyncMock(return_value=mock_message)):
+            # Set up global variables
+            global_vars.channel = mock_discord_setup['channels']['town_square']
+            global_vars.game = setup_test_game['game']
+
+            # Create vote instance using fixture
+            vote = setup_test_vote(setup_test_game['game'], alice, bob, [bob, charlie, alice])
+            vote.position = 0  # Start with Bob
+
+            # Mock the methods called after voting to isolate the test
+            vote.end_vote = AsyncMock()
+            vote.call_next = AsyncMock()
+
+            # First vote: Bob votes yes
+            await vote.vote(1, voter=bob)
+
+            # Verify first vote was processed
+            assert len(vote.history) == 1
+            assert vote.history[0] == 1
+            assert vote.position == 1  # Moved to Charlie
+            assert bob in vote.voted
+
+            # Second vote: Charlie votes no (sequential, not concurrent)
+            await vote.vote(0, voter=charlie)
+
+            # Verify second vote was processed
+            assert len(vote.history) == 2
+            assert vote.history[1] == 0
+            assert vote.position == 2  # Moved past all voters
+            assert charlie not in vote.voted  # Charlie voted no
+            
+    @pytest.mark.asyncio
+    async def test_player_and_storyteller_simultaneous_vote(self, mock_discord_setup, setup_test_game):
+        """Test race condition when player and storyteller vote simultaneously.
+        
+        This is a realistic scenario where Bob tries to vote for himself
+        at the same time the storyteller places a vote on Bob's behalf.
+        """
+        alice = setup_test_game['players']['alice']  # nominee
+        bob = setup_test_game['players']['bob']  # voter
+
+        # Create a mock message for vote announcements
+        mock_message = MockMessage(id=123, content="Vote announcement",
+                                   channel=mock_discord_setup['channels']['town_square'],
+                                   author=mock_discord_setup['members']['storyteller'])
+        mock_message.pin = AsyncMock()
+
+        with patch('utils.message_utils.safe_send', return_value=mock_message), \
+                patch.object(mock_discord_setup['channels']['town_square'], 'fetch_message',
+                             AsyncMock(return_value=mock_message)):
+            # Set up global variables
+            global_vars.channel = mock_discord_setup['channels']['town_square']
+            global_vars.game = setup_test_game['game']
+            global_vars.gamemaster_role = mock_discord_setup['roles']['gamemaster']
+
+            # Create vote instance using fixture
+            vote = setup_test_vote(setup_test_game['game'], alice, bob, [bob, alice])
+            vote.position = 0  # Bob should vote
+
+            # Mock the methods to prevent actual completion
+            vote.end_vote = AsyncMock()
+            vote.call_next = AsyncMock()
+
+            # Track who actually gets to vote and timing
+            vote_attempts = []
+            execution_log = []
+
+            # Override _apply_vote_effects to track vote attempts
+            original_apply_vote_effects = vote._apply_vote_effects
+
+            def tracked_apply_vote_effects(voter, vt):
+                # Record who voted and with what value
+                vote_attempts.append((voter.display_name, vt))
+                return original_apply_vote_effects(voter, vt)
+
+            vote._apply_vote_effects = tracked_apply_vote_effects
+
+            # Simulate Bob and storyteller voting simultaneously
+            storyteller = mock_discord_setup['members']['storyteller']
+
+            async def bob_self_vote():
+                """Bob votes for himself directly"""
+                execution_log.append("bob_start")
+                # Add a small delay to ensure both tasks start before one completes
+                await asyncio.sleep(0.001)
+                await vote.vote(1, voter=bob)
+                execution_log.append("bob_end")
+
+            async def storyteller_vote_for_bob():
+                """Storyteller places a vote on Bob's behalf"""
+                execution_log.append("storyteller_start")
+                # Add a small delay to ensure both tasks start before one completes
+                await asyncio.sleep(0.001)
+                await vote.vote(1, voter=bob, operator=storyteller)
+                execution_log.append("storyteller_end")
+
+            # Run both votes concurrently - this is the race condition scenario
+            await asyncio.gather(bob_self_vote(), storyteller_vote_for_bob())
+
+            # Verify that both tasks started (proving concurrency)
+            assert "bob_start" in execution_log, "Bob's task never started"
+            assert "storyteller_start" in execution_log, "Storyteller's task never started"
+
+            # With the lock, only one vote should succeed
+            assert len(vote.history) == 1, f"Expected exactly 1 vote, got {len(vote.history)}: {vote.history}"
+            assert vote.position == 1, f"Expected position 1, got {vote.position}"
+
+            # Verify only one vote attempt was recorded
+            assert len(vote_attempts) == 1, f"Expected 1 vote attempt, got {len(vote_attempts)}: {vote_attempts}"
+
+            # The vote should be for Bob regardless of who initiated it
+            assert vote_attempts[0][0] == "Bob", f"Expected vote for Bob, got {vote_attempts[0][0]}"
+
+            # The vote value should be either 0 or 1 (depending on which one won the race)
+            vote_value = vote_attempts[0][1]
+            assert vote_value in [0, 1], f"Expected vote value 0 or 1, got {vote_value}"
+
+            # Verify the vote value matches what's in history
+            assert vote.history[0] == vote_value, f"History mismatch: expected {vote_value}, got {vote.history[0]}"

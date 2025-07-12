@@ -48,6 +48,7 @@ class BaseVote(ABC):
     majority: int
     position: int
     done: bool
+    _vote_lock: asyncio.Lock
 
     def __init__(self, nominee: Optional[model.player.Player], nominator: Optional[model.player.Player]) -> None:
         """Initialize a BaseVote.
@@ -68,6 +69,7 @@ class BaseVote(ABC):
         self.majority = self._calculate_majority()
         self.position = 0
         self.done = False
+        self._vote_lock = asyncio.Lock()  # Prevent race conditions on voting
 
     # Abstract methods (must be implemented by subclasses)
     @abstractmethod
@@ -163,12 +165,12 @@ class BaseVote(ABC):
         if to_call_user_id in self.presetVotes:
             preset_player_vote = self.presetVotes[to_call_user_id]
             self.presetVotes[to_call_user_id] -= 1
-            await self.vote(int(preset_player_vote > 0))
+            await self.vote(int(preset_player_vote > 0), voter=to_call_player)
             return
 
         # Check if player should be skipped
         if self._should_skip_voter(to_call_player):
-            await self.vote(0)
+            await self.vote(0, voter=to_call_player)
             return
 
         # Call for manual vote
@@ -189,57 +191,74 @@ class BaseVote(ABC):
             this_nomination = global_vars.game.days[-1].votes[-1]
             if to_call_player == this_nomination.order[this_nomination.position]:
                 # Place default vote if still this player's turn
-                await self.vote(default[0])
+                await self.vote(default[0], voter=to_call_player)
         else:
             await message_utils.notify_storytellers(
                 f"{to_call_display_name}'s vote on {nominee_name}. They have no default. Current votes: {self.votes}.")
 
-    # TODO: Add a lock around this to prevent race conditions.  Will need to pass in expected voter.
-    async def vote(self, vt: int, operator: Optional[discord.Member] = None) -> None:
+    async def vote(self, vt: int, voter: model.player.Player, operator: Optional[discord.Member] = None) -> None:
         """Executes a vote.
 
         Args:
             vt: 0 if no, 1 if yes
-            operator: The operator making the vote
+            voter: The player who is voting
+            operator: The operator making the vote (storyteller, etc.)
         """
-        voter = self.order[self.position]
+        async with self._vote_lock:
+            # Check if voting is still valid (vote may have ended while waiting for lock)
+            if self.done or self.position >= len(self.order):
+                if operator:
+                    await message_utils.safe_send(operator, "This vote has already ended.")
+                return
 
-        # Validate the vote
-        allowed, reason = self._validate_vote(voter, vt)
-        if not allowed:
-            if not operator:
-                await message_utils.safe_send(voter.user, reason)
-            else:
-                await message_utils.safe_send(operator, reason)
-            return
+            # Determine the expected voter
+            expected_voter = self.order[self.position]
 
-        # Apply vote effects
-        self._apply_vote_effects(voter, vt)
+            # Validate it's the correct player's turn
+            if voter != expected_voter:
+                error_msg = f"It's {expected_voter.display_name}'s turn to vote, not {voter.display_name}'s."
+                if operator:
+                    await message_utils.safe_send(operator, error_msg)
+                else:
+                    await message_utils.safe_send(voter.user, error_msg)
+                return
 
-        # Vote tracking
-        self.history.append(vt)
-        self.votes += self.values[voter][vt]
-        if vt == 1:
-            self.voted.append(voter)
+            # Validate the vote
+            allowed, reason = self._validate_vote(voter, vt)
+            if not allowed:
+                if not operator:
+                    await message_utils.safe_send(voter.user, reason)
+                else:
+                    await message_utils.safe_send(operator, reason)
+                return
 
-        # Announcement
-        text = "yes" if vt == 1 else "no"
-        self.announcements.append(
-            (
-                await message_utils.safe_send(
-                    global_vars.channel,
-                    f"{voter.display_name} votes {text}. {str(self.votes)} votes.",
-                )
-            ).id
-        )
-        await (await global_vars.channel.fetch_message(self.announcements[-1])).pin()
+            # Apply vote effects
+            self._apply_vote_effects(voter, vt)
 
-        # Next vote
-        self.position += 1
-        if self.position == len(self.order):
-            await self.end_vote()
-            return
-        await self.call_next()
+            # Vote tracking
+            self.history.append(vt)
+            self.votes += self.values[voter][vt]
+            if vt == 1:
+                self.voted.append(voter)
+
+            # Announcement
+            text = "yes" if vt == 1 else "no"
+            self.announcements.append(
+                (
+                    await message_utils.safe_send(
+                        global_vars.channel,
+                        f"{voter.display_name} votes {text}. {str(self.votes)} votes.",
+                    )
+                ).id
+            )
+            await (await global_vars.channel.fetch_message(self.announcements[-1])).pin()
+
+            # Next vote
+            self.position += 1
+            if self.position == len(self.order):
+                await self.end_vote()
+                return
+            await self.call_next()
 
     async def end_vote(self) -> None:
         """When the vote is over."""

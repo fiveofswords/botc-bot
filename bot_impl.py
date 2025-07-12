@@ -207,7 +207,7 @@ async def on_message(message):
                                                   "Voudon is in play. Only the Voudon and dead may vote.")
                     return
 
-                await vote.vote(vt)
+                await vote.vote(vt, voter=voting_player)
                 if global_vars.game is not game.NULL_GAME:
                     game_utils.backup("current_game.pckl")
                 return
@@ -1967,7 +1967,7 @@ async def on_message(message):
                                                       "Voudon is in play. Only the Voudon and dead may vote.")
                         return
 
-                    await vote.vote(vt, operator=message.author)
+                    await vote.vote(vt, voter=person, operator=message.author)
                     if global_vars.game is not game.NULL_GAME:
                         game_utils.backup("current_game.pckl")
                     return
@@ -1985,7 +1985,7 @@ async def on_message(message):
                                                   "Voudon is in play. Only the Voudon and dead may vote.")
                     return
 
-                await vote.vote(vt)
+                await vote.vote(vt, voter=voting_player)
                 if global_vars.game is not game.NULL_GAME:
                     game_utils.backup("current_game.pckl")
                 return

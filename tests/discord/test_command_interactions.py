@@ -160,17 +160,17 @@ async def test_voting_sequence_with_execution(mock_discord_setup, setup_test_gam
                     vote.vote = AsyncMock()
 
                     # Add a side effect to simulate voter advancing
-                    async def vote_side_effect(vote_val):
+                    async def vote_side_effect(vote_val, voter=None):
                         vote.position = 1  # Move to Bob
                         return vote_val
 
                     vote.vote.side_effect = vote_side_effect
 
                     # Alice votes yes
-                    await vote.vote(1)
+                    await vote.vote(1, voter=setup_test_game['players']['alice'])
 
                     # Verify vote was called with 1 (yes)
-                    vote.vote.assert_called_once_with(1)
+                    vote.vote.assert_called_once_with(1, voter=setup_test_game['players']['alice'])
 
                     # Reset mock for next vote
                     vote.vote.reset_mock()
@@ -181,7 +181,7 @@ async def test_voting_sequence_with_execution(mock_discord_setup, setup_test_gam
             with patch('utils.game_utils.backup', return_value=None):
                 with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                     # Add a side effect for the final vote
-                    async def final_vote_side_effect(vote_val):
+                    async def final_vote_side_effect(vote_val, voter=None):
                         vote.position = 2  # Move past all voters
                         vote.done = True  # Mark as done
 
@@ -196,10 +196,10 @@ async def test_voting_sequence_with_execution(mock_discord_setup, setup_test_gam
                     setup_test_game['players']['charlie'].kill = AsyncMock()
 
                     # Bob votes yes
-                    await vote.vote(1)
+                    await vote.vote(1, voter=setup_test_game['players']['bob'])
 
                     # Verify vote was called with 1 (yes)
-                    vote.vote.assert_called_once_with(1)
+                    vote.vote.assert_called_once_with(1, voter=setup_test_game['players']['bob'])
 
                     # In a real execution, kill would be called on the nominee
                     # To test this fully, we would need to implement kill logic in the vote side effect
@@ -890,7 +890,7 @@ async def test_on_message_handling(mock_discord_setup, setup_test_game):
                 await on_message(vote_message)
 
                 # Verify vote was called with 1 (yes)
-                vote.vote.assert_called_once_with(1)
+                vote.vote.assert_called_once_with(1, voter=setup_test_game['players']['alice'])
 
     # Restore original vote method
     vote.vote = original_vote
