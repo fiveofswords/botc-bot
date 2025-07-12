@@ -240,25 +240,26 @@ class BaseVote(ABC):
             self.votes += self.values[voter][vt]
             if vt == 1:
                 self.voted.append(voter)
+        # end critical section with vote lock
 
-            # Announcement
-            text = "yes" if vt == 1 else "no"
-            self.announcements.append(
-                (
-                    await message_utils.safe_send(
-                        global_vars.channel,
-                        f"{voter.display_name} votes {text}. {str(self.votes)} votes.",
-                    )
-                ).id
-            )
-            await (await global_vars.channel.fetch_message(self.announcements[-1])).pin()
+        # Announcement
+        text = "yes" if vt == 1 else "no"
+        self.announcements.append(
+            (
+                await message_utils.safe_send(
+                    global_vars.channel,
+                    f"{voter.display_name} votes {text}. {str(self.votes)} votes.",
+                )
+            ).id
+        )
+        await (await global_vars.channel.fetch_message(self.announcements[-1])).pin()
 
-            # Next vote
-            self.position += 1
-            if self.position == len(self.order):
-                await self.end_vote()
-                return
-            await self.call_next()
+        # Next vote
+        self.position += 1
+        if self.position == len(self.order):
+            await self.end_vote()
+            return
+        await self.call_next()
 
     async def end_vote(self) -> None:
         """When the vote is over."""
