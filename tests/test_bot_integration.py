@@ -2677,10 +2677,10 @@ async def test_functional_messagetally_command(mock_discord_setup, setup_test_ga
     st_dm_channel = MockChannel(400, "dm-storyteller")
     st_dm_channel.guild = None  # Simulate DM
 
-    # Create a message to use as the tally message
+    # Create a message to use as the tally message start
     tally_message = MockMessage(
         id=180,
-        content="Original tally message",
+        content="Some starting message",
         channel=mock_discord_setup['channels']['town_square'],
         author=mock_discord_setup['members']['storyteller']
     )
