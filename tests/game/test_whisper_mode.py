@@ -6,9 +6,7 @@ from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 
-from model import Game, Vote
-from model.game import WhisperMode
-from model.game.whisper_mode import to_whisper_mode, choose_whisper_candidates
+from model.game.whisper_mode import WhisperMode, to_whisper_mode, choose_whisper_candidates
 
 
 def test_to_whisper_mode():
@@ -16,11 +14,13 @@ def test_to_whisper_mode():
     # Test with valid lowercase inputs
     assert to_whisper_mode("all") == WhisperMode.ALL
     assert to_whisper_mode("neighbors") == WhisperMode.NEIGHBORS
+    assert to_whisper_mode("neighbors2") == WhisperMode.NEIGHBORS2
     assert to_whisper_mode("storytellers") == WhisperMode.STORYTELLERS
 
     # Test with valid mixed case inputs
     assert to_whisper_mode("All") == WhisperMode.ALL
     assert to_whisper_mode("NeIgHbOrS") == WhisperMode.NEIGHBORS
+    assert to_whisper_mode("NeIgHbOrS2") == WhisperMode.NEIGHBORS2
     assert to_whisper_mode("StoryTellers") == WhisperMode.STORYTELLERS
 
     # Test with invalid input
@@ -205,11 +205,11 @@ async def test_choose_whisper_candidates_edge_case_circular(mock_get_player):
 async def test_whisper_mode_transitions():
     """Test that whisper mode changes correctly during game phase transitions."""
     # Import game classes
-    from model.game import Day
+    from model.game.day import Day
     import global_vars
 
     # Create a mock game
-    game = MagicMock(spec=Game)
+    game = MagicMock()
     global_vars.game = game
 
     # Mock players
@@ -228,7 +228,7 @@ async def test_whisper_mode_transitions():
             patch('utils.game_utils.update_presence'), \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock):
         # Create a vote
-        vote = MagicMock(spec=Vote)
+        vote = MagicMock()
         vote.nominee = player1
         vote.nominator = player2
 
@@ -325,3 +325,81 @@ async def test_whisper_candidates_for_different_modes():
 
     # Player1 can message storyteller
     assert await check_can_message(player1, storyteller, storytellers_candidates) is True
+
+
+@pytest.mark.asyncio
+@patch('utils.player_utils.get_player')
+async def test_choose_whisper_candidates_neighbors2_mode(mock_get_player):
+    """Test choose_whisper_candidates function with WhisperMode.NEIGHBORS2."""
+    # Setup with 7 players to properly test 2-step neighbors exclusion
+    game = MagicMock()
+    game.whisper_mode = WhisperMode.NEIGHBORS2
+
+    player1 = MagicMock()
+    player2 = MagicMock()
+    player3 = MagicMock()
+    player4 = MagicMock()
+    player5 = MagicMock()
+    player6 = MagicMock()
+    player7 = MagicMock()
+
+    game.seatingOrder = [player1, player2, player3, player4, player5, player6, player7]
+    game.storytellers = ["storyteller1", "storyteller2"]
+
+    author = MagicMock()
+    player_self = player4  # The author is player4 (middle)
+
+    # Configure mock for get_player to return player_self
+    mock_get_player.return_value = player_self
+
+    # Test WhisperMode.NEIGHBORS2 - should return self and players within 2 steps
+    candidates = await choose_whisper_candidates(game, author)
+
+    # With player4 as self (index 3), neighbors2 should include:
+    # player2 (index 1, 2 steps left), player3 (index 2, 1 step left), 
+    # player4 (index 3, self), player5 (index 4, 1 step right), player6 (index 5, 2 steps right)
+    # Should NOT include: player1 (index 0, 3 steps left), player7 (index 6, 3 steps right)
+    expected_players = {player2, player3, player4, player5, player6}
+    excluded_players = {player1, player7}
+    actual_players = set(candidates) - set(game.storytellers)
+
+    assert actual_players == expected_players
+    assert excluded_players.isdisjoint(actual_players), f"Players {excluded_players} should not be in candidates"
+    assert "storyteller1" in candidates
+    assert "storyteller2" in candidates
+    # Ensure get_player was called with author
+    mock_get_player.assert_called_once_with(author)
+
+
+@pytest.mark.asyncio
+@patch('utils.player_utils.get_player')
+async def test_choose_whisper_candidates_neighbors2_mode_small_game(mock_get_player):
+    """Test choose_whisper_candidates function with WhisperMode.NEIGHBORS2 in small game."""
+    # Setup with 3 players - should include all players
+    game = MagicMock()
+    game.whisper_mode = WhisperMode.NEIGHBORS2
+
+    player1 = MagicMock()
+    player2 = MagicMock()
+    player3 = MagicMock()
+
+    game.seatingOrder = [player1, player2, player3]
+    game.storytellers = ["storyteller1"]
+
+    author = MagicMock()
+    player_self = player2  # The author is player2
+
+    # Configure mock for get_player to return player_self
+    mock_get_player.return_value = player_self
+
+    # Test WhisperMode.NEIGHBORS2 with only 3 players
+    candidates = await choose_whisper_candidates(game, author)
+
+    # With only 3 players, neighbors2 should include all players
+    expected_players = {player1, player2, player3}
+    actual_players = set(candidates) - set(game.storytellers)
+
+    assert actual_players == expected_players
+    assert "storyteller1" in candidates
+    # Ensure get_player was called with author
+    mock_get_player.assert_called_once_with(author)
