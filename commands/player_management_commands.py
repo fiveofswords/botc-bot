@@ -255,7 +255,7 @@ async def swapseats_command(message: discord.Message, argument: str):
 
     await game.reseat(new_seating)
     await message_utils.notify_storytellers_about_action(
-        message.author, f"Swapped seats of {player1.user.name} and {player2.user.name}."
+        message.author, f"swapped seats of {player1.user.display_name} and {player2.user.display_name}."
     )
 
     if game is not model.game.NULL_GAME:
