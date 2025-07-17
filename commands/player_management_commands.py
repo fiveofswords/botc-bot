@@ -2,8 +2,11 @@
 
 import discord
 
+import global_vars
+import model
 from commands.command_enums import HelpSection, UserType, GamePhase
 from commands.registry import registry, CommandArgument
+from utils import message_utils, player_utils, game_utils
 
 
 @registry.command(
@@ -215,6 +218,48 @@ async def removetraveler_command(message: discord.Message, argument: str):
 async def reseat_command(message: discord.Message, argument: str):
     """Change the seating order."""
     raise NotImplementedError("Registry implementation not ready - using bot_impl")
+
+
+@registry.command(
+    name="swapseats",
+    description="swaps two players' seats",
+    help_sections=[HelpSection.MISC],
+    user_types=[UserType.STORYTELLER],
+    required_phases=[GamePhase.DAY, GamePhase.NIGHT],  # Any phase
+    arguments=[CommandArgument("player1"), CommandArgument("player2")],
+)
+async def swapseats_command(message: discord.Message, argument: str):
+    """Swaps the seats of two players."""
+    player_names = argument.split()
+    if len(player_names) != 2:
+        await message_utils.safe_send(message.author, "There must be exactly two player arguments.")
+        return
+
+    game = global_vars.game
+
+    async def get_player(player_name):
+        return await player_utils.select_player(message.author, player_name, game.seatingOrder)
+
+    player1, player2 = await get_player(player_names[0]), await get_player(player_names[1])
+    if not player1 or not player2:
+        return
+
+    if player1.user.id == player2.user.id:
+        await message_utils.safe_send(message.author, "You cannot swap a player with themselves.")
+        return
+
+    # Swap the players in the seating order
+    new_seating = game.seatingOrder.copy()
+    index1, index2 = new_seating.index(player1), new_seating.index(player2)
+    new_seating[index1], new_seating[index2] = new_seating[index2], new_seating[index1]
+
+    await game.reseat(new_seating)
+    await message_utils.notify_storytellers_about_action(
+        message.author, f"swapped seats of {player1.user.display_name} and {player2.user.display_name}."
+    )
+
+    if game is not model.game.NULL_GAME:
+        game_utils.backup("current_game.pckl")
 
 
 @registry.command(

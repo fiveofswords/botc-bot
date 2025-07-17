@@ -1088,3 +1088,214 @@ async def test_handup_command_timing_and_state(mock_discord_setup, setup_test_ga
 
         alice.hand_raised = False
         assert alice.hand_raised is False
+
+
+@pytest.mark.asyncio
+async def test_swap_seats_command(mock_discord_setup, setup_test_game):
+    """Test the swapseats command to swap two players' positions."""
+    # Set up global variables for this test
+    global_vars.game = setup_test_game['game']
+    global_vars.server = mock_discord_setup['guild']
+    global_vars.gamemaster_role = mock_discord_setup['roles']['gamemaster']
+
+    # Get players from the fixture
+    alice = setup_test_game['players']['alice']
+    bob = setup_test_game['players']['bob']
+    charlie = setup_test_game['players']['charlie']
+    storyteller = setup_test_game['players']['storyteller']
+
+    # Set up initial seating positions
+    alice.position = 0
+    bob.position = 1
+    charlie.position = 2
+
+    # Store initial seating order
+    initial_seating_order = setup_test_game['game'].seatingOrder.copy()
+    assert initial_seating_order == [alice, bob, charlie]
+
+    # Test swapping seats between Alice (position 0) and Charlie (position 2)
+    with patch('utils.player_utils.select_player', new_callable=AsyncMock) as mock_select_player:
+        # Mock select_player to return alice first, then charlie
+        mock_select_player.side_effect = [alice, charlie]
+
+        with patch('utils.game_utils.backup') as mock_backup:
+            with patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
+                # Mock the reseat method to avoid Discord API calls
+                with patch.object(setup_test_game['game'], 'reseat', new_callable=AsyncMock) as mock_reseat:
+                    # Create a message object for the storyteller
+                    message = MockMessage(
+                        id=1000,
+                        content="@swapseats alice charlie",
+                        channel=storyteller.user.dm_channel,
+                        author=storyteller.user,
+                        guild=None  # Simulate a DM
+                    )
+
+                    # Execute the command
+                    await on_message(message)
+
+                    # Verify select_player was called twice (once for each player)
+                    assert mock_select_player.call_count == 2
+
+                    # Verify backup was called (once from on_message start, once from the command)
+                    assert mock_backup.call_count == 2
+
+                    # Verify reseat was called with the correct new seating order
+                    mock_reseat.assert_called_once()
+                    new_seating = mock_reseat.call_args[0][0]
+                    assert new_seating == [charlie, bob, alice]
+
+
+@pytest.mark.asyncio
+async def test_swap_seats_command_invalid_players(mock_discord_setup, setup_test_game):
+    """Test swapseats command with invalid player arguments."""
+    # Set up global variables for this test
+    global_vars.game = setup_test_game['game']
+    global_vars.server = mock_discord_setup['guild']
+    global_vars.gamemaster_role = mock_discord_setup['roles']['gamemaster']
+
+    # Get storyteller from the fixture
+    storyteller = setup_test_game['players']['storyteller']
+
+    # Test with first player not found
+    with patch('utils.player_utils.select_player', new_callable=AsyncMock) as mock_select_player:
+        # Mock select_player to return None and send error message (like real implementation)
+        mock_select_player.return_value = None
+
+        with patch('utils.game_utils.backup') as mock_backup:
+            with patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
+                # Create a message object for the storyteller
+                message = MockMessage(
+                    id=1001,
+                    content="@swapseats nonexistent alice",
+                    channel=storyteller.user.dm_channel,
+                    author=storyteller.user,
+                    guild=None  # Simulate a DM
+                )
+
+                # Execute the command
+                await on_message(message)
+
+                # When select_player returns None, the command should exit early
+                # The actual select_player function sends its own error message when it fails
+                # So we don't expect our command to send a message, but select_player might
+                # For now, we just verify the command handled the None return gracefully
+
+
+@pytest.mark.asyncio
+async def test_swap_seats_command_same_player(mock_discord_setup, setup_test_game):
+    """Test swapseats command when trying to swap a player with themselves."""
+    # Set up global variables for this test
+    global_vars.game = setup_test_game['game']
+    global_vars.server = mock_discord_setup['guild']
+    global_vars.gamemaster_role = mock_discord_setup['roles']['gamemaster']
+
+    # Get players from the fixture
+    alice = setup_test_game['players']['alice']
+    storyteller = setup_test_game['players']['storyteller']
+
+    # Test swapping a player with themselves
+    with patch('model.game.vote.is_storyteller', return_value=True):
+        with patch('utils.player_utils.select_player') as mock_select_player:
+            # Mock select_player to return alice for both calls
+            mock_select_player.return_value = alice
+
+            with patch('utils.game_utils.backup') as mock_backup:
+                with patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
+                    # Create a message object for the storyteller
+                    message = MockMessage(
+                        id=1002,
+                        content="@swapseats alice alice",
+                        channel=storyteller.user.dm_channel,
+                        author=storyteller.user,
+                        guild=None  # Simulate a DM
+                    )
+
+                    # Execute the command
+                    await on_message(message)
+
+                    # Verify select_player was called twice
+                    assert mock_select_player.call_count == 2
+
+                    # Verify backup was called (from on_message start)
+                    mock_backup.assert_called()
+
+                    # Verify appropriate message was sent
+                    mock_safe_send.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_swap_seats_command_no_game(mock_discord_setup, setup_test_game):
+    """Test swapseats command when no game is active."""
+    # Set the game to NULL_GAME (no active game)
+    from model.game.game import NULL_GAME
+    global_vars.game = NULL_GAME
+    global_vars.server = mock_discord_setup['guild']
+    global_vars.gamemaster_role = mock_discord_setup['roles']['gamemaster']
+
+    # Get storyteller from the fixture
+    storyteller = setup_test_game['players']['storyteller']
+
+    # Test command with no active game
+    with patch('utils.game_utils.backup') as mock_backup:
+        # Mock the channel.send method since ValidationError uses that, not safe_send
+        storyteller.user.dm_channel.send = AsyncMock()
+
+        # Create a message object for the storyteller
+        message = MockMessage(
+            id=1003,
+            content="@swapseats alice bob",
+            channel=storyteller.user.dm_channel,
+            author=storyteller.user,
+            guild=None  # Simulate a DM
+        )
+
+        # Execute the command
+        await on_message(message)
+
+        # Verify backup was called once (from on_message start)
+        assert mock_backup.call_count == 1
+
+        # Verify error message was sent via channel.send (ValidationError handling)
+        storyteller.user.dm_channel.send.assert_called_once()
+        # Check that it sent the "no game" error message
+        call_args = storyteller.user.dm_channel.send.call_args[0][0]
+        assert "no game" in call_args.lower()
+
+
+@pytest.mark.asyncio
+async def test_swap_seats_command_permission_denied(mock_discord_setup, setup_test_game):
+    """Test swapseats command when user lacks storyteller permissions."""
+    # Set up global variables for this test
+    global_vars.game = setup_test_game['game']
+    global_vars.server = mock_discord_setup['guild']
+    global_vars.gamemaster_role = mock_discord_setup['roles']['gamemaster']
+
+    # Get Alice (regular player) from the fixture
+    alice = setup_test_game['players']['alice']
+
+    # Test command with non-storyteller user
+    with patch('utils.game_utils.backup') as mock_backup:
+        # Mock the channel.send method since ValidationError uses that, not safe_send
+        alice.user.dm_channel.send = AsyncMock()
+
+        # Create a message object for Alice (non-storyteller)
+        message = MockMessage(
+            id=1004,
+            content="@swapseats alice bob",
+            channel=alice.user.dm_channel,
+            author=alice.user,
+            guild=None  # Simulate a DM
+        )
+
+        # Execute the command
+        await on_message(message)
+
+        # Verify backup was called once (from on_message start)
+        assert mock_backup.call_count == 1
+
+        # Verify permission denied message was sent via channel.send (ValidationError handling)
+        alice.user.dm_channel.send.assert_called_once()
+        # Check that it sent a permission error message
+        call_args = alice.user.dm_channel.send.call_args[0][0]
+        assert "permission" in call_args.lower() and "storyteller" in call_args.lower()
