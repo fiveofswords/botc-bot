@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime
-from typing import Any, Dict, Optional, TypedDict
+from typing import Any, TypedDict
 
 import discord
 
@@ -35,10 +35,10 @@ class Player:
     character: Character
     alignment: str
     user: discord.Member
-    st_channel: Optional[discord.TextChannel]
+    st_channel: discord.TextChannel | None
     name: str
     display_name: str
-    position: Optional[int]
+    position: int | None
     is_ghost: bool
     dead_votes: int
     is_active: bool
@@ -58,8 +58,8 @@ class Player:
             character_class: type,
             alignment: str,
             user: discord.Member,
-            st_channel: Optional[discord.TextChannel],
-            position: Optional[int]):
+            st_channel: discord.TextChannel | None,
+            position: int | None):
         """Initialize a Player.
         
         Args:
@@ -93,14 +93,14 @@ class Player:
         if global_vars.inactive_role in self.user.roles:
             self.is_inactive = True
 
-    def __getstate__(self) -> Dict[str, Any]:
+    def __getstate__(self) -> dict[str, Any]:
         """Prepare the object for pickling."""
         state = self.__dict__.copy()
         state["user"] = self.user.id
         state["st_channel"] = self.st_channel.id if self.st_channel else None
         return state
 
-    def __setstate__(self, state: Dict[str, Any]) -> None:
+    def __setstate__(self, state: dict[str, Any]) -> None:
         """Restore the object after unpickling."""
         self.__dict__.update(state)
         self.user = global_vars.server.get_member(state["user"])

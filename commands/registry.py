@@ -1,7 +1,7 @@
 """Command registry system for organizing bot commands."""
 from functools import wraps
 from types import MappingProxyType
-from typing import Dict, Callable, Awaitable, Optional, Union, NamedTuple
+from typing import Callable, Awaitable, NamedTuple
 
 import discord
 
@@ -35,7 +35,7 @@ class CommandArgument(NamedTuple):
         CommandArgument(("yes", "no"))              # Required choice argument
         CommandArgument(("red", "blue"), optional=True) # Optional choice argument
     """
-    name_or_choices: Union[str, tuple[str, ...]]
+    name_or_choices: str | tuple[str, ...]
     optional: bool = False
 
 
@@ -43,11 +43,11 @@ class CommandInfo(NamedTuple):
     """Information about a registered command."""
     name: str
     handler: Callable
-    description: Union[str, MappingProxyType[UserType, str]]
+    description: str | MappingProxyType[UserType, str]
     help_sections: tuple[HelpSection, ...]
     user_types: tuple[UserType, ...]
     aliases: tuple[str, ...] = ()
-    arguments: Union[tuple[CommandArgument, ...], MappingProxyType[UserType, tuple[CommandArgument, ...]]] = ()
+    arguments: tuple[CommandArgument, ...] | MappingProxyType[UserType, tuple[CommandArgument, ...]] = ()
     # New requirement fields  
     required_phases: tuple[GamePhase, ...] = ()
     implemented: bool = True
@@ -211,17 +211,17 @@ class CommandRegistry:
     """Registry for bot commands with decorator-based registration."""
 
     def __init__(self):
-        self.commands: Dict[str, CommandInfo] = {}
-        self.aliases: Dict[str, str] = {}
+        self.commands: dict[str, CommandInfo] = {}
+        self.aliases: dict[str, str] = {}
 
     def command(self, name: str,
-                aliases: Optional[list[str]] = None,
-                user_types: Optional[list[UserType]] = None,
-                arguments: Union[list[CommandArgument], Dict[UserType, list[CommandArgument]]] = None,
-                description: Union[str, Dict[UserType, str]] = "",
-                help_sections: Optional[list[HelpSection]] = None,
+                aliases: list[str] | None = None,
+                user_types: list[UserType] | None = None,
+                arguments: list[CommandArgument] | dict[UserType, list[CommandArgument]] | None = None,
+                description: str | dict[UserType, str] = "",
+                help_sections: list[HelpSection] | None = None,
                 # New requirement parameters
-                required_phases: Optional[list[GamePhase]] = None,
+                required_phases: list[GamePhase] | None = None,
                 implemented: bool = True):
         """Decorator to register a command handler along with help metadata and requirements.
 
@@ -334,7 +334,7 @@ class CommandRegistry:
                 
         return False  # Fall back to bot_impl for unimplemented commands
 
-    def get_all_commands(self) -> Dict[str, CommandInfo]:
+    def get_all_commands(self) -> dict[str, CommandInfo]:
         """Get all registered commands."""
         return self.commands.copy()
 
