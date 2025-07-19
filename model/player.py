@@ -13,6 +13,7 @@ import discord
 import bot_client
 import global_vars
 import model.channels
+from model.characters import Character
 
 # Constants
 STORYTELLER_ALIGNMENT = "neutral"
@@ -30,6 +31,27 @@ class MessageDict(TypedDict):
 
 class Player:
     """Stores information about a player in the game."""
+
+    character: Character
+    alignment: str
+    user: discord.Member
+    st_channel: Optional[discord.TextChannel]
+    name: str
+    display_name: str
+    position: Optional[int]
+    is_ghost: bool
+    dead_votes: int
+    is_active: bool
+    is_inactive: bool
+    can_nominate: bool
+    can_be_nominated: bool
+    has_skipped: bool
+    has_checked_in: bool
+    message_history: list[MessageDict]
+    riot_nominee: bool
+    last_active: float
+    hand_raised: bool
+    hand_locked_for_vote: bool
 
     def __init__(
             self,

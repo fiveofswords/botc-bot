@@ -2,6 +2,8 @@ class Script:
     """Stores booleans for characters which modify the game rules from the script.
     """
 
+    _list: list[str]
+
     def __init__(self, script_list):
         """Initialize a Script with a list of character ids.
 
