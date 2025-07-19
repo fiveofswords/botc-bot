@@ -13,7 +13,7 @@ import model.player
 from model import game
 from utils import message_utils
 
-T = TypeVar('T')
+T = TypeVar('T', bound=discord.Member | model.player.Player)
 
 
 def get_player_display_name(player: model.player.Player | None) -> str:

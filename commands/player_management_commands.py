@@ -2,8 +2,11 @@
 
 import discord
 
+import bot_client
 import global_vars
 import model
+import model.channels
+import model.settings
 from commands.command_enums import HelpSection, UserType, GamePhase
 from commands.registry import registry, CommandArgument
 from utils import message_utils, player_utils, game_utils
@@ -16,11 +19,18 @@ from utils import message_utils, player_utils, game_utils
     user_types=[UserType.STORYTELLER],
     arguments=[CommandArgument("player")],
     required_phases=[GamePhase.DAY, GamePhase.NIGHT],  # Any phase
-    implemented=False
 )
 async def execute_command(message: discord.Message, argument: str):
     """Execute a player (special kill, e.g. via vote)."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    person = await player_utils.select_player(
+        message.author, argument, global_vars.game.seatingOrder
+    )
+    if person is None:
+        return
+
+    await person.execute(message.author)
+    if global_vars.game is not model.game.NULL_GAME:
+        game_utils.backup("current_game.pckl")
 
 
 @registry.command(
@@ -30,11 +40,20 @@ async def execute_command(message: discord.Message, argument: str):
     user_types=[UserType.STORYTELLER],
     arguments=[CommandArgument("player")],
     required_phases=[GamePhase.DAY, GamePhase.NIGHT],  # Any phase
-    implemented=False
 )
 async def revive_command(message: discord.Message, argument: str):
     """Revive a dead player."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    person = await player_utils.select_player(
+        message.author, argument, global_vars.game.seatingOrder
+    )
+    if person is None:
+        return
+
+    if not person.is_ghost:
+        await message_utils.safe_send(message.author, f"{person.display_name} is not dead.")
+        return
+
+    await person.revive()
 
 
 @registry.command(
@@ -44,11 +63,18 @@ async def revive_command(message: discord.Message, argument: str):
     user_types=[UserType.STORYTELLER],
     arguments=[CommandArgument("player")],
     required_phases=[GamePhase.DAY, GamePhase.NIGHT],  # Any phase
-    implemented=False
 )
 async def givedeadvote_command(message: discord.Message, argument: str):
     """Give a dead vote to a player."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    person = await player_utils.select_player(
+        message.author, argument, global_vars.game.seatingOrder
+    )
+    if person is None:
+        return
+
+    await person.add_dead_vote()
+    if global_vars.game is not model.game.NULL_GAME:
+        game_utils.backup("current_game.pckl")
 
 
 @registry.command(
@@ -58,11 +84,18 @@ async def givedeadvote_command(message: discord.Message, argument: str):
     user_types=[UserType.STORYTELLER],
     arguments=[CommandArgument("player")],
     required_phases=[GamePhase.DAY, GamePhase.NIGHT],  # Any phase
-    implemented=False
 )
 async def removedeadvote_command(message: discord.Message, argument: str):
     """Remove a dead vote from a player."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    person = await player_utils.select_player(
+        message.author, argument, global_vars.game.seatingOrder
+    )
+    if person is None:
+        return
+
+    await person.remove_dead_vote()
+    if global_vars.game is not model.game.NULL_GAME:
+        game_utils.backup("current_game.pckl")
 
 
 @registry.command(
@@ -128,11 +161,22 @@ async def removeability_command(message: discord.Message, argument: str):
     user_types=[UserType.STORYTELLER],
     arguments=[CommandArgument("players")],
     required_phases=[GamePhase.NIGHT],  # Night only
-    implemented=False
 )
 async def checkin_command(message: discord.Message, argument: str):
     """Mark players as checked in."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    people: list[model.Player] = [
+        await player_utils.select_player(message.author, person, global_vars.game.seatingOrder)
+        for person in argument.split(" ")
+    ]
+    if None in people:
+        return
+    for person in people:
+        person.has_checked_in = True
+    await message_utils.safe_send(message.author, "Successfully marked as checked in: {}".format(
+        ", ".join([person.display_name for person in people])))
+    if global_vars.game is not model.game.NULL_GAME:
+        game_utils.backup("current_game.pckl")
+    await player_utils.check_and_print_if_one_or_zero_to_check_in()
 
 
 @registry.command(
@@ -142,11 +186,27 @@ async def checkin_command(message: discord.Message, argument: str):
     user_types=[UserType.STORYTELLER],
     arguments=[CommandArgument("players")],
     required_phases=[GamePhase.NIGHT],  # Night only
-    implemented=False
 )
 async def undocheckin_command(message: discord.Message, argument: str):
     """Mark players as not checked in."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    if global_vars.game is model.game.NULL_GAME:
+        await message_utils.safe_send(message.author, "There's no game right now.")
+        return
+    if global_vars.gamemaster_role not in global_vars.server.get_member(message.author.id).roles:
+        await message_utils.safe_send(message.author, "You don't have permission to make players active.")
+        return
+    people = [
+        await player_utils.select_player(message.author, person, global_vars.game.seatingOrder)
+        for person in argument.split(" ")
+    ]
+    if None in people:
+        return
+    for person in people:
+        person.has_checked_in = False
+    await message_utils.safe_send(message.author, "Successfully marked as not checked in: {}".format(
+        ", ".join([person.display_name for person in people])))
+    if global_vars.game is not model.game.NULL_GAME:
+        game_utils.backup("current_game.pckl")
 
 
 @registry.command(
@@ -156,11 +216,18 @@ async def undocheckin_command(message: discord.Message, argument: str):
     user_types=[UserType.STORYTELLER],
     arguments=[CommandArgument("player")],
     required_phases=[GamePhase.DAY, GamePhase.NIGHT],  # Any phase
-    implemented=False
 )
 async def makeinactive_command(message: discord.Message, argument: str):
     """Mark a player as inactive."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    person = await player_utils.select_player(
+        message.author, argument, global_vars.game.seatingOrder
+    )
+    if person is None:
+        return
+
+    await person.make_inactive()
+    if global_vars.game is not model.game.NULL_GAME:
+        game_utils.backup("current_game.pckl")
 
 
 @registry.command(
@@ -170,11 +237,18 @@ async def makeinactive_command(message: discord.Message, argument: str):
     user_types=[UserType.STORYTELLER],
     arguments=[CommandArgument("player")],
     required_phases=[GamePhase.DAY, GamePhase.NIGHT],  # Any phase
-    implemented=False
 )
 async def undoinactive_command(message: discord.Message, argument: str):
     """Mark a player as active again."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    person = await player_utils.select_player(
+        message.author, argument, global_vars.game.seatingOrder
+    )
+    if person is None:
+        return
+
+    await person.undo_inactive()
+    if global_vars.game is not model.game.NULL_GAME:
+        game_utils.backup("current_game.pckl")
 
 
 @registry.command(
@@ -269,8 +343,49 @@ async def swapseats_command(message: discord.Message, argument: str):
     user_types=[UserType.STORYTELLER],
     arguments=[CommandArgument("player")],
     required_phases=[],  # No game needed
-    implemented=False
 )
 async def welcome_command(message: discord.Message, argument: str):
     """Send welcome message to a player."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    users = await player_utils.select_player(message.author, argument, global_vars.server.members)
+    if users is None:
+        return
+
+    bot_nick = global_vars.server.get_member(bot_client.client.user.id).display_name
+    channel_name = global_vars.channel.name
+    server_name = global_vars.server.name
+    storytellers = [st.display_name for st in global_vars.gamemaster_role.members]
+
+    if len(storytellers) == 1:
+        sts = storytellers[0]
+    elif len(storytellers) == 2:
+        sts = storytellers[0] + " and " + storytellers[1]
+    else:
+        sts = (
+                ", ".join([x for x in storytellers[:-1]])
+                + ", and "
+                + storytellers[-1]
+        )
+
+    game_settings = model.settings.GameSettings.load()
+    st_channel = bot_client.client.get_channel(game_settings.get_st_channel(users.id))
+    if not st_channel:
+        st_channel = await model.channels.ChannelManager(bot_client.client).create_channel(game_settings,
+                                                                                           users)
+        await message_utils.safe_send(message.author,
+                                      f'Successfully created the channel https://discord.com/channels/{global_vars.server.id}/{st_channel.id}!')
+
+    await message_utils.safe_send(
+        users,
+        "Hello, {player_nick}! {storyteller_nick} welcomes you to Blood on the Clocktower on Discord! I'm {bot_nick}, the bot used on #{channel_name} in {server_name} to run games. Your Storyteller channel for this game is #{st_channel}\n\nThis is where you'll perform your private messaging during the game. To send a pm to a player, type `@pm [name]`.\n\nFor more info, type `@help`, or ask the storyteller(s): {storytellers}.".format(
+            bot_nick=bot_nick,
+            channel_name=channel_name,
+            server_name=server_name,
+            st_channel=st_channel,
+            storytellers=sts,
+            player_nick=users.display_name,
+            storyteller_nick=global_vars.server.get_member(
+                message.author.id
+            ).display_name,
+        ),
+    )
+    await message_utils.safe_send(message.author, f'Welcomed {users.display_name} successfully!')

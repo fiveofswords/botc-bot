@@ -2,8 +2,11 @@
 
 import discord
 
+import global_vars
 from commands.command_enums import HelpSection, UserType, GamePhase
 from commands.registry import registry, CommandArgument
+from model import game
+from utils import game_utils
 
 
 @registry.command(
@@ -12,11 +15,12 @@ from commands.registry import registry, CommandArgument
     help_sections=[HelpSection.DAY],
     user_types=[UserType.STORYTELLER],
     required_phases=[GamePhase.DAY],  # Day only
-    implemented=False
 )
 async def openpms_command(message: discord.Message, argument: str):
     """Open private messages for the day."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    await global_vars.game.days[-1].open_pms()
+    if global_vars.game is not game.NULL_GAME:
+        game_utils.backup("current_game.pckl")
 
 
 @registry.command(
@@ -25,11 +29,12 @@ async def openpms_command(message: discord.Message, argument: str):
     help_sections=[HelpSection.DAY],
     user_types=[UserType.STORYTELLER],
     required_phases=[GamePhase.DAY],  # Day only
-    implemented=False
 )
 async def closepms_command(message: discord.Message, argument: str):
     """Close private messages for the day."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    await global_vars.game.days[-1].close_pms()
+    if global_vars.game is not game.NULL_GAME:
+        game_utils.backup("current_game.pckl")
 
 
 @registry.command(
@@ -38,11 +43,12 @@ async def closepms_command(message: discord.Message, argument: str):
     help_sections=[HelpSection.DAY],
     user_types=[UserType.STORYTELLER],
     required_phases=[GamePhase.DAY],  # Day only
-    implemented=False
 )
 async def opennoms_command(message: discord.Message, argument: str):
     """Open nominations for the day."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    await global_vars.game.days[-1].open_noms()
+    if global_vars.game is not game.NULL_GAME:
+        game_utils.backup("current_game.pckl")
 
 
 @registry.command(
@@ -51,11 +57,12 @@ async def opennoms_command(message: discord.Message, argument: str):
     help_sections=[HelpSection.DAY],
     user_types=[UserType.STORYTELLER],
     required_phases=[GamePhase.DAY],  # Day only
-    implemented=False
 )
 async def closenoms_command(message: discord.Message, argument: str):
     """Close nominations for the day."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    await global_vars.game.days[-1].close_noms()
+    if global_vars.game is not game.NULL_GAME:
+        game_utils.backup("current_game.pckl")
 
 
 @registry.command(
@@ -64,11 +71,13 @@ async def closenoms_command(message: discord.Message, argument: str):
     help_sections=[HelpSection.DAY],
     user_types=[UserType.STORYTELLER],
     required_phases=[GamePhase.DAY],  # Day only
-    implemented=False
 )
 async def open_command(message: discord.Message, argument: str):
     """Open both private messages and nominations for the day."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    await global_vars.game.days[-1].open_pms()
+    await global_vars.game.days[-1].open_noms()
+    if global_vars.game is not game.NULL_GAME:
+        game_utils.backup("current_game.pckl")
 
 
 @registry.command(
@@ -77,11 +86,13 @@ async def open_command(message: discord.Message, argument: str):
     help_sections=[HelpSection.DAY],
     user_types=[UserType.STORYTELLER],
     required_phases=[GamePhase.DAY],  # Day only
-    implemented=False
 )
 async def close_command(message: discord.Message, argument: str):
     """Close both private messages and nominations for the day."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    await global_vars.game.days[-1].close_pms()
+    await global_vars.game.days[-1].close_noms()
+    if global_vars.game is not game.NULL_GAME:
+        game_utils.backup("current_game.pckl")
 
 
 @registry.command(
