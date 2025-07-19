@@ -1,5 +1,5 @@
 """Enhanced help commands that use the registry system."""
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 
 import discord
 
@@ -134,7 +134,7 @@ class HelpGenerator:
     def _get_and_sort_commands(
             registry_commands: tuple[CommandInfo, ...],
             user_type: UserType,
-            user_aliases: Optional[UserAliases] = None
+            user_aliases: UserAliases | None = None
     ) -> list[CommandDisplay]:
         """Get registry commands, format them, and sort alphabetically.
         
@@ -197,7 +197,7 @@ class HelpGenerator:
     @staticmethod
     def create_section_help_embed(section: HelpSection,
                                   user_type: UserType,
-                                  user_aliases: Optional[UserAliases] = None) -> discord.Embed:
+                                  user_aliases: UserAliases | None = None) -> discord.Embed:
         """Create a help embed for a specific section with registry commands.
         
         Args:
@@ -232,7 +232,7 @@ class HelpGenerator:
         return embed
 
     @staticmethod
-    def create_player_help_embed(user_aliases: Optional[UserAliases] = None) -> discord.Embed:
+    def create_player_help_embed(user_aliases: UserAliases | None = None) -> discord.Embed:
         """Create help embed for player commands with registry commands, sorted alphabetically.
         
         Args:

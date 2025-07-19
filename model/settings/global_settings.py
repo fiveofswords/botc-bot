@@ -9,10 +9,12 @@ _SETTINGS_FILENAME = '../preferences.json'
 
 @dataclass
 class GlobalSettings:
-    _settings: _BaseSettings
-    """Class to store and manage game settings.  """
+    """Class to store and manage global settings."""
 
-    def __init__(self, settings):
+    _settings: _BaseSettings
+
+    def __init__(self, settings: _BaseSettings) -> None:
+        """Private constructor. Use load() instead."""
         self._settings = settings
 
     # ==============================

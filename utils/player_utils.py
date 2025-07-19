@@ -3,7 +3,7 @@ Utility functions for player management.
 """
 
 import asyncio
-from typing import List, Optional, Sequence, TypeVar
+from typing import Sequence, TypeVar
 
 import discord
 
@@ -16,7 +16,7 @@ from utils import message_utils
 T = TypeVar('T')
 
 
-def get_player_display_name(player: Optional[model.player.Player]) -> str:
+def get_player_display_name(player: model.player.Player | None) -> str:
     """Get the display name of a player or 'the storytellers' if None.
     
     Args:
@@ -41,7 +41,7 @@ def is_player(member: discord.Member) -> bool:
     return global_vars.player_role in member.roles
 
 
-def find_player_by_nick(nick: str) -> Optional[model.player.Player]:
+def find_player_by_nick(nick: str) -> model.player.Player | None:
     """
     Find a player by their display name (case-insensitive).
     
@@ -66,7 +66,7 @@ def find_player_by_nick(nick: str) -> Optional[model.player.Player]:
     return None
 
 
-def who_by_id(user_id: int) -> Optional[model.player.Player]:
+def who_by_id(user_id: int) -> model.player.Player | None:
     """
     Find a player by their Discord user ID.
     
@@ -82,7 +82,7 @@ def who_by_id(user_id: int) -> Optional[model.player.Player]:
     return None
 
 
-def who_by_name(name: str) -> Optional[model.player.Player]:
+def who_by_name(name: str) -> model.player.Player | None:
     """
     Find a player by their name.
     
@@ -95,7 +95,7 @@ def who_by_name(name: str) -> Optional[model.player.Player]:
     return find_player_by_nick(name)
 
 
-def who_by_character(character_name: str) -> Optional[model.player.Player]:
+def who_by_character(character_name: str) -> model.player.Player | None:
     """
     Find a player by their character name.
     
@@ -112,7 +112,7 @@ def who_by_character(character_name: str) -> Optional[model.player.Player]:
     return None
 
 
-def who(arg) -> Optional[model.player.Player]:
+def who(arg) -> model.player.Player | None:
     """
     Find a player by various identifiers.
     
@@ -136,7 +136,7 @@ def who(arg) -> Optional[model.player.Player]:
     return None
 
 
-def get_neighbors(player: model.player.Player) -> List[model.player.Player]:
+def get_neighbors(player: model.player.Player) -> list[model.player.Player]:
     """
     Get the neighboring players for a given player.
     
@@ -192,7 +192,7 @@ async def check_and_print_if_one_or_zero_to_check_in() -> None:
             await message_utils.safe_send(member, "Everyone has checked in!")
 
 
-def get_player(user) -> Optional[model.player.Player]:
+def get_player(user) -> model.player.Player | None:
     """
     Returns the Player object corresponding to user.
     
@@ -212,7 +212,7 @@ def get_player(user) -> Optional[model.player.Player]:
     return None
 
 
-async def generate_possibilities(text: str, people: Sequence[T]) -> List[T]:
+async def generate_possibilities(text: str, people: Sequence[T]) -> list[T]:
     """
     Generates possible users with name or nickname matching text.
     
@@ -232,7 +232,7 @@ async def generate_possibilities(text: str, people: Sequence[T]) -> List[T]:
     return possibilities
 
 
-async def select_player(user: discord.User, text: str, possibilities: Sequence[T]) -> Optional[T]:
+async def select_player(user: discord.User, text: str, possibilities: Sequence[T]) -> T | None:
     """
     Finds a player from players matching a string.
     
@@ -260,8 +260,8 @@ async def select_player(user: discord.User, text: str, possibilities: Sequence[T
         return await choices(user, new_possibilities, text)
 
 
-async def choices(user: discord.User, possibilities: List[model.player.Player], text: str) -> Optional[
-    model.player.Player]:
+async def choices(user: discord.User, possibilities: list[model.player.Player],
+                  text: str) -> model.player.Player | None:
     """
     Clarifies which user is intended when there are multiple matches.
     

@@ -1,5 +1,4 @@
 import re
-from typing import Optional
 
 import discord
 
@@ -13,8 +12,8 @@ class ChannelManager:
 
     _client: discord.Client
     _server: discord.Guild
-    _in_play_category: Optional[discord.CategoryChannel]
-    _out_of_play_category: Optional[discord.CategoryChannel]
+    _in_play_category: discord.CategoryChannel | None
+    _out_of_play_category: discord.CategoryChannel | None
     _hands_channel: discord.TextChannel
     _observer_channel: discord.TextChannel
     _info_channel: discord.TextChannel

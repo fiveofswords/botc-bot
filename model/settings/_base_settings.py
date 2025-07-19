@@ -2,28 +2,31 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from typing import TypeAlias, Any
 
+UserId: TypeAlias = int
+UserSettings: TypeAlias = dict[str, Any]
 
 @dataclass
 class _BaseSettings:
     _filename: str
-    _settings: dict[int, dict[str, any]]
+    _settings: dict[UserId, UserSettings]
 
-    def __init__(self, filename, settings):
+    def __init__(self, filename: str, settings: dict[UserId, UserSettings]) -> None:
         self._filename = filename
         self._settings = settings
 
     # ==============================
     # Generic settings methods
     # ==============================
-    def update_settings(self, player_id: int, dict_to_merge: dict):
+    def update_settings(self, player_id: UserId, dict_to_merge: UserSettings):
         self._settings[player_id] = self._settings.get(player_id, {})
         self._settings[player_id].update(dict_to_merge)
 
-    def get_settings(self, player_id: int, setting_name: str):
+    def get_settings(self, player_id: UserId, setting_name: str):
         return self._settings.get(player_id, {}).get(setting_name)
 
-    def clear_setting(self, player_id: int, setting_name: str):
+    def clear_setting(self, player_id: UserId, setting_name: str):
         player_settings = self._settings.get(player_id)
         if player_settings:
             player_settings.pop(setting_name, None)

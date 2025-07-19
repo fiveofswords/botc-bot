@@ -21,10 +21,21 @@ class Day:
         voteEndMessages: List of vote end messages
         deadlineMessages: List of deadline messages
         skipMessages: List of skip messages
-        aboutToDie: The player about to die
+        aboutToDie: The player about to die, as well as the vote object that is about to kill them
         riot_active: Whether riot is active
         st_riot_kill_override: Whether the ST has overridden the riot kill
     """
+
+    isExecutionToday: bool
+    isNoms: bool
+    isPms: bool
+    votes: list['model.game.base_vote.BaseVote']
+    voteEndMessages: list[int]
+    deadlineMessages: list[int]
+    skipMessages: list[int]
+    aboutToDie: tuple['model.player.Player | None', 'model.game.base_vote.BaseVote'] | None
+    riot_active: bool
+    st_riot_kill_override: bool
 
     def __init__(self):
         """Initialize a Day."""
@@ -219,23 +230,23 @@ class Day:
 
             for person in global_vars.game.seatingOrder:
                 for msg in person.message_history:
-                    if msg["from"] == person:
+                    if msg["from_player"] == person:
                         if has_had_multiple_votes:
                             if msg["time"] >= last_vote_message.created_at:
-                                if (person, msg["to"]) in message_tally:
-                                    message_tally[(person, msg["to"])] += 1
-                                elif (msg["to"], person) in message_tally:
-                                    message_tally[(msg["to"], person)] += 1
+                                if (person, msg["to_player"]) in message_tally:
+                                    message_tally[(person, msg["to_player"])] += 1
+                                elif (msg["to_player"], person) in message_tally:
+                                    message_tally[(msg["to_player"], person)] += 1
                                 else:
-                                    message_tally[(person, msg["to"])] = 1
+                                    message_tally[(person, msg["to_player"])] = 1
                         else:
                             if msg["day"] == len(global_vars.game.days):
-                                if (person, msg["to"]) in message_tally:
-                                    message_tally[(person, msg["to"])] += 1
-                                elif (msg["to"], person) in message_tally:
-                                    message_tally[(msg["to"], person)] += 1
+                                if (person, msg["to_player"]) in message_tally:
+                                    message_tally[(person, msg["to_player"])] += 1
+                                elif (msg["to_player"], person) in message_tally:
+                                    message_tally[(msg["to_player"], person)] += 1
                                 else:
-                                    message_tally[(person, msg["to"])] = 1
+                                    message_tally[(person, msg["to_player"])] = 1
             sorted_tally = sorted(message_tally.items(), key=lambda x: -x[1])
             messageText = "**Message Tally:**"
             for pair in sorted_tally:
@@ -303,23 +314,23 @@ class Day:
                 )
                 for person in global_vars.game.seatingOrder:
                     for msg in person.message_history:
-                        if msg["from"] == person:
+                        if msg["from_player"] == person:
                             if has_had_multiple_votes:
                                 if msg["time"] >= last_vote_message.created_at:
-                                    if (person, msg["to"]) in message_tally:
-                                        message_tally[(person, msg["to"])] += 1
-                                    elif (msg["to"], person) in message_tally:
-                                        message_tally[(msg["to"], person)] += 1
+                                    if (person, msg["to_player"]) in message_tally:
+                                        message_tally[(person, msg["to_player"])] += 1
+                                    elif (msg["to_player"], person) in message_tally:
+                                        message_tally[(msg["to_player"], person)] += 1
                                     else:
-                                        message_tally[(person, msg["to"])] = 1
+                                        message_tally[(person, msg["to_player"])] = 1
                             else:
                                 if msg["day"] == len(global_vars.game.days):
-                                    if (person, msg["to"]) in message_tally:
-                                        message_tally[(person, msg["to"])] += 1
-                                    elif (msg["to"], person) in message_tally:
-                                        message_tally[(msg["to"], person)] += 1
+                                    if (person, msg["to_player"]) in message_tally:
+                                        message_tally[(person, msg["to_player"])] += 1
+                                    elif (msg["to_player"], person) in message_tally:
+                                        message_tally[(msg["to_player"], person)] += 1
                                     else:
-                                        message_tally[(person, msg["to"])] = 1
+                                        message_tally[(person, msg["to_player"])] = 1
                 sorted_tally = sorted(message_tally.items(), key=lambda x: -x[1])
                 messageText = "**Message Tally:**"
                 for pair in sorted_tally:
