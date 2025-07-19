@@ -1,6 +1,5 @@
 import asyncio
 import math
-from typing import Optional
 
 import global_vars
 import model.characters
@@ -8,7 +7,7 @@ from model.game.base_vote import BaseVote, VoteOutcome
 from utils import character_utils, player_utils
 
 
-def in_play_voudon() -> Optional[model.player.Player]:
+def in_play_voudon() -> model.player.Player | None:
     """Check if a Voudon is in play.
 
     Returns:
@@ -128,7 +127,7 @@ class Vote(BaseVote):
 
     def _determine_outcome(self) -> VoteOutcome:
         """Determine the outcome of the vote (pure logic only)."""
-        about_to_die: Optional[tuple[Optional[model.player.Player], BaseVote]] = global_vars.game.days[-1].aboutToDie
+        about_to_die: tuple[model.player.Player | None, BaseVote] | None = global_vars.game.days[-1].aboutToDie
         dies = tie = False
 
         if self.votes >= self.majority:
@@ -158,7 +157,7 @@ class Vote(BaseVote):
     # Hook method overrides
     async def _apply_outcome_effects(self, outcome: VoteOutcome) -> None:
         """Apply side effects based on vote outcome."""
-        about_to_die: Optional[tuple[Optional[model.player.Player], BaseVote]] = global_vars.game.days[-1].aboutToDie
+        about_to_die: tuple[model.player.Player | None, BaseVote] | None = global_vars.game.days[-1].aboutToDie
 
         if outcome == VoteOutcome.PASS:
             if about_to_die is not None and about_to_die[0] is not None:

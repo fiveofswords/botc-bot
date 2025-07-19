@@ -1,8 +1,7 @@
 from datetime import datetime, timezone, timedelta
-from typing import Optional
 
 
-def parse_deadline(deadline_string: str) -> Optional[datetime]:
+def parse_deadline(deadline_string: str) -> datetime | None:
     """
     Parses a deadline string into a datetime object.
     Supports absolute time in UTC ('HH:MM'), relative time ('+[HHh][MMm]'), or Unix timestamp.
@@ -17,7 +16,7 @@ def parse_deadline(deadline_string: str) -> Optional[datetime]:
     return None
 
 
-def _parse_deadline_from_utc(deadline_string: str, now: datetime) -> Optional[datetime]:
+def _parse_deadline_from_utc(deadline_string: str, now: datetime) -> datetime | None:
     try:
         deadline = datetime.strptime(deadline_string, "%H:%M").replace(year=now.year, month=now.month, day=now.day,
                                                                        tzinfo=timezone.utc)
@@ -26,7 +25,7 @@ def _parse_deadline_from_utc(deadline_string: str, now: datetime) -> Optional[da
         return None
 
 
-def _parse_deadline_from_epoch_timestamp(deadline_string: str, _: datetime) -> Optional[datetime]:
+def _parse_deadline_from_epoch_timestamp(deadline_string: str, _: datetime) -> datetime | None:
     try:
         timestamp = int(deadline_string)
         return datetime.fromtimestamp(timestamp, tz=timezone.utc) if timestamp >= 10000 else None
@@ -34,12 +33,12 @@ def _parse_deadline_from_epoch_timestamp(deadline_string: str, _: datetime) -> O
         return None
 
 
-def _parse_relative_deadline(deadline_string: str, now: datetime) -> Optional[datetime]:
+def _parse_relative_deadline(deadline_string: str, now: datetime) -> datetime | None:
     delta = _convert_to_timedelta(deadline_string)
     return _round_datetime_to_nearest_half_hour(now + delta) if delta else None
 
 
-def _convert_to_timedelta(delta_str: str) -> Optional[timedelta]:
+def _convert_to_timedelta(delta_str: str) -> timedelta | None:
     if '+' not in delta_str or ('h' not in delta_str and 'm' not in delta_str):
         return None
     try:
