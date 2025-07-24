@@ -2,14 +2,13 @@
 Utility functions for handling Discord messages.
 """
 
-from typing import Optional, List, Union
 
 import discord
 
 import bot_client
 
 
-def _split_text(text: str, max_length: int = 2000) -> List[str]:
+def _split_text(text: str, max_length: int = 2000) -> list[str]:
     """
     Split text into chunks of maximum length.
     
@@ -24,10 +23,10 @@ def _split_text(text: str, max_length: int = 2000) -> List[str]:
 
 
 async def safe_send(
-    channel: Union[discord.abc.Messageable, discord.Member, discord.User], 
-    content: Optional[str] = None, 
+        channel: discord.abc.Messageable | discord.Member | discord.User,
+        content: str | None = None,
     **kwargs
-) -> Optional[discord.Message]:
+) -> discord.Message | None:
     """
     Safely send a message to a channel, handling errors and long messages.
     
@@ -68,10 +67,10 @@ async def safe_send(
 
 
 async def safe_send_dm(
-    user: Union[discord.Member, discord.User], 
-    content: Optional[str] = None, 
+        user: discord.Member | discord.User,
+        content: str | None = None,
     **kwargs
-) -> Optional[discord.Message]:
+) -> discord.Message | None:
     """
     Safely send a DM to a user, handling errors.
     
@@ -135,7 +134,7 @@ async def notify_storytellers(message: str, **kwargs) -> None:
         bot_client.logger.warning(f"Could not notify storytellers: {message}")
 
 
-async def notify_storytellers_about_action(author: Union[discord.Member, discord.User], action_description: str,
+async def notify_storytellers_about_action(author: discord.Member | discord.User, action_description: str,
                                            **kwargs) -> None:
     """
     Send a notification to all storytellers about an action taken by someone.

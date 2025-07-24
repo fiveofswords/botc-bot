@@ -23,6 +23,17 @@ class Game:
         has_automated_life_and_death: Whether life and death is automated
     """
 
+    days: list['model.game.day.Day']
+    isDay: bool
+    script: 'model.game.script.Script'
+    seatingOrder: list['model.player.Player']
+    whisper_mode: 'WhisperMode'
+    seatingOrderMessage: 'discord.Message | None'
+    info_channel_seating_order_message: 'discord.Message | None'
+    storytellers: list['model.player.Player']
+    show_tally: bool
+    has_automated_life_and_death: bool
+
     def __init__(self, seating_order, seating_order_message, info_channel_seating_order_message, script,
                  skip_storytellers=False):
         """Initialize a Game.

@@ -2,11 +2,14 @@
 Base character classes for Blood on the Clocktower game.
 """
 
-from __future__ import annotations
-
+import model
 
 class Character:
     """A generic character."""
+
+    parent: 'model.player.Player'
+    role_name: str
+    _is_poisoned: bool
     
     def __init__(self, parent):
         """Initialize a character.
@@ -215,6 +218,8 @@ class AbilityModifier(
     DeathModifier,
 ):
     """A character which can have different abilities."""
+
+    abilities: list[Character]
 
     def __init__(self, parent):
         super().__init__(parent)

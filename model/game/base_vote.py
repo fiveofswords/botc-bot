@@ -1,7 +1,6 @@
 import asyncio
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Optional
 
 import discord
 
@@ -36,8 +35,8 @@ class BaseVote(ABC):
     """
 
     # Type annotations for instance attributes
-    nominee: Optional[model.player.Player]
-    nominator: Optional[model.player.Player]
+    nominee: model.player.Player | None
+    nominator: model.player.Player | None
     order: list[model.player.Player]
     votes: int
     voted: list[model.player.Player]
@@ -50,7 +49,7 @@ class BaseVote(ABC):
     done: bool
     _vote_lock: asyncio.Lock
 
-    def __init__(self, nominee: Optional[model.player.Player], nominator: Optional[model.player.Player]) -> None:
+    def __init__(self, nominee: model.player.Player | None, nominator: model.player.Player | None) -> None:
         """Initialize a BaseVote.
 
         Args:
@@ -191,7 +190,7 @@ class BaseVote(ABC):
 
         # Handle default votes
         global_settings: model.settings.GlobalSettings = model.settings.GlobalSettings.load()
-        default: Optional[tuple[int, int]] = global_settings.get_default_vote(to_call_user_id)
+        default: tuple[int, int] | None = global_settings.get_default_vote(to_call_user_id)
         if default:
             time = default[1]
             yes_no = ["no", "yes"][default[0]]
@@ -208,7 +207,7 @@ class BaseVote(ABC):
             await message_utils.notify_storytellers(
                 f"{to_call_display_name}'s vote on {nominee_name}. They have no default. Current votes: {self.votes}.")
 
-    async def vote(self, vt: int, voter: model.player.Player, operator: Optional[discord.Member] = None) -> None:
+    async def vote(self, vt: int, voter: model.player.Player, operator: discord.Member | None = None) -> None:
         """Executes a vote.
 
         Args:
@@ -362,7 +361,7 @@ class BaseVote(ABC):
 
     # Vote management methods
     async def preset_vote(self, person: model.player.Player, vt: int,
-                          operator: Optional[discord.Member] = None) -> None:
+                          operator: discord.Member | None = None) -> None:
         """Preset a vote.
 
         Args:
