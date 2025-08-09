@@ -46,9 +46,9 @@ class ChannelManager:
             name=f"👤{cleaned_display_name}-x-{self._channel_suffix}",
             overwrites={
                 self._server.default_role: discord.PermissionOverwrite(read_messages=False, send_messages=False),
-                self._st_role: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+                self._st_role: discord.PermissionOverwrite(read_messages=True, send_messages=True, manage_channels=True),
                 self._client.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-                player: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+                player: discord.PermissionOverwrite(read_messages=True, send_messages=True, manage_channels=True)
             })
         bot_client.logger.info(f"Channel {new_channel.name} has been created.")
         game_settings.set_st_channel(player.id, new_channel.id).save()

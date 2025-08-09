@@ -140,13 +140,16 @@ class TestChannelManager:
 
         # Setup expected permissions
         expected_overwrites = {
-            self.mock_everyone_role: discord.PermissionOverwrite(read_messages=False, send_messages=False),
+            self.mock_everyone_role: discord.PermissionOverwrite(read_messages=False,
+                                                                 send_messages=False),
             self.channel_manager._client.user: discord.PermissionOverwrite(read_messages=True,
                                                                            send_messages=True),
             self.channel_manager._st_role: discord.PermissionOverwrite(read_messages=True,
-                                                                       send_messages=True),
+                                                                       send_messages=True,
+                                                                       manage_channels=True),
             self.mock_member: discord.PermissionOverwrite(read_messages=True,
-                                                          send_messages=True),
+                                                          send_messages=True,
+                                                          manage_channels=True),
         }
 
         # Execute the method
@@ -159,8 +162,7 @@ class TestChannelManager:
         assert '👤another_test_member-x-test_suffix' == kwargs['name']
         for key, value in expected_overwrites.items():
             assert key in kwargs['overwrites']
-            assert kwargs['overwrites'][key].read_messages == value.read_messages
-            assert kwargs['overwrites'][key].send_messages == value.send_messages
+            assert kwargs['overwrites'][key] == value
         assert isinstance(result, discord.TextChannel)
         assert result == mock_channel
 
@@ -174,7 +176,7 @@ class TestChannelManager:
         self.in_play_category.channels = in_play_st_channels + extra_channels
         for idx, channel in enumerate(self.in_play_category.channels):
             channel.category = self.in_play_category
-            channel.position = (idx+6)*2
+            channel.position = (idx + 6) * 2
 
         in_play_st_channels[0].position = 9999  # Ensure the last channel is out of order
         for channel in [self.hands_channel, self.observer_channel, self.info_channel,
@@ -185,7 +187,9 @@ class TestChannelManager:
                         ch.position = kwargs['position']
                     if 'category' in kwargs:
                         ch.category = kwargs['category']
+
                 return edit_side_effect
+
             channel.edit = AsyncMock(side_effect=make_edit_side_effect(channel))
         # Execute
         result = await self.channel_manager.setup_channels_in_order(in_play_st_channels)
@@ -196,4 +200,4 @@ class TestChannelManager:
                                      self.whisper_channel] + in_play_st_channels + [self.town_square_channel]
         for channel in extra_channels:
             channel.move.assert_called_once_with(category=self.out_of_play_category, end=True)
-        assert in_play_st_channels[0].edit.called # Ensure the first channel is moved out of last position
+        assert in_play_st_channels[0].edit.called  # Ensure the first channel is moved out of last position
