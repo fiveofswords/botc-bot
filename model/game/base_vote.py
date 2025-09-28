@@ -6,6 +6,7 @@ import discord
 
 import global_vars
 import model.settings
+from model import nomination_buttons
 from utils import message_utils, player_utils
 
 
@@ -188,6 +189,9 @@ class BaseVote(ABC):
         await message_utils.safe_send(global_vars.channel,
                                       f"{to_call_user.mention}, your vote on {nominee_name}. Current votes: {self.votes}.")
 
+        # Disable nomination buttons for this player while they vote
+        await nomination_buttons.disable_buttons_for_voter(to_call_user_id)
+
         # Handle default votes
         global_settings: model.settings.GlobalSettings = model.settings.GlobalSettings.load()
         default: tuple[int, int] | None = global_settings.get_default_vote(to_call_user_id)
@@ -349,6 +353,9 @@ class BaseVote(ABC):
 
         # Reset player hands
         await self._reset_player_hands()
+
+        # Clear all nomination button messages since vote is over
+        nomination_buttons.clear_nomination_messages()
 
         # Additional cleanup in subclasses
         self._cleanup_player_state()

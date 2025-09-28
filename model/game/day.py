@@ -7,6 +7,7 @@ import bot_client
 import global_vars
 import model.characters
 import model.game.whisper_mode
+import model.nomination_buttons
 from utils import message_utils, game_utils
 
 
@@ -208,6 +209,21 @@ class Day:
             await announcement.pin()
             if nominator:
                 nominator.can_nominate = False
+
+            # Send nomination buttons to ST channels for active players
+            nominee_name = nominee.display_name if nominee.user not in global_vars.gamemaster_role.members else "the storytellers"
+            nominator_name = nominator.display_name if nominator else "the storytellers"
+
+            # Calculate votes needed based on whether there's already someone about to die
+            if self.aboutToDie is not None:
+                votes_needed = int(math.ceil(self.aboutToDie[1].votes + 1))
+            else:
+                votes_needed = int(math.ceil(self.votes[-1].majority))
+
+            await model.nomination_buttons.send_nomination_buttons_to_st_channels(
+                nominee_name, nominator_name, votes_needed
+            )
+
             proceed = True
             # FIXME:there might be a case where a player earlier in the seating order makes the nomination not proceed
             #  but one later in the seating order may be relevant. Short circuit here stops two Riot messages, e.g.
