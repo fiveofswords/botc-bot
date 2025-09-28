@@ -355,7 +355,7 @@ class BaseVote(ABC):
         await self._reset_player_hands()
 
         # Clear all nomination button messages since vote is over
-        nomination_buttons.clear_nomination_messages()
+        await nomination_buttons.clear_nomination_messages()
 
         # Additional cleanup in subclasses
         self._cleanup_player_state()

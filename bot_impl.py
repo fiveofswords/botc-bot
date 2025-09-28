@@ -1357,7 +1357,7 @@ async def on_message(message):
                 await message_utils.safe_send(global_vars.channel, "Nomination canceled!")
 
                 # Clear nomination button messages from ST channels
-                model.nomination_buttons.clear_nomination_messages()
+                await model.nomination_buttons.clear_nomination_messages()
 
                 if global_vars.game is not game.NULL_GAME:
                     game_utils.backup("current_game.pckl")

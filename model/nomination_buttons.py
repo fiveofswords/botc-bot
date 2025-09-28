@@ -476,8 +476,23 @@ async def enable_buttons_for_voter(player_id: int) -> None:
         bot_client.logger.error(f"Failed to re-enable buttons for player {player_id}: {e}")
 
 
-def clear_nomination_messages() -> None:
-    """Clear all tracked nomination messages (call when vote ends)."""
+async def clear_nomination_messages() -> None:
+    """Clear all tracked nomination messages and disable buttons (call when vote ends)."""
     global _active_nomination_messages
+
+    # Disable all buttons on existing messages
+    for player_id, (message, view) in _active_nomination_messages.items():
+        try:
+            # Disable all buttons in the view
+            for item in view.children:
+                item.disabled = True
+
+            # Update the message to show buttons are disabled
+            await message.edit(view=view)
+            bot_client.logger.info(f"Disabled buttons for player {player_id}")
+        except Exception as e:
+            bot_client.logger.error(f"Failed to disable buttons for player {player_id}: {e}")
+
+    # Clear the tracking dictionary
     _active_nomination_messages.clear()
     bot_client.logger.info("Cleared all nomination button messages")
