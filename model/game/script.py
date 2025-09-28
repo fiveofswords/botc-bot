@@ -3,6 +3,7 @@ class Script:
     """
 
     _list: list[str]
+    _is_atheist: bool | None = None
 
     def __init__(self, script_list):
         """Initialize a Script with a list of character ids.
@@ -11,18 +12,18 @@ class Script:
             script_list: List of character ids from the script creator
         """
         self._list = script_list
+        self._is_atheist = "atheist" in script_list
 
     @property
     def is_atheist(self):
         """Whether the Atheist is on the script."""
-        return "atheist" in self._list
+        return self._is_atheist
 
-    @property
-    def is_witch(self):
-        """Whether the Witch is on the script."""
-        return "witch" in self._list
+    @is_atheist.setter
+    def is_atheist(self, value: bool):
+        """Set whether the Atheist is on the script.
 
-    @property
-    def list(self):
-        """The list of character ids from the script."""
-        return self._list
+        Args:
+            value: True if the Atheist is on the script, False otherwise
+        """
+        self._is_atheist = value
