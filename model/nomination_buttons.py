@@ -478,8 +478,6 @@ async def enable_buttons_for_voter(player_id: int) -> None:
 
 async def clear_nomination_messages() -> None:
     """Clear all tracked nomination messages and disable buttons (call when vote ends)."""
-    global _active_nomination_messages
-
     # Disable all buttons on existing messages
     for player_id, (message, view) in _active_nomination_messages.items():
         try:
