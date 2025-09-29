@@ -18,6 +18,7 @@ import model.characters
 import model.game.script
 import model.game.vote
 import model.game.whisper_mode
+import model.nomination_buttons
 import model.player
 import model.settings
 import time_utils
@@ -1354,6 +1355,10 @@ async def on_message(message):
                 await global_vars.game.days[-1].open_pms()
                 await global_vars.game.days[-1].open_noms()
                 await message_utils.safe_send(global_vars.channel, "Nomination canceled!")
+
+                # Clear nomination button messages from ST channels
+                await model.nomination_buttons.clear_nomination_messages()
+
                 if global_vars.game is not game.NULL_GAME:
                     game_utils.backup("current_game.pckl")
                 return
