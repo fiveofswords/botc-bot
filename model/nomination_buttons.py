@@ -15,7 +15,7 @@ class NominationButtonsView(discord.ui.View):
     """View with buttons for prevoting and hand raising during nominations."""
 
     def __init__(self, nominee_name: str, nominator_name: str, votes_needed: int, player_id: int):
-        super().__init__(timeout=300)
+        super().__init__(timeout=None)
         self.nominee_name = nominee_name
         self.nominator_name = nominator_name
         self.votes_needed = votes_needed
