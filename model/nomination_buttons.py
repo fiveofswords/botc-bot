@@ -371,11 +371,8 @@ async def send_nomination_buttons_to_st_channels(nominee_name: str, nominator_na
         if current_vote.position < len(current_vote.order):
             first_voter_id = current_vote.order[current_vote.position].user.id
 
-    # Send to active (non-ghost) players only
+    # Send to all players
     for player_obj in global_vars.game.seatingOrder:
-        if player_obj.is_ghost:
-            continue  # Skip ghost players
-
         try:
             # Get the player's ST channel
             st_channel_id = game_settings.get_st_channel(player_obj.user.id)
