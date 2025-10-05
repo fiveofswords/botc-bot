@@ -157,6 +157,15 @@ class Day:
                 ),
             )
             await announcement.pin()
+
+            # Send nomination buttons to ST channels for traveler exile
+            nominee_name = nominee.display_name
+            nominator_name = nominator.display_name if nominator else "the storytellers"
+            votes_needed = int(math.ceil(self.votes[-1].majority))
+
+            await model.nomination_buttons.send_nomination_buttons_to_st_channels(
+                nominee_name, nominator_name, votes_needed
+            )
         else:
             nominee.can_be_nominated = False
             self.votes.append(Vote(nominee, nominator))
