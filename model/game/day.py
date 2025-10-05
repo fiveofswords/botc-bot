@@ -132,6 +132,20 @@ class Day:
             await announcement.pin()
             if nominator and nominee and not isinstance(nominee.character, model.characters.Traveler):
                 nominator.can_nominate = False
+
+            # Send nomination buttons to ST channels for storyteller nominations
+            nominee_name = "the storytellers"
+            nominator_name = nominator.display_name if nominator else "the storytellers"
+
+            if self.aboutToDie is not None:
+                votes_needed = int(math.ceil(self.aboutToDie[1].votes + 1))
+            else:
+                votes_needed = int(math.ceil(self.votes[-1].majority))
+
+            await model.nomination_buttons.send_nomination_buttons_to_st_channels(
+                nominee_name, nominator_name, votes_needed
+            )
+
             proceed = True
             # FIXME:there might be a case where a player earlier in the seating order makes the nomination not proceed
             #  but one later in the seating order may be relevant. Short circuit here stops two Riot messages, e.g.
@@ -157,6 +171,15 @@ class Day:
                 ),
             )
             await announcement.pin()
+
+            # Send nomination buttons to ST channels for traveler exile
+            nominee_name = nominee.display_name
+            nominator_name = nominator.display_name if nominator else "the storytellers"
+            votes_needed = int(math.ceil(self.votes[-1].majority))
+
+            await model.nomination_buttons.send_nomination_buttons_to_st_channels(
+                nominee_name, nominator_name, votes_needed
+            )
         else:
             nominee.can_be_nominated = False
             self.votes.append(Vote(nominee, nominator))
