@@ -557,12 +557,10 @@ async def test_whispers_command(mock_discord_setup, setup_test_game):
     with patch('utils.game_utils.backup') as mock_backup:
         with patch('utils.player_utils.get_player', return_value=setup_test_game['players']['alice']):
             with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
-                # Create OrderedDict for counts (this is used in the function)
-                with patch('bot_impl.OrderedDict', return_value={}):
-                    await on_message(alice_message)
+                await on_message(alice_message)
 
-                    # Verify message was sent with whisper counts
-                    assert mock_safe_send.called
+                # Verify message was sent with whisper counts
+                assert mock_safe_send.called
 
 
 @pytest.mark.asyncio
