@@ -5,11 +5,14 @@ import discord
 
 import bot_client
 import global_vars
+import model
+import model.characters
 import model.game.whisper_mode
+import time_utils
 import utils.game_utils
 from commands.command_enums import HelpSection, UserType, GamePhase
 from commands.registry import registry, CommandArgument
-from utils import message_utils
+from utils import message_utils, player_utils
 
 
 @registry.command(
@@ -46,11 +49,22 @@ async def endday_command(message: discord.Message, argument: str):
     user_types=[UserType.STORYTELLER],
     arguments=[CommandArgument("player")],
     required_phases=[GamePhase.DAY, GamePhase.NIGHT],  # Any phase
-    implemented=False
 )
 async def kill_command(message: discord.Message, argument: str):
     """Kill a player."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    person: model.Player = await player_utils.select_player(
+        message.author, argument, global_vars.game.seatingOrder
+    )
+    if person is None:
+        return
+
+    if person.is_ghost:
+        await message_utils.safe_send(message.author, "{} is already dead.".format(person.display_name))
+        return
+
+    await person.kill(force=True)
+    if global_vars.game is not model.game.NULL_GAME:
+        utils.game_utils.backup("current_game.pckl")
 
 
 @registry.command(
@@ -60,11 +74,18 @@ async def kill_command(message: discord.Message, argument: str):
     user_types=[UserType.STORYTELLER],
     arguments=[CommandArgument("player")],
     required_phases=[GamePhase.DAY, GamePhase.NIGHT],  # Any phase
-    implemented=False
 )
 async def poison_command(message: discord.Message, argument: str):
     """Poison a player (disable their ability)."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    person = await player_utils.select_player(
+        message.author, argument, global_vars.game.seatingOrder
+    )
+    if person is None:
+        return
+
+    person.character.poison()
+    await message_utils.notify_storytellers_about_action(message.author,
+                                                         f"poisoned {person.display_name}")
 
 
 @registry.command(
@@ -74,11 +95,18 @@ async def poison_command(message: discord.Message, argument: str):
     user_types=[UserType.STORYTELLER],
     arguments=[CommandArgument("player")],
     required_phases=[GamePhase.DAY, GamePhase.NIGHT],  # Any phase
-    implemented=False
 )
 async def unpoison_command(message: discord.Message, argument: str):
     """Remove poison from a player (re-enable their ability)."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    person = await player_utils.select_player(
+        message.author, argument, global_vars.game.seatingOrder
+    )
+    if person is None:
+        return
+
+    person.character.unpoison()
+    await message_utils.notify_storytellers_about_action(message.author,
+                                                         f"unpoisoned {person.display_name}")
 
 
 @registry.command(
@@ -101,11 +129,24 @@ async def startgame_command(message: discord.Message, argument: str):
     user_types=[UserType.STORYTELLER],
     arguments=[CommandArgument(("good", "evil", "tie"))],
     required_phases=[GamePhase.DAY, GamePhase.NIGHT],  # Any phase
-    implemented=False
 )
 async def endgame_command(message: discord.Message, argument: str):
     """End the current game and announce winner."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    argument = argument.lower()
+    if argument not in ("good", "evil", "tie"):
+        await message_utils.safe_send(message.author,
+                                      "The winner must be 'good' or 'evil' or 'tie' exactly.")
+        return
+
+    winner_msg = "Good won!" if argument == "good" else "Evil won!" if argument == "evil" else ""
+    await message_utils.notify_storytellers_about_action(
+        message.author,
+        f"{message.author.display_name} has ended the game! {winner_msg} Please wait for the bot to finish."
+    )
+
+    await global_vars.game.end(argument)
+    if global_vars.game is not model.game.NULL_GAME:
+        utils.game_utils.backup("current_game.pckl")
 
 
 @registry.command(
@@ -115,11 +156,22 @@ async def endgame_command(message: discord.Message, argument: str):
     user_types=[UserType.STORYTELLER],
     arguments=[CommandArgument("traveler")],
     required_phases=[GamePhase.DAY, GamePhase.NIGHT],  # Any phase
-    implemented=False
 )
 async def exile_command(message: discord.Message, argument: str):
     """Exile a traveler from the game."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    person = await player_utils.select_player(
+        message.author, argument, global_vars.game.seatingOrder
+    )
+    if person is None:
+        return
+
+    if not isinstance(person.character, model.characters.Traveler):
+        await message_utils.safe_send(message.author, f"{person.display_name} is not a traveler.")
+        return
+
+    await person.character.exile(person, message.author)
+    if global_vars.game is not model.game.NULL_GAME:
+        utils.game_utils.backup("current_game.pckl")
 
 
 @registry.command(
@@ -198,4 +250,31 @@ async def automatekills_command(message: discord.Message, argument: str):
 )
 async def setdeadline_command(message: discord.Message, argument: str):
     """Set a deadline for nominations."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    deadline = time_utils.parse_deadline(argument)
+
+    if deadline is None:
+        await message_utils.safe_send(message.author,
+                                      "Unrecognized format. Please provide a deadline in the format 'HH:MM', '+[HHh][MMm]', or a Unix timestamp.")
+        return
+
+    if len(global_vars.game.days[-1].deadlineMessages) > 0:
+        previous_deadline = global_vars.game.days[-1].deadlineMessages[-1]
+        try:
+            await (
+                await global_vars.channel.fetch_message(previous_deadline)
+            ).unpin()
+        except discord.errors.NotFound:
+            print("Missing message: ", str(previous_deadline))
+        except discord.errors.DiscordServerError:
+            print("Discord server error: ", str(previous_deadline))
+    announcement = await message_utils.safe_send(
+        global_vars.channel,
+        "{}, nominations are open. The deadline is <t:{}:R> at <t:{}:t> unless someone nominates or everyone skips.".format(
+            global_vars.player_role.mention,
+            str(int(deadline.timestamp())),
+            str(int(deadline.timestamp()))
+        ),
+    )
+    await announcement.pin()
+    global_vars.game.days[-1].deadlineMessages.append(announcement.id)
+    await global_vars.game.days[-1].open_noms()
