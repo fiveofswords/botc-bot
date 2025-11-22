@@ -136,8 +136,8 @@ async def test_handle_cancel_prevote_removes_preset(mock_discord_setup, setup_te
 
 
 @pytest.mark.asyncio
-async def test_handle_hand_toggle_raise_and_lower(mock_discord_setup, setup_test_game):
-    """_handle_hand_toggle should raise and lower hand and update seating message."""
+async def test_handle_hand_toggle_raise(mock_discord_setup, setup_test_game):
+    """_handle_hand_toggle should raise hand and update seating message."""
     nb, Vote = _import_nb_and_Vote()
     game = setup_test_game['game']
     players = setup_test_game['players']
@@ -164,9 +164,29 @@ async def test_handle_hand_toggle_raise_and_lower(mock_discord_setup, setup_test
     interaction.response.send_message.assert_awaited()
     update_seating_order_message.assert_awaited()
 
-    # Reset mocks for second toggle
-    interaction.response.send_message.reset_mock()
-    update_seating_order_message.reset_mock()
+
+@pytest.mark.asyncio
+async def test_handle_hand_toggle_lower(mock_discord_setup, setup_test_game):
+    """_handle_hand_toggle should lower hand and update seating message."""
+    nb, Vote = _import_nb_and_Vote()
+    game = setup_test_game['game']
+    players = setup_test_game['players']
+
+    game.isDay = True
+    _ensure_active_vote(game, players, 'bob', 'storyteller')
+
+    alice_member = mock_discord_setup['members']['alice']
+    alice_player = players['alice']
+    alice_player.hand_raised = True
+
+    view = _make_view(nb, "Bob", "Storyteller", alice_member)
+    # attach a message so edits don't fail
+    await _attach_message(view, mock_discord_setup['channels']['st_alice'])
+
+    interaction = _make_interaction(alice_member)
+
+    # Patch update_seating_order_message to verify it's called
+    update_seating_order_message = _patch_update_seating_message(game)
 
     # Lower hand
     await view._handle_hand_toggle(interaction)
