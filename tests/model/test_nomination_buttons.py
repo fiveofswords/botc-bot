@@ -260,6 +260,90 @@ async def test_update_enable_disable_clear_nomination_messages(mock_discord_setu
     assert len(nb._active_nomination_messages) == 0
 
 
+@pytest.mark.asyncio
+async def test_voting_buttons_present_on_voting_turn(mock_discord_setup, setup_test_game, monkeypatch):
+    """When it's a player's turn the view contains Vote Yes/No buttons."""
+    nb, Vote = _import_nb_and_Vote()
+    game = setup_test_game['game']
+    players = setup_test_game['players']
+
+    # Arrange: active vote and patched settings/sending
+    game.isDay = True
+    _ensure_active_vote(game, players, 'alice', 'storyteller')
+    _patch_settings_and_safe_send(monkeypatch, game, mock_discord_setup)
+
+    # Clear and send
+    nb._active_nomination_messages.clear()
+    await nb.send_nomination_buttons_to_st_channels("Nominee", "Nominator", 3)
+
+    # Ensure message.edit accepts view kw
+    _patch_message_edit_on_tracked(nb)
+
+    # Act: update to voting turn for Alice
+    alice_id = players['alice'].user.id
+    await nb.update_buttons_for_voting_turn(alice_id)
+
+    # Assert: the tracked view for Alice contains Vote Yes and Vote No
+    message, view = nb._active_nomination_messages[alice_id]
+    labels = [item.label for item in view.children]
+    assert "Vote Yes" in labels
+    assert "Vote No" in labels
+
+
+@pytest.mark.asyncio
+async def test_cancel_prevote_button_present_when_preset(mock_discord_setup, setup_test_game):
+    """A Cancel Prevote button is added to the view when the player has a preset vote."""
+    nb, Vote = _import_nb_and_Vote()
+    game = setup_test_game['game']
+    players = setup_test_game['players']
+
+    # Arrange: active vote and preset for Alice
+    game.isDay = True
+    vote = _ensure_active_vote(game, players, 'bob', 'storyteller')
+    alice_id = players['alice'].user.id
+    vote.presetVotes[alice_id] = 1
+
+    # Act: create a view for Alice (constructor calls _setup_buttons)
+    alice_member = mock_discord_setup['members']['alice']
+    view = _make_view(nb, "Bob", "Storyteller", alice_member)
+
+    # Assert: Cancel Prevote button is present
+    labels = [item.label for item in view.children]
+    assert "Cancel Prevote" in labels
+
+
+@pytest.mark.asyncio
+async def test_hand_button_label_changes_after_toggle(mock_discord_setup, setup_test_game):
+    """Hand button label flips between Raise Hand and Lower Hand when toggled."""
+    nb, Vote = _import_nb_and_Vote()
+    game = setup_test_game['game']
+    players = setup_test_game['players']
+
+    # Arrange: active vote and view for Alice
+    game.isDay = True
+    _ensure_active_vote(game, players, 'bob', 'storyteller')
+
+    alice_member = mock_discord_setup['members']['alice']
+    alice_player = players['alice']
+    alice_player.hand_raised = False
+
+    view = _make_view(nb, "Bob", "Storyteller", alice_member)
+    # attach a message so edits don't fail
+    await _attach_message(view, mock_discord_setup['channels']['st_alice'])
+
+    # Confirm initial label is Raise Hand
+    initial_labels = [item.label for item in view.children]
+    assert "Raise Hand" in initial_labels
+
+    # Act: toggle hand
+    interaction = _make_interaction(alice_member)
+    await view._handle_hand_toggle(interaction)
+
+    # Assert: label changed to Lower Hand
+    after_labels = [item.label for item in view.children]
+    assert "Lower Hand" in after_labels
+
+
 # Helper utilities to reduce duplication in tests
 def _import_nb_and_Vote():
     import model.nomination_buttons as nb
