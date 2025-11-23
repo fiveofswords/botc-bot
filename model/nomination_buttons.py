@@ -23,29 +23,31 @@ class NominationButtonsView(discord.ui.View):
         self.is_voting_turn = False  # Track if it's this player's turn to vote
         self._setup_buttons()
 
+    def _get_current_vote(self) -> game.base_vote.BaseVote | None:
+        """Return the active vote or None if voting isn't happening."""
+        if global_vars.game is game.NULL_GAME or not global_vars.game.isDay:
+            return None
+        if not global_vars.game.days[-1].votes:
+            return None
+        current_vote = global_vars.game.days[-1].votes[-1]
+        if current_vote.done:
+            return None
+        return current_vote
+
+    def _player_preset_value(self) -> int | None:
+        """Return the player's preset vote (1/0) or None if not set."""
+        current_vote = self._get_current_vote()
+        if not current_vote:
+            return None
+        return current_vote.presetVotes.get(self.player_id)
+
     def _setup_buttons(self):
         """Set up the initial button layout."""
-        # Clear any existing items
         self.clear_items()
-
-        # Row 1: Prevoting buttons
-        self.add_item(PrevoteYesButton())
-        self.add_item(PrevoteNoButton())
+        preset_value = self._player_preset_value()
+        self.add_item(PrevoteYesButton(is_active=preset_value == 1))
+        self.add_item(PrevoteNoButton(is_active=preset_value == 0))
         self.add_item(RaiseHandButton(self._player_hand_raised()))
-
-        # Add cancel prevote button if player has a prevote set
-        if self._player_has_prevote():
-            self.add_item(CancelPrevoteButton())
-
-    def _player_has_prevote(self) -> bool:
-        """Check if the player has a prevote set."""
-        if global_vars.game is game.NULL_GAME or not global_vars.game.isDay:
-            return False
-        if not global_vars.game.days[-1].votes or global_vars.game.days[-1].votes[-1].done:
-            return False
-
-        current_vote = global_vars.game.days[-1].votes[-1]
-        return self.player_id in current_vote.presetVotes
 
     def _player_hand_raised(self) -> bool:
         """Check if the player has their hand raised."""
@@ -62,23 +64,16 @@ class NominationButtonsView(discord.ui.View):
         """Update buttons when it's this player's turn to vote."""
         self.is_voting_turn = True
         self.clear_items()
+        preset_value = self._player_preset_value()
 
-        # Row 1: Disabled prevoting buttons
-        prevote_yes = PrevoteYesButton()
-        prevote_yes.disabled = True
-        prevote_no = PrevoteNoButton()
-        prevote_no.disabled = True
+        prevote_yes = PrevoteYesButton(is_active=preset_value == 1, disabled=True)
+        prevote_no = PrevoteNoButton(is_active=preset_value == 0, disabled=True)
         raise_hand = RaiseHandButton(self._player_hand_raised())
         raise_hand.disabled = True
 
         self.add_item(prevote_yes)
         self.add_item(prevote_no)
         self.add_item(raise_hand)
-
-        if self._player_has_prevote():
-            cancel_prevote = CancelPrevoteButton()
-            cancel_prevote.disabled = True
-            self.add_item(cancel_prevote)
 
         # Row 2: Vote buttons
         self.add_item(VoteYesButton(row=1))
@@ -100,82 +95,37 @@ class NominationButtonsView(discord.ui.View):
             await interaction.response.send_message("It's not day right now.", ephemeral=True)
             return
 
-        if not global_vars.game.days[-1].votes or global_vars.game.days[-1].votes[-1].done:
-            await interaction.response.send_message("There's no active vote right now.", ephemeral=True)
-            return
-
-        # Find the player who clicked the button
         player_obj = player_utils.get_player(interaction.user)
         if not player_obj:
             await interaction.response.send_message("You are not in the game.", ephemeral=True)
             return
 
-        # Get the current vote
-        current_vote = global_vars.game.days[-1].votes[-1]
+        current_vote = self._get_current_vote()
+        if not current_vote:
+            await interaction.response.send_message("There's no active vote right now.", ephemeral=True)
+            return
 
-        # Set the preset vote using existing logic
         vote_int = 1 if vote_value == "yes" else 0
-        current_vote.presetVotes[player_obj.user.id] = vote_int
+        existing_vote = current_vote.presetVotes.get(player_obj.user.id)
+        cancelling = existing_vote == vote_int
 
-        # Send confirmation
-        await interaction.response.send_message(
-            f"Your vote has been preset to **{vote_value}** for {self.nominee_name}.",
-            ephemeral=True
-        )
+        if cancelling:
+            del current_vote.presetVotes[player_obj.user.id]
+            response_text = "Your prevote has been cancelled."
+            log_suffix = "cancelled prevote"
+        else:
+            current_vote.presetVotes[player_obj.user.id] = vote_int
+            response_text = f"Your vote has been preset to **{vote_value}** for {self.nominee_name}."
+            log_suffix = f"preset vote {vote_value}"
 
-        # Update seating order message to reflect changes
+        await interaction.response.send_message(response_text, ephemeral=True)
+
         await global_vars.game.update_seating_order_message()
-
-        # Refresh buttons to show cancel prevote button
-        self._setup_buttons()
+        self._setup_buttons() if not self.is_voting_turn else self.update_for_voting_turn()
         if hasattr(self, 'message') and self.message:
             await self.message.edit(view=self)
 
-        bot_client.logger.info(f"{player_obj.display_name} preset vote {vote_value} for {self.nominee_name}")
-
-    async def _handle_cancel_prevote(self, interaction: discord.Interaction):
-        """Handle cancel prevote button click."""
-        # Check if the user is the player this ST channel belongs to
-        if interaction.user.id != self.player_id:
-            await interaction.response.send_message("These buttons are only for the player this ST channel belongs to.", ephemeral=True)
-            return
-
-        # Check if there's an active game and vote
-        if global_vars.game is game.NULL_GAME:
-            await interaction.response.send_message("There's no game right now.", ephemeral=True)
-            return
-
-        if not global_vars.game.isDay:
-            await interaction.response.send_message("It's not day right now.", ephemeral=True)
-            return
-
-        if not global_vars.game.days[-1].votes or global_vars.game.days[-1].votes[-1].done:
-            await interaction.response.send_message("There's no active vote right now.", ephemeral=True)
-            return
-
-        # Find the player who clicked the button
-        player_obj = player_utils.get_player(interaction.user)
-        if not player_obj:
-            await interaction.response.send_message("You are not in the game.", ephemeral=True)
-            return
-
-        # Get the current vote and remove prevote
-        current_vote = global_vars.game.days[-1].votes[-1]
-        if self.player_id in current_vote.presetVotes:
-            del current_vote.presetVotes[self.player_id]
-
-        # Send confirmation
-        await interaction.response.send_message("Your prevote has been cancelled.", ephemeral=True)
-
-        # Update seating order message to reflect changes
-        await global_vars.game.update_seating_order_message()
-
-        # Refresh buttons to hide cancel prevote button
-        self._setup_buttons()
-        if hasattr(self, 'message') and self.message:
-            await self.message.edit(view=self)
-
-        bot_client.logger.info(f"{player_obj.display_name} cancelled prevote for {self.nominee_name}")
+        bot_client.logger.info(f"{player_obj.display_name} {log_suffix} for {self.nominee_name}")
 
     async def _handle_hand_toggle(self, interaction: discord.Interaction):
         """Handle hand raise/lower toggle using existing hand logic."""
@@ -296,8 +246,10 @@ class NominationButtonsView(discord.ui.View):
 
 # Button classes
 class PrevoteYesButton(discord.ui.Button):
-    def __init__(self):
-        super().__init__(label="Prevote Yes", style=discord.ButtonStyle.green, row=0)
+    def __init__(self, is_active: bool = False, disabled: bool = False):
+        label = "Cancel Preset" if is_active else "Prevote Yes"
+        style = discord.ButtonStyle.gray if is_active else discord.ButtonStyle.green
+        super().__init__(label=label, style=style, row=0, disabled=disabled)
 
     async def callback(self, interaction: discord.Interaction):
         view: NominationButtonsView = self.view
@@ -305,8 +257,10 @@ class PrevoteYesButton(discord.ui.Button):
 
 
 class PrevoteNoButton(discord.ui.Button):
-    def __init__(self):
-        super().__init__(label="Prevote No", style=discord.ButtonStyle.red, row=0)
+    def __init__(self, is_active: bool = False, disabled: bool = False):
+        label = "Cancel Preset" if is_active else "Prevote No"
+        style = discord.ButtonStyle.gray if is_active else discord.ButtonStyle.red
+        super().__init__(label=label, style=style, row=0, disabled=disabled)
 
     async def callback(self, interaction: discord.Interaction):
         view: NominationButtonsView = self.view
@@ -323,13 +277,6 @@ class RaiseHandButton(discord.ui.Button):
         await view._handle_hand_toggle(interaction)
 
 
-class CancelPrevoteButton(discord.ui.Button):
-    def __init__(self):
-        super().__init__(label="Cancel Prevote", style=discord.ButtonStyle.gray, row=0)
-
-    async def callback(self, interaction: discord.Interaction):
-        view: NominationButtonsView = self.view
-        await view._handle_cancel_prevote(interaction)
 
 
 class VoteYesButton(discord.ui.Button):
