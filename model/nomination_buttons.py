@@ -432,8 +432,8 @@ async def update_buttons_for_voting_turn(player_id: int) -> None:
         bot_client.logger.error(f"Failed to update buttons for player {player_id}: {e}")
 
 
-async def disable_buttons_for_voter(player_id: int) -> None:
-    """Disable nomination buttons for a player when it's their turn to vote."""
+async def activate_vote_buttons_for_player(player_id: int) -> None:
+    """Activate vote buttons for a player when it's their turn to vote."""
     if player_id not in _active_nomination_messages:
         return
 

@@ -190,7 +190,7 @@ class BaseVote(ABC):
                                       f"{to_call_user.mention}, your vote on {nominee_name}. Current votes: {self.votes}.")
 
         # Disable nomination buttons for this player while they vote
-        await nomination_buttons.disable_buttons_for_voter(to_call_user_id)
+        await nomination_buttons.activate_vote_buttons_for_player(to_call_user_id)
 
         # Handle default votes
         global_settings: model.settings.GlobalSettings = model.settings.GlobalSettings.load()
