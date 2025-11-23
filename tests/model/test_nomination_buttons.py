@@ -9,8 +9,7 @@ from tests.fixtures.game_fixtures import setup_test_game  # noqa: F401
 @pytest.mark.asyncio
 async def test_initialization_buttons(mock_discord_setup, setup_test_game):
     """NominationButtonsView initializes with prevote and hand buttons."""
-    # Use helper import
-    nb, _ = _import_nb_and_Vote()
+    import model.nomination_buttons as nb
 
     alice_member = mock_discord_setup['members']['alice']
 
@@ -26,7 +25,7 @@ async def test_initialization_buttons(mock_discord_setup, setup_test_game):
 @pytest.mark.asyncio
 async def test_send_nomination_buttons_to_st_channels(mock_discord_setup, setup_test_game, monkeypatch):
     """send_nomination_buttons_to_st_channels sends messages and tracks them."""
-    nb, Vote = _import_nb_and_Vote()
+    import model.nomination_buttons as nb
     game = setup_test_game['game']
     players = setup_test_game['players']
 
@@ -54,7 +53,7 @@ async def test_send_nomination_buttons_to_st_channels(mock_discord_setup, setup_
 @pytest.mark.asyncio
 async def test_handle_prevote_sets_preset(mock_discord_setup, setup_test_game):
     """_handle_prevote should set current_vote.presetVotes and call update_seating_order_message."""
-    nb, Vote = _import_nb_and_Vote()
+    import model.nomination_buttons as nb
     game = setup_test_game['game']
     players = setup_test_game['players']
 
@@ -80,7 +79,7 @@ async def test_handle_prevote_sets_preset(mock_discord_setup, setup_test_game):
 @pytest.mark.asyncio
 async def test_handle_vote_calls_vote_method(mock_discord_setup, setup_test_game):
     """_handle_vote should acknowledge, disable buttons and call Vote.vote."""
-    nb, Vote = _import_nb_and_Vote()
+    import model.nomination_buttons as nb
     game = setup_test_game['game']
     players = setup_test_game['players']
 
@@ -109,7 +108,7 @@ async def test_handle_vote_calls_vote_method(mock_discord_setup, setup_test_game
 @pytest.mark.asyncio
 async def test_handle_cancel_prevote_removes_preset(mock_discord_setup, setup_test_game):
     """_handle_cancel_prevote should remove preset vote and update seating message."""
-    nb, Vote = _import_nb_and_Vote()
+    import model.nomination_buttons as nb
     game = setup_test_game['game']
     players = setup_test_game['players']
 
@@ -138,7 +137,7 @@ async def test_handle_cancel_prevote_removes_preset(mock_discord_setup, setup_te
 @pytest.mark.asyncio
 async def test_handle_hand_toggle_raise(mock_discord_setup, setup_test_game):
     """_handle_hand_toggle should raise hand and update seating message."""
-    nb, Vote = _import_nb_and_Vote()
+    import model.nomination_buttons as nb
     game = setup_test_game['game']
     players = setup_test_game['players']
 
@@ -168,7 +167,7 @@ async def test_handle_hand_toggle_raise(mock_discord_setup, setup_test_game):
 @pytest.mark.asyncio
 async def test_handle_hand_toggle_lower(mock_discord_setup, setup_test_game):
     """_handle_hand_toggle should lower hand and update seating message."""
-    nb, Vote = _import_nb_and_Vote()
+    import model.nomination_buttons as nb
     game = setup_test_game['game']
     players = setup_test_game['players']
 
@@ -199,7 +198,6 @@ async def test_handle_hand_toggle_lower(mock_discord_setup, setup_test_game):
 async def test_handle_hand_toggle_locked_hand(mock_discord_setup, setup_test_game):
     """If a player's hand is locked for vote, toggling should be blocked."""
     import model.nomination_buttons as nb
-
     game = setup_test_game['game']
     players = setup_test_game['players']
 
@@ -263,7 +261,7 @@ async def test_update_enable_disable_clear_nomination_messages(mock_discord_setu
 @pytest.mark.asyncio
 async def test_voting_buttons_present_on_voting_turn(mock_discord_setup, setup_test_game, monkeypatch):
     """When it's a player's turn the view contains Vote Yes/No buttons."""
-    nb, Vote = _import_nb_and_Vote()
+    import model.nomination_buttons as nb
     game = setup_test_game['game']
     players = setup_test_game['players']
 
@@ -293,7 +291,7 @@ async def test_voting_buttons_present_on_voting_turn(mock_discord_setup, setup_t
 @pytest.mark.asyncio
 async def test_cancel_prevote_button_present_when_preset(mock_discord_setup, setup_test_game):
     """A Cancel Prevote button is added to the view when the player has a preset vote."""
-    nb, Vote = _import_nb_and_Vote()
+    import model.nomination_buttons as nb
     game = setup_test_game['game']
     players = setup_test_game['players']
 
@@ -315,7 +313,7 @@ async def test_cancel_prevote_button_present_when_preset(mock_discord_setup, set
 @pytest.mark.asyncio
 async def test_hand_button_label_changes_after_toggle(mock_discord_setup, setup_test_game):
     """Hand button label flips between Raise Hand and Lower Hand when toggled."""
-    nb, Vote = _import_nb_and_Vote()
+    import model.nomination_buttons as nb
     game = setup_test_game['game']
     players = setup_test_game['players']
 
@@ -345,11 +343,6 @@ async def test_hand_button_label_changes_after_toggle(mock_discord_setup, setup_
 
 
 # Helper utilities to reduce duplication in tests
-def _import_nb_and_Vote():
-    import model.nomination_buttons as nb
-    from model.game.vote import Vote
-    return nb, Vote
-
 
 def _ensure_active_vote(game, players, nominee_key='alice', nominator_key='storyteller'):
     from model.game.vote import Vote
