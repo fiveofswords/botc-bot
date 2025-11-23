@@ -177,7 +177,16 @@ class BaseVote(ABC):
         if to_call_user_id in self.presetVotes:
             preset_player_vote = self.presetVotes[to_call_user_id]
             self.presetVotes[to_call_user_id] -= 1
-            await self.vote(int(preset_player_vote > 0), voter=to_call_player)
+
+            # Validate the preset vote - if 'yes' vote is invalid, convert to 'no'
+            vote_value = int(preset_player_vote > 0)
+            if vote_value == 1:  # Only validate 'yes' votes
+                allowed, reason = self._validate_vote(to_call_player, 1)
+                if not allowed:
+                    # Convert invalid 'yes' vote to 'no' vote
+                    vote_value = 0
+
+            await self.vote(vote_value, voter=to_call_player)
             return
 
         # Check if player should be skipped
@@ -192,7 +201,7 @@ class BaseVote(ABC):
         # Disable nomination buttons for this player while they vote
         await nomination_buttons.activate_vote_buttons_for_player(to_call_user_id)
 
-        # Handle default votes
+    # Handle default votes
         global_settings: model.settings.GlobalSettings = model.settings.GlobalSettings.load()
         default: tuple[int, int] | None = global_settings.get_default_vote(to_call_user_id)
         if default:
