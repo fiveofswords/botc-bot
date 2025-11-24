@@ -201,7 +201,7 @@ class BaseVote(ABC):
         # Disable nomination buttons for this player while they vote
         await nomination_buttons.activate_vote_buttons_for_player(to_call_user_id)
 
-    # Handle default votes
+        # Handle default votes
         global_settings: model.settings.GlobalSettings = model.settings.GlobalSettings.load()
         default: tuple[int, int] | None = global_settings.get_default_vote(to_call_user_id)
         if default:
