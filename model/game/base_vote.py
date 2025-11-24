@@ -185,6 +185,7 @@ class BaseVote(ABC):
                 if not allowed:
                     # Convert invalid 'yes' vote to 'no' vote
                     vote_value = 0
+                    await message_utils.safe_send(to_call_player.user, f"Your preset was overridden. {reason}")
 
             await self.vote(vote_value, voter=to_call_player)
             return
