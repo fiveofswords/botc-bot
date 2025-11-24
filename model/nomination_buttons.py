@@ -45,7 +45,7 @@ class NominationButtonsView(discord.ui.View):
         """Set up the initial button layout."""
         self.clear_items()
         preset_value = self._player_preset_value()
-        self.add_item(PrevoteYesButton(is_active=preset_value == 1))
+        self.add_item(PrevoteYesButton(is_active=preset_value > 0))
         self.add_item(PrevoteNoButton(is_active=preset_value == 0))
         self.add_item(RaiseHandButton(self._player_hand_raised()))
 
@@ -66,7 +66,7 @@ class NominationButtonsView(discord.ui.View):
         self.clear_items()
         preset_value = self._player_preset_value()
 
-        prevote_yes = PrevoteYesButton(is_active=preset_value == 1, disabled=True)
+        prevote_yes = PrevoteYesButton(is_active=preset_value > 0, disabled=True)
         prevote_no = PrevoteNoButton(is_active=preset_value == 0, disabled=True)
         raise_hand = RaiseHandButton(self._player_hand_raised())
         raise_hand.disabled = True
@@ -215,7 +215,7 @@ class NominationButtonsView(discord.ui.View):
             return
 
         # Send confirmation first to acknowledge the interaction
-        vote_text = "yes" if vote_value == 1 else "no"
+        vote_text = "yes" if vote_value > 0 else "no"
         await interaction.response.send_message(f"You voted **{vote_text}** for {self.nominee_name}.", ephemeral=True)
 
         # Disable buttons immediately to prevent double clicks

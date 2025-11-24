@@ -144,7 +144,7 @@ class BaseVote(ABC):
             vt: The vote weight (0 or 1)
         """
         # Manage hand state based on vote
-        if vt == 1:  # Yes vote
+        if vt > 0:  # Yes vote
             voter.hand_raised = True
         else:  # No vote
             voter.hand_raised = False
@@ -180,7 +180,7 @@ class BaseVote(ABC):
 
             # Validate the preset vote - if 'yes' vote is invalid, convert to 'no'
             vote_value = int(preset_player_vote > 0)
-            if vote_value == 1:  # Only validate 'yes' votes
+            if vote_value > 0:  # Only validate 'yes' votes
                 allowed, reason = self._validate_vote(to_call_player, 1)
                 if not allowed:
                     # Convert invalid 'yes' vote to 'no' vote
@@ -263,12 +263,12 @@ class BaseVote(ABC):
             # Vote tracking
             self.history.append(vt)
             self.votes += self.values[voter][vt]
-            if vt == 1:
+            if vt > 0:
                 self.voted.append(voter)
         # end critical section with vote lock
 
         # Announcement
-        text = "yes" if vt == 1 else "no"
+        text = "yes" if vt > 0 else "no"
         self.announcements.append(
             (
                 await message_utils.safe_send(

@@ -853,7 +853,7 @@ async def test_voudon_in_play(mock_discord_setup, setup_test_game):
 
         # Create test method to simulate voting
         async def mock_vote(value, voter=None):
-            if value == 1:  # Yes vote
+            if value > 0:  # Yes vote
                 vote.votes += vote.values[charlie][1]  # Add vote value
                 vote.history.append(1)
                 vote.voted.append(charlie)
