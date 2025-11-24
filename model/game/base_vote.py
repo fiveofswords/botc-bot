@@ -199,7 +199,7 @@ class BaseVote(ABC):
         await message_utils.safe_send(global_vars.channel,
                                       f"{to_call_user.mention}, your vote on {nominee_name}. Current votes: {self.votes}.")
 
-        # Disable nomination buttons for this player while they vote
+        # Activate vote buttons for this player's turn to vote
         await nomination_buttons.activate_vote_buttons_for_player(to_call_user_id)
 
         # Handle default votes
