@@ -181,7 +181,7 @@ class Vote(BaseVote):
         player_is_active_banshee = potential_banshee and potential_banshee.is_screaming
 
         # Check dead votes
-        if vt == 1 and voter.is_ghost and voter.dead_votes < 1 and not (
+        if vt > 0 and voter.is_ghost and voter.dead_votes < 1 and not (
                 player_is_active_banshee and not potential_banshee.is_poisoned) and not voudon_in_play:
             return False, "You do not have any dead votes. Entering a no vote."
 
@@ -197,7 +197,7 @@ class Vote(BaseVote):
         player_is_active_banshee = potential_banshee and potential_banshee.is_screaming
 
         # Use dead vote if applicable
-        if vt == 1 and voter.is_ghost and not (
+        if vt > 0 and voter.is_ghost and not (
                 player_is_active_banshee and not potential_banshee.is_poisoned) and not voudon_in_play:
             asyncio.create_task(voter.remove_dead_vote())
 

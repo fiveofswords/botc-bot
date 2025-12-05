@@ -853,7 +853,7 @@ async def test_voudon_in_play(mock_discord_setup, setup_test_game):
 
         # Create test method to simulate voting
         async def mock_vote(value, voter=None):
-            if value == 1:  # Yes vote
+            if value > 0:  # Yes vote
                 vote.votes += vote.values[charlie][1]  # Add vote value
                 vote.history.append(1)
                 vote.voted.append(charlie)
@@ -1329,3 +1329,195 @@ class TestVoteRaceConditions:
 
             # Verify the vote value matches what's in history
             assert vote.history[0] == vote_value, f"History mismatch: expected {vote_value}, got {vote.history[0]}"
+
+
+@pytest.mark.asyncio
+async def test_prevote_yes_converted_to_no_for_dead_player_without_dead_vote(mock_discord_setup, setup_test_game):
+    """Test that a prevote of 'yes' from a dead player without a dead vote is converted to 'no'.
+
+    Scenario: A dead player sets a prevote to 'yes' when they still have a dead vote,
+    but by the time the vote reaches them, they've used their dead vote on a previous nomination.
+    The system should automatically convert the 'yes' prevote to a 'no' vote instead of
+    rejecting it (which would cause the vote to hang).
+    """
+    # Get players
+    alice = setup_test_game['players']['alice']  # nominee
+    bob = setup_test_game['players']['bob']  # dead player who will prevote
+    charlie = setup_test_game['players']['charlie']  # alive player
+
+    # Set up Bob as a dead player without a dead vote
+    bob.is_ghost = True
+    bob.dead_votes = 0
+
+    # Create a mock message for vote announcements
+    mock_message = MockMessage(id=123, content="Vote announcement",
+                               channel=mock_discord_setup['channels']['town_square'],
+                               author=mock_discord_setup['members']['storyteller'])
+    mock_message.pin = AsyncMock()
+
+    with patch('utils.message_utils.safe_send', return_value=mock_message), \
+            patch.object(mock_discord_setup['channels']['town_square'], 'fetch_message',
+                         AsyncMock(return_value=mock_message)), \
+            patch('utils.character_utils.the_ability', return_value=None), \
+            patch('model.game.vote.in_play_voudon', return_value=False), \
+            patch.object(global_vars.game, 'update_seating_order_message', AsyncMock()):
+
+        # Set up global variables
+        global_vars.channel = mock_discord_setup['channels']['town_square']
+        global_vars.game = setup_test_game['game']
+
+        # Create vote instance
+        vote = setup_test_vote(setup_test_game['game'], alice, charlie, [bob, charlie, alice])
+        vote.position = 0  # Start with Bob
+
+        # Bob sets a prevote to 'yes' (this would have been valid if he had a dead vote)
+        vote.presetVotes[bob.user.id] = 1
+
+        # Mock end_vote to prevent completion and capture vote state
+        vote.end_vote = AsyncMock()
+
+        # Call call_next which should process Bob's prevote
+        await vote.call_next()
+
+        # Verify that a vote was processed (not rejected)
+        assert len(vote.history) == 1, "Vote should have been processed"
+
+        # Verify the vote was converted to 'no' (0) instead of 'yes' (1)
+        assert vote.history[0] == 0, f"Expected 'no' vote (0), but got {vote.history[0]}"
+
+        # Verify Bob is not in the voted list (since he voted 'no')
+        assert bob not in vote.voted, "Bob should not be in voted list for a 'no' vote"
+
+        # Verify the position advanced (vote didn't hang)
+        assert vote.position == 1, f"Expected position 1, got {vote.position}"
+
+        # Verify the prevote count was decremented
+        assert vote.presetVotes[bob.user.id] == 0, "Prevote count should be decremented"
+
+
+@pytest.mark.asyncio
+async def test_prevote_yes_honored_for_alive_player(mock_discord_setup, setup_test_game):
+    """Test that a prevote of 'yes' from an alive player is honored.
+
+    This is a control test to ensure the fix doesn't break normal prevote behavior.
+    """
+    # Get players
+    alice = setup_test_game['players']['alice']  # nominee
+    bob = setup_test_game['players']['bob']  # alive player who will prevote
+    charlie = setup_test_game['players']['charlie']  # alive player
+
+    # Ensure Bob is alive
+    bob.is_ghost = False
+    bob.dead_votes = 0
+
+    # Create a mock message for vote announcements
+    mock_message = MockMessage(id=123, content="Vote announcement",
+                               channel=mock_discord_setup['channels']['town_square'],
+                               author=mock_discord_setup['members']['storyteller'])
+    mock_message.pin = AsyncMock()
+
+    with patch('utils.message_utils.safe_send', return_value=mock_message), \
+            patch.object(mock_discord_setup['channels']['town_square'], 'fetch_message',
+                         AsyncMock(return_value=mock_message)), \
+            patch('utils.character_utils.the_ability', return_value=None), \
+            patch('model.game.vote.in_play_voudon', return_value=False), \
+            patch.object(global_vars.game, 'update_seating_order_message', AsyncMock()):
+
+        # Set up global variables
+        global_vars.channel = mock_discord_setup['channels']['town_square']
+        global_vars.game = setup_test_game['game']
+
+        # Create vote instance
+        vote = setup_test_vote(setup_test_game['game'], alice, charlie, [bob, charlie, alice])
+        vote.position = 0  # Start with Bob
+
+        # Bob sets a prevote to 'yes'
+        vote.presetVotes[bob.user.id] = 1
+
+        # Mock end_vote to prevent completion
+        vote.end_vote = AsyncMock()
+
+        # Call call_next which should process Bob's prevote
+        await vote.call_next()
+
+        # Verify that a vote was processed
+        assert len(vote.history) == 1, "Vote should have been processed"
+
+        # Verify the vote was honored as 'yes' (1)
+        assert vote.history[0] == 1, f"Expected 'yes' vote (1), but got {vote.history[0]}"
+
+        # Verify Bob is in the voted list (since he voted 'yes')
+        assert bob in vote.voted, "Bob should be in voted list for a 'yes' vote"
+
+        # Verify the position advanced
+        assert vote.position == 1, f"Expected position 1, got {vote.position}"
+
+
+@pytest.mark.asyncio
+async def test_traveler_vote_allows_dead_player_yes_vote_without_dead_vote(mock_discord_setup, setup_test_game):
+    """Test that TravelerVote allows dead players to vote 'yes' on exile without needing a dead vote.
+
+    For traveler exiles, dead votes are not required - all players can vote.
+    """
+    # Get players
+    alice = setup_test_game['players']['alice']  # alive player
+    bob = setup_test_game['players']['bob']  # dead player who will prevote
+    charlie = setup_test_game['players']['charlie']  # traveler being exiled
+
+    # Import traveler character
+    from model.characters.specific import Beggar
+    charlie.character = Beggar(charlie)
+
+    # Set up Bob as a dead player without a dead vote
+    bob.is_ghost = True
+    bob.dead_votes = 0
+
+    # Create a mock message for vote announcements
+    mock_message = MockMessage(id=123, content="Exile vote announcement",
+                               channel=mock_discord_setup['channels']['town_square'],
+                               author=mock_discord_setup['members']['storyteller'])
+    mock_message.pin = AsyncMock()
+    mock_message.unpin = AsyncMock()
+
+    with patch('utils.message_utils.safe_send', return_value=mock_message), \
+            patch.object(mock_discord_setup['channels']['town_square'], 'fetch_message',
+                         AsyncMock(return_value=mock_message)), \
+            patch.object(global_vars.game, 'update_seating_order_message', AsyncMock()):
+
+        # Set up global variables
+        global_vars.channel = mock_discord_setup['channels']['town_square']
+        global_vars.game = setup_test_game['game']
+        global_vars.game.seatingOrder = [alice, bob, charlie]
+
+        # Create a mock day
+        mock_day = MagicMock()
+        mock_day.open_noms = AsyncMock()
+        mock_day.open_pms = AsyncMock()
+        mock_day.voteEndMessages = []
+        global_vars.game.days = [mock_day]
+
+        # Create traveler vote instance
+        vote = TravelerVote(charlie, alice)  # Alice nominates Charlie for exile
+        vote.position = 1  # Start with Bob (Bob is second in order after Alice)
+
+        # Bob sets a prevote to 'yes' for the traveler exile
+        vote.presetVotes[bob.user.id] = 1
+
+        # Mock end_vote to prevent completion
+        vote.end_vote = AsyncMock()
+
+        # Call call_next which should process Bob's prevote
+        await vote.call_next()
+
+        # Verify that a vote was processed
+        assert len(vote.history) == 1, "Vote should have been processed"
+
+        # Verify the vote was honored as 'yes' (1) for traveler exile
+        assert vote.history[0] == 1, f"Expected 'yes' vote (1) for traveler exile, but got {vote.history[0]}"
+
+        # Verify Bob is in the voted list (since he voted 'yes')
+        assert bob in vote.voted, "Bob should be in voted list for a 'yes' vote on traveler exile"
+
+        # Verify the position advanced
+        assert vote.position == 2, f"Expected position 2, got {vote.position}"
+

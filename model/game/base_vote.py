@@ -144,7 +144,7 @@ class BaseVote(ABC):
             vt: The vote weight (0 or 1)
         """
         # Manage hand state based on vote
-        if vt == 1:  # Yes vote
+        if vt > 0:  # Yes vote
             voter.hand_raised = True
         else:  # No vote
             voter.hand_raised = False
@@ -177,7 +177,17 @@ class BaseVote(ABC):
         if to_call_user_id in self.presetVotes:
             preset_player_vote = self.presetVotes[to_call_user_id]
             self.presetVotes[to_call_user_id] -= 1
-            await self.vote(int(preset_player_vote > 0), voter=to_call_player)
+
+            # Validate the preset vote - if 'yes' vote is invalid, convert to 'no'
+            vote_value = int(preset_player_vote > 0)
+            if vote_value > 0:  # Only validate 'yes' votes
+                allowed, reason = self._validate_vote(to_call_player, 1)
+                if not allowed:
+                    # Convert invalid 'yes' vote to 'no' vote
+                    vote_value = 0
+                    await message_utils.safe_send(to_call_player.user, reason)
+
+            await self.vote(vote_value, voter=to_call_player)
             return
 
         # Check if player should be skipped
@@ -189,8 +199,8 @@ class BaseVote(ABC):
         await message_utils.safe_send(global_vars.channel,
                                       f"{to_call_user.mention}, your vote on {nominee_name}. Current votes: {self.votes}.")
 
-        # Disable nomination buttons for this player while they vote
-        await nomination_buttons.disable_buttons_for_voter(to_call_user_id)
+        # Activate vote buttons for this player's turn to vote
+        await nomination_buttons.activate_vote_buttons_for_player(to_call_user_id)
 
         # Handle default votes
         global_settings: model.settings.GlobalSettings = model.settings.GlobalSettings.load()
@@ -253,12 +263,12 @@ class BaseVote(ABC):
             # Vote tracking
             self.history.append(vt)
             self.votes += self.values[voter][vt]
-            if vt == 1:
+            if vt > 0:
                 self.voted.append(voter)
         # end critical section with vote lock
 
         # Announcement
-        text = "yes" if vt == 1 else "no"
+        text = "yes" if vt > 0 else "no"
         self.announcements.append(
             (
                 await message_utils.safe_send(
