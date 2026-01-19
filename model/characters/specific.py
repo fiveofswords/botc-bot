@@ -609,7 +609,7 @@ class Assassin(base.Minion, base.DayStartModifier, base.DeathModifier):
                         await utils.message_utils.safe_send(origin, "Action cancelled!")
                         return False
                         
-                    from bot_impl import select_player
+                    from utils.player_utils import select_player
                     assassination_target = await select_player(origin, player_choice.content, global_vars.game.seatingOrder)
                     if assassination_target is None:
                         return False
@@ -681,7 +681,7 @@ class Witch(base.Minion, base.NominationModifier, base.DayStartModifier):
             await utils.message_utils.safe_send(origin, "Timed out.")
             return False
             
-        from bot_impl import select_player
+        from utils.player_utils import select_player
         person = await select_player(origin, reply.content, global_vars.game.seatingOrder)
         if person is None:
             return False
@@ -1003,7 +1003,7 @@ class Bureaucrat(base.Traveler, base.DayStartModifier, base.VoteBeginningModifie
             await utils.message_utils.safe_send(origin, "Timed out.")
             return
             
-        from bot_impl import select_player
+        from utils.player_utils import select_player
         person = await select_player(origin, reply.content, global_vars.game.seatingOrder)
         if person is None:
             return
@@ -1042,7 +1042,7 @@ class Thief(base.Traveler, base.DayStartModifier, base.VoteBeginningModifier):
             await utils.message_utils.safe_send(origin, "Timed out.")
             return
             
-        from bot_impl import select_player
+        from utils.player_utils import select_player
         person = await select_player(origin, reply.content, global_vars.game.seatingOrder)
         if person is None:
             return
@@ -1752,7 +1752,7 @@ class Lleech(base.Demon, base.DeathModifier, base.DayStartModifier):
             await utils.message_utils.safe_send(origin, "Timed out.")
             return False
             
-        from bot_impl import select_player
+        from utils.player_utils import select_player
         person = await select_player(origin, reply.content, global_vars.game.seatingOrder)
         if person is None:
             return False
