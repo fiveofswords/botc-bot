@@ -341,7 +341,7 @@ async def send_nomination_buttons_to_st_channels(nominee_name: str, nominator_na
             # Determine if this player can vote
             # When Voudon is active, only dead players and the Voudon can vote
             can_vote = True
-            if voudon_player and not player_obj.is_ghost and player_obj != voudon_player:
+            if voudon_player and not (player_obj.is_ghost or player_obj != voudon_player):
                 can_vote = False
 
             # Get the player's ST channel
