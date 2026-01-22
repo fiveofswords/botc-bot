@@ -302,8 +302,16 @@ class VoteNoButton(discord.ui.Button):
         await view._handle_vote(interaction, 0)
 
 
-async def send_nomination_buttons_to_st_channels(nominee_name: str, nominator_name: str, votes_needed: int):
-    """Send nomination buttons to all active player ST channels."""
+async def send_nomination_buttons_to_st_channels(nominee_name: str, nominator_name: str, votes_needed: int, is_exile: bool = False):
+    """Send nomination buttons to all active player ST channels.
+
+    Args:
+        nominee_name: Display name of the nominee
+        nominator_name: Display name of the nominator
+        votes_needed: Number of votes needed to execute/exile
+        is_exile: Whether this is an exile vote (Traveler). Exile votes are not affected
+                  by Voudon and dead players without ghost votes may vote on all exiles.
+    """
     if not global_vars.game or global_vars.game is game.NULL_GAME:
         return
 
@@ -323,14 +331,15 @@ async def send_nomination_buttons_to_st_channels(nominee_name: str, nominator_na
         if current_vote.position < len(current_vote.order):
             first_voter_id = current_vote.order[current_vote.position].user.id
 
-    # Check if Voudon is in play (affects who can vote)
-    voudon_player = in_play_voudon()
+    # Check if Voudon is in play (affects who can vote, but NOT for exile votes)
+    voudon_player = in_play_voudon() if not is_exile else None
 
     # Send to all players
     for player_obj in global_vars.game.seatingOrder:
         try:
             # Skip dead players without ghost votes (unless special abilities apply)
-            if player_obj.is_ghost and player_obj.dead_votes < 1:
+            # Exception: exile votes - all dead players can vote on exiles
+            if player_obj.is_ghost and player_obj.dead_votes < 1 and not is_exile:
                 player_banshee_ability = character_utils.the_ability(
                     player_obj.character, model.characters.Banshee
                 )
@@ -340,8 +349,9 @@ async def send_nomination_buttons_to_st_channels(nominee_name: str, nominator_na
 
             # Determine if this player can vote
             # When Voudon is active, only dead players and the Voudon can vote
+            # Exception: exile votes are not affected by Voudon
             can_vote = True
-            if voudon_player and not (player_obj.is_ghost or player_obj != voudon_player):
+            if voudon_player and not player_obj.is_ghost and player_obj != voudon_player:
                 can_vote = False
 
             # Get the player's ST channel
