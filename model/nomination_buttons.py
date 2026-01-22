@@ -4,8 +4,10 @@ import discord
 
 import bot_client
 import global_vars
+import model.characters
 from model import game, player
-from utils import message_utils, player_utils
+from model.game.vote import in_play_voudon
+from utils import character_utils, message_utils, player_utils
 
 # Global tracking of nomination button messages by player ID
 _active_nomination_messages: dict[int, tuple[discord.Message, 'NominationButtonsView']] = {}
@@ -321,6 +323,16 @@ async def send_nomination_buttons_to_st_channels(nominee_name: str, nominator_na
     # Send to all players
     for player_obj in global_vars.game.seatingOrder:
         try:
+            # Skip dead players without ghost votes (unless special abilities apply)
+            if player_obj.is_ghost and player_obj.dead_votes < 1:
+                player_banshee_ability = character_utils.the_ability(
+                    player_obj.character, model.characters.Banshee
+                )
+                player_is_active_banshee = player_banshee_ability and player_banshee_ability.is_screaming
+                voudon_is_active = in_play_voudon()
+                if not player_is_active_banshee and not voudon_is_active:
+                    continue
+
             # Get the player's ST channel
             st_channel_id = game_settings.get_st_channel(player_obj.user.id)
             if not st_channel_id:
