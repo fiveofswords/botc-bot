@@ -451,6 +451,10 @@ class Player:
         self.dead_votes += 1
         await global_vars.game.reseat(global_vars.game.seatingOrder)
 
+        # If there's an active vote, enable voting buttons for this player
+        import model.nomination_buttons
+        await model.nomination_buttons.enable_voting_for_player(self.user.id)
+
     async def remove_dead_vote(self) -> None:
         """Remove a dead vote from the player."""
         if self.dead_votes == 1:

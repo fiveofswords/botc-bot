@@ -337,7 +337,10 @@ async def send_nomination_buttons_to_st_channels(nominee_name: str, nominator_na
     # Send to all players
     for player_obj in global_vars.game.seatingOrder:
         try:
-            # Skip dead players without ghost votes (unless special abilities apply)
+            # Determine if this player can vote
+            can_vote = True
+
+            # Dead players without ghost votes can't vote (unless special abilities apply)
             # Exception: exile votes - all dead players can vote on exiles
             if player_obj.is_ghost and player_obj.dead_votes < 1 and not is_exile:
                 player_banshee_ability = character_utils.the_ability(
@@ -345,12 +348,10 @@ async def send_nomination_buttons_to_st_channels(nominee_name: str, nominator_na
                 )
                 player_is_active_banshee = player_banshee_ability and player_banshee_ability.is_screaming
                 if not player_is_active_banshee and not voudon_player:
-                    continue
+                    can_vote = False
 
-            # Determine if this player can vote
             # When Voudon is active, only dead players and the Voudon can vote
             # Exception: exile votes are not affected by Voudon
-            can_vote = True
             if voudon_player and not player_obj.is_ghost and player_obj != voudon_player:
                 can_vote = False
 
@@ -451,6 +452,28 @@ async def enable_buttons_for_voter(player_id: int) -> None:
 
     except Exception as e:
         bot_client.logger.error(f"Failed to re-enable buttons for player {player_id}: {e}")
+
+
+async def enable_voting_for_player(player_id: int) -> None:
+    """Re-enable voting buttons for a player who regained their ghost vote.
+
+    Called when a dead player gets their ghost vote back mid-vote.
+    """
+    if player_id not in _active_nomination_messages:
+        return
+
+    try:
+        message, view = _active_nomination_messages[player_id]
+
+        # Enable voting and refresh buttons
+        view.can_vote = True
+        view._setup_buttons()
+
+        await message.edit(view=view)
+        bot_client.logger.info(f"Enabled voting for player {player_id} (regained ghost vote)")
+
+    except Exception as e:
+        bot_client.logger.error(f"Failed to enable voting for player {player_id}: {e}")
 
 
 async def clear_nomination_messages() -> None:
