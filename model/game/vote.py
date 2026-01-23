@@ -122,6 +122,9 @@ class Vote(BaseVote):
 
     def _calculate_majority(self) -> int:
         """Calculate the majority needed for this vote type."""
+        # If a Voudon is in play and alive, majority is 1 (special rule)
+        if in_play_voudon():
+            return 1
         living_voters = [person for person in self.order if not person.is_ghost]
         return math.ceil(len(living_voters) / 2)
 
