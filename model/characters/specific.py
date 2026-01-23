@@ -609,7 +609,7 @@ class Assassin(base.Minion, base.DayStartModifier, base.DeathModifier):
                         await utils.message_utils.safe_send(origin, "Action cancelled!")
                         return False
                         
-                    from bot_impl import select_player
+                    from utils.player_utils import select_player
                     assassination_target = await select_player(origin, player_choice.content, global_vars.game.seatingOrder)
                     if assassination_target is None:
                         return False
@@ -656,21 +656,25 @@ class Witch(base.Minion, base.NominationModifier, base.DayStartModifier):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Witch"
+        self.witched = None
     
     def refresh(self):
         super().refresh()
         self.witched = None
     
     async def on_day_start(self, origin, kills):
+        self.witched = None
         if not global_vars.game.has_automated_life_and_death:
             return True
-            
+
         # todo: consider minions killed by vigormortis as active
         if self.parent.is_ghost == True or self.parent in kills:
             self.witched = None
             return True
 
-        msg = await utils.message_utils.safe_send(origin, "Who is witched?")
+        people_alive = len([p for p in global_vars.game.seatingOrder if not p.is_ghost and p not in kills])
+        inquiry_to_storyteller = "Who is witched?" if people_alive > 3 else "Who is witched? (Will not affect anything if there are no longer at least 4 alive.)"
+        msg = await utils.message_utils.safe_send(origin, inquiry_to_storyteller)
         try:
             reply = await bot_client.client.wait_for(
                 "message",
@@ -681,7 +685,7 @@ class Witch(base.Minion, base.NominationModifier, base.DayStartModifier):
             await utils.message_utils.safe_send(origin, "Timed out.")
             return False
             
-        from bot_impl import select_player
+        from utils.player_utils import select_player
         person = await select_player(origin, reply.content, global_vars.game.seatingOrder)
         if person is None:
             return False
@@ -692,7 +696,12 @@ class Witch(base.Minion, base.NominationModifier, base.DayStartModifier):
     async def on_nomination(self, nominee, nominator, proceed):
         if not global_vars.game.has_automated_life_and_death:
             return proceed
-            
+
+        # if there are less than four players alive, the witch does not kill
+        alive_players = [p for p in global_vars.game.seatingOrder if not p.is_ghost]
+        if len(alive_players) < 4:
+            return proceed
+
         if (
             self.witched
             and self.witched == nominator
@@ -1003,7 +1012,7 @@ class Bureaucrat(base.Traveler, base.DayStartModifier, base.VoteBeginningModifie
             await utils.message_utils.safe_send(origin, "Timed out.")
             return
             
-        from bot_impl import select_player
+        from utils.player_utils import select_player
         person = await select_player(origin, reply.content, global_vars.game.seatingOrder)
         if person is None:
             return
@@ -1042,7 +1051,7 @@ class Thief(base.Traveler, base.DayStartModifier, base.VoteBeginningModifier):
             await utils.message_utils.safe_send(origin, "Timed out.")
             return
             
-        from bot_impl import select_player
+        from utils.player_utils import select_player
         person = await select_player(origin, reply.content, global_vars.game.seatingOrder)
         if person is None:
             return
@@ -1752,7 +1761,7 @@ class Lleech(base.Demon, base.DeathModifier, base.DayStartModifier):
             await utils.message_utils.safe_send(origin, "Timed out.")
             return False
             
-        from bot_impl import select_player
+        from utils.player_utils import select_player
         person = await select_player(origin, reply.content, global_vars.game.seatingOrder)
         if person is None:
             return False
