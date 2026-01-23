@@ -4,8 +4,10 @@ import discord
 
 import bot_client
 import global_vars
+import model.characters
 from model import game, player
-from utils import message_utils, player_utils
+from model.game.vote import in_play_voudon
+from utils import character_utils, message_utils, player_utils
 
 # Global tracking of nomination button messages by player ID
 _active_nomination_messages: dict[int, tuple[discord.Message, 'NominationButtonsView']] = {}
@@ -14,13 +16,14 @@ _active_nomination_messages: dict[int, tuple[discord.Message, 'NominationButtons
 class NominationButtonsView(discord.ui.View):
     """View with buttons for prevoting and hand raising during nominations."""
 
-    def __init__(self, nominee_name: str, nominator_name: str, votes_needed: int, player_id: int):
+    def __init__(self, nominee_name: str, nominator_name: str, votes_needed: int, player_id: int, can_vote: bool = True):
         super().__init__(timeout=None)
         self.nominee_name = nominee_name
         self.nominator_name = nominator_name
         self.votes_needed = votes_needed
         self.player_id = player_id  # ID of the player this ST channel belongs to
         self.is_voting_turn = False  # Track if it's this player's turn to vote
+        self.can_vote = can_vote  # Whether this player can vote (False for alive non-Voudon when Voudon is active)
         self._setup_buttons()
 
     def _get_current_vote(self) -> game.base_vote.BaseVote | None:
@@ -45,8 +48,9 @@ class NominationButtonsView(discord.ui.View):
         """Set up the initial button layout."""
         self.clear_items()
         preset_value = self._player_preset_value()
-        self.add_item(PrevoteYesButton(is_active=bool(preset_value)))
-        self.add_item(PrevoteNoButton(is_active=(preset_value == 0)))
+        # Disable prevote buttons if player can't vote (e.g., alive non-Voudon when Voudon is active)
+        self.add_item(PrevoteYesButton(is_active=bool(preset_value), disabled=not self.can_vote))
+        self.add_item(PrevoteNoButton(is_active=(preset_value == 0), disabled=not self.can_vote))
         self.add_item(RaiseHandButton(self._player_hand_raised()))
 
     def _player_hand_raised(self) -> bool:
@@ -75,9 +79,10 @@ class NominationButtonsView(discord.ui.View):
         self.add_item(prevote_no)
         self.add_item(raise_hand)
 
-        # Row 2: Vote buttons
-        self.add_item(VoteYesButton(row=1))
-        self.add_item(VoteNoButton(row=1))
+        # Row 2: Vote buttons (only if player can vote)
+        if self.can_vote:
+            self.add_item(VoteYesButton(row=1))
+            self.add_item(VoteNoButton(row=1))
 
     async def _handle_prevote(self, interaction: discord.Interaction, vote_value: str):
         """Handle prevote button clicks using existing presetvote logic."""
@@ -297,8 +302,16 @@ class VoteNoButton(discord.ui.Button):
         await view._handle_vote(interaction, 0)
 
 
-async def send_nomination_buttons_to_st_channels(nominee_name: str, nominator_name: str, votes_needed: int):
-    """Send nomination buttons to all active player ST channels."""
+async def send_nomination_buttons_to_st_channels(nominee_name: str, nominator_name: str, votes_needed: int, is_exile: bool = False):
+    """Send nomination buttons to all active player ST channels.
+
+    Args:
+        nominee_name: Display name of the nominee
+        nominator_name: Display name of the nominator
+        votes_needed: Number of votes needed to execute/exile
+        is_exile: Whether this is an exile vote (Traveler). Exile votes are not affected
+                  by Voudon and dead players without ghost votes may vote on all exiles.
+    """
     if not global_vars.game or global_vars.game is game.NULL_GAME:
         return
 
@@ -318,9 +331,30 @@ async def send_nomination_buttons_to_st_channels(nominee_name: str, nominator_na
         if current_vote.position < len(current_vote.order):
             first_voter_id = current_vote.order[current_vote.position].user.id
 
+    # Check if Voudon is in play (affects who can vote, but NOT for exile votes)
+    voudon_player = in_play_voudon() if not is_exile else None
+
     # Send to all players
     for player_obj in global_vars.game.seatingOrder:
         try:
+            # Determine if this player can vote
+            can_vote = True
+
+            # Dead players without ghost votes can't vote (unless special abilities apply)
+            # Exception: exile votes - all dead players can vote on exiles
+            if player_obj.is_ghost and player_obj.dead_votes < 1 and not is_exile:
+                player_banshee_ability = character_utils.the_ability(
+                    player_obj.character, model.characters.Banshee
+                )
+                player_is_active_banshee = player_banshee_ability and player_banshee_ability.is_screaming
+                if not player_is_active_banshee and not voudon_player:
+                    can_vote = False
+
+            # When Voudon is active, only dead players and the Voudon can vote
+            # Exception: exile votes are not affected by Voudon
+            if voudon_player and not player_obj.is_ghost and player_obj != voudon_player:
+                can_vote = False
+
             # Get the player's ST channel
             st_channel_id = game_settings.get_st_channel(player_obj.user.id)
             if not st_channel_id:
@@ -334,12 +368,12 @@ async def send_nomination_buttons_to_st_channels(nominee_name: str, nominator_na
             if player_obj.user.id == first_voter_id:
                 # This player's turn to vote - send voting turn message
                 message_content = f"**{player_obj.display_name}, it's your turn to vote!**\n\n{nominee_name} has been nominated by {nominator_name}. {votes_needed} to execute"
-                view = NominationButtonsView(nominee_name, nominator_name, votes_needed, player_obj.user.id)
+                view = NominationButtonsView(nominee_name, nominator_name, votes_needed, player_obj.user.id, can_vote)
                 view.update_for_voting_turn()  # Set up voting buttons immediately
             else:
                 # Regular prevote message for other players
                 message_content = f"**Please set a prevote**\n\n{nominee_name} has been nominated by {nominator_name}. {votes_needed} to execute"
-                view = NominationButtonsView(nominee_name, nominator_name, votes_needed, player_obj.user.id)
+                view = NominationButtonsView(nominee_name, nominator_name, votes_needed, player_obj.user.id, can_vote)
 
             message = await message_utils.safe_send(st_channel, message_content, view=view)
             if message:
@@ -418,6 +452,28 @@ async def enable_buttons_for_voter(player_id: int) -> None:
 
     except Exception as e:
         bot_client.logger.error(f"Failed to re-enable buttons for player {player_id}: {e}")
+
+
+async def enable_voting_for_player(player_id: int) -> None:
+    """Re-enable voting buttons for a player who regained their ghost vote.
+
+    Called when a dead player gets their ghost vote back mid-vote.
+    """
+    if player_id not in _active_nomination_messages:
+        return
+
+    try:
+        message, view = _active_nomination_messages[player_id]
+
+        # Enable voting and refresh buttons
+        view.can_vote = True
+        view._setup_buttons()
+
+        await message.edit(view=view)
+        bot_client.logger.info(f"Enabled voting for player {player_id} (regained ghost vote)")
+
+    except Exception as e:
+        bot_client.logger.error(f"Failed to enable voting for player {player_id}: {e}")
 
 
 async def clear_nomination_messages() -> None:

@@ -178,7 +178,7 @@ class Day:
             votes_needed = int(math.ceil(self.votes[-1].majority))
 
             await model.nomination_buttons.send_nomination_buttons_to_st_channels(
-                nominee_name, nominator_name, votes_needed
+                nominee_name, nominator_name, votes_needed, is_exile=True
             )
         else:
             nominee.can_be_nominated = False
