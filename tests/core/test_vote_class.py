@@ -895,29 +895,29 @@ async def test_end_vote_lowers_hands(mock_discord_setup, setup_test_game):
     global_vars.game = game_fixture
 
     # Mock parts of end_vote that are not relevant to this test to avoid side effects
-    vote_fixture.announcements = [] # To avoid errors with unpinning non-existent messages
-    global_vars.game.days = [MagicMock()] # Mock days list
-    global_vars.game.days[-1].open_noms = AsyncMock() # Mock open_noms
-    global_vars.game.days[-1].open_pms = AsyncMock() # Mock open_pms
-    global_vars.game.days[-1].voteEndMessages = [] # Mock voteEndMessages
-    global_vars.game.days[-1].aboutToDie = None # Mock aboutToDie
+    vote_fixture.announcements = []  # To avoid errors with unpinning non-existent messages
+    global_vars.game.days = [MagicMock()]  # Mock days list
+    global_vars.game.days[-1].open_noms = AsyncMock()  # Mock open_noms
+    global_vars.game.days[-1].open_pms = AsyncMock()  # Mock open_pms
+    global_vars.game.days[-1].voteEndMessages = []  # Mock voteEndMessages
+    global_vars.game.days[-1].aboutToDie = None  # Mock aboutToDie
 
     # Ensure players exist in seatingOrder for the test
-    if not game_fixture.seatingOrder: # Ensure seating order is not empty
+    if not game_fixture.seatingOrder:  # Ensure seating order is not empty
         game_fixture.seatingOrder = [alice, bob]
 
     player1 = game_fixture.seatingOrder[0]
     player2 = game_fixture.seatingOrder[1] if len(game_fixture.seatingOrder) > 1 else player1
 
     player1.hand_raised = True
-    if player1 != player2: # Ensure player2 is different if possible
+    if player1 != player2:  # Ensure player2 is different if possible
         player2.hand_raised = True
 
     # Initial update of seating order message (simulating it exists)
     # We need to mock the message object that update_seating_order_message would interact with
     mock_message = MockMessage(id=999, content="Initial seating order",
-                                       channel=mock_discord_setup['channels']['town_square'],
-                                       author=mock_discord_setup['members']['storyteller'])
+                               channel=mock_discord_setup['channels']['town_square'],
+                               author=mock_discord_setup['members']['storyteller'])
     game_fixture.seatingOrderMessage = mock_message
     # Patch safe_send used by update_seating_order_message if it creates a new message
     # or edit if it edits an existing one. For this test, we assume it edits game_fixture.seatingOrderMessage
@@ -931,8 +931,8 @@ async def test_end_vote_lowers_hands(mock_discord_setup, setup_test_game):
         # We need to patch safe_send because end_vote sends messages
         with patch('utils.message_utils.safe_send', new_callable=AsyncMock,
                    return_value=MockMessage(id=111, content="Vote ended",
-                                                    channel=mock_discord_setup['channels']['town_square'],
-                                                    author=mock_discord_setup['members']['storyteller'])):
+                                            channel=mock_discord_setup['channels']['town_square'],
+                                            author=mock_discord_setup['members']['storyteller'])):
             await vote_fixture.end_vote()
 
         # Assert
@@ -961,7 +961,6 @@ async def test_end_vote_lowers_hands(mock_discord_setup, setup_test_game):
         if game_fixture.seatingOrderMessage:
             game_fixture.seatingOrderMessage.content = "Seating order: " + ", ".join(current_display)
 
-
         assert "✋" not in game_fixture.seatingOrderMessage.content, \
             f"Hand emoji found in message content: {game_fixture.seatingOrderMessage.content}"
 
@@ -971,18 +970,18 @@ async def test_vote_sets_hand_and_locks(mock_discord_setup, setup_test_game):
     """Test that voting sets hand state, locks the hand, and updates seating message."""
     # Arrange
     game_fixture = setup_test_game['game']
-    alice = setup_test_game['players']['alice'] # Nominee
-    bob = setup_test_game['players']['bob']   # Nominator
-    charlie = setup_test_game['players']['charlie'] # Voter
+    alice = setup_test_game['players']['alice']  # Nominee
+    bob = setup_test_game['players']['bob']  # Nominator
+    charlie = setup_test_game['players']['charlie']  # Voter
 
     # Ensure charlie is in seating order and next to vote for this test
     game_fixture.seatingOrder = [charlie, alice, bob]
     vote_fixture = setup_test_vote(game_fixture, alice, bob)
     vote_fixture.order = [charlie, alice, bob]
-    vote_fixture.position = 0 # Charlie is voting
+    vote_fixture.position = 0  # Charlie is voting
 
     voting_player = vote_fixture.order[vote_fixture.position]
-    assert voting_player == charlie # Ensure correct player is set up
+    assert voting_player == charlie  # Ensure correct player is set up
 
     # Mock global_vars and methods that vote() might call to avoid side effects not relevant to this test
     global_vars.game = game_fixture
@@ -995,8 +994,8 @@ async def test_vote_sets_hand_and_locks(mock_discord_setup, setup_test_game):
 
     # Mock message fetching for pinning, as vote() tries to pin announcement messages
     mock_pinned_message = MockMessage(id=12345, content="Nomination announcement",
-                                              channel=mock_discord_setup['channels']['town_square'],
-                                              author=mock_discord_setup['members']['storyteller'])
+                                      channel=mock_discord_setup['channels']['town_square'],
+                                      author=mock_discord_setup['members']['storyteller'])
     mock_pinned_message.pin = AsyncMock()
 
     initial_hand_state = voting_player.hand_raised
@@ -1019,7 +1018,7 @@ async def test_vote_sets_hand_and_locks(mock_discord_setup, setup_test_game):
     voting_player.hand_locked_for_vote = initial_lock_state
 
     # Reset vote_fixture state for the next vote by the same player
-    vote_fixture.position = 0 # Reset position to charlie
+    vote_fixture.position = 0  # Reset position to charlie
     vote_fixture.history = []
     vote_fixture.voted = []
     vote_fixture.votes = 0
@@ -1141,7 +1140,6 @@ class TestVoteRaceConditions:
         assert isinstance(vote._vote_lock, asyncio.Lock)
         assert not vote._vote_lock.locked()
 
-
     @pytest.mark.asyncio
     async def test_vote_lock_prevents_race_condition_state_corruption(self, mock_discord_setup, setup_test_game):
         """Test that the lock prevents state corruption from race conditions."""
@@ -1240,7 +1238,7 @@ class TestVoteRaceConditions:
             assert vote.history[1] == 0
             assert vote.position == 2  # Moved past all voters
             assert charlie not in vote.voted  # Charlie voted no
-            
+
     @pytest.mark.asyncio
     async def test_player_and_storyteller_simultaneous_vote(self, mock_discord_setup, setup_test_game):
         """Test race condition when player and storyteller vote simultaneously.
@@ -1361,7 +1359,6 @@ async def test_prevote_yes_converted_to_no_for_dead_player_without_dead_vote(moc
             patch('utils.character_utils.the_ability', return_value=None), \
             patch('model.game.vote.in_play_voudon', return_value=False), \
             patch.object(global_vars.game, 'update_seating_order_message', AsyncMock()):
-
         # Set up global variables
         global_vars.channel = mock_discord_setup['channels']['town_square']
         global_vars.game = setup_test_game['game']
@@ -1422,7 +1419,6 @@ async def test_prevote_yes_honored_for_alive_player(mock_discord_setup, setup_te
             patch('utils.character_utils.the_ability', return_value=None), \
             patch('model.game.vote.in_play_voudon', return_value=False), \
             patch.object(global_vars.game, 'update_seating_order_message', AsyncMock()):
-
         # Set up global variables
         global_vars.channel = mock_discord_setup['channels']['town_square']
         global_vars.game = setup_test_game['game']
@@ -1483,7 +1479,6 @@ async def test_traveler_vote_allows_dead_player_yes_vote_without_dead_vote(mock_
             patch.object(mock_discord_setup['channels']['town_square'], 'fetch_message',
                          AsyncMock(return_value=mock_message)), \
             patch.object(global_vars.game, 'update_seating_order_message', AsyncMock()):
-
         # Set up global variables
         global_vars.channel = mock_discord_setup['channels']['town_square']
         global_vars.game = setup_test_game['game']
@@ -1521,3 +1516,18 @@ async def test_traveler_vote_allows_dead_player_yes_vote_without_dead_vote(mock_
         # Verify the position advanced
         assert vote.position == 2, f"Expected position 2, got {vote.position}"
 
+
+@pytest.mark.asyncio
+async def test_voudon_initial_majority(mock_discord_setup, setup_test_game):
+    """A living Voudon in play makes the initial majority for a Vote equal to 1."""
+    # Arrange
+    global_vars.game = setup_test_game['game']
+    alice = setup_test_game['players']['alice']
+    bob = setup_test_game['players']['bob']
+    charlie = setup_test_game['players']['charlie']
+    global_vars.game.seatingOrder = [alice, bob, charlie]
+
+    # Act / Assert
+    with patch('model.game.vote.in_play_voudon', return_value=alice):
+        vote = Vote(nominee=bob, nominator=alice)
+        assert vote.majority == 1
