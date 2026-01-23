@@ -20,7 +20,9 @@ class TravelerVote(BaseVote):
 
     def _calculate_majority(self) -> int:
         """Calculate the majority needed for this vote type."""
-        return math.ceil(len(self.order) / 2)
+
+        total_players = len(global_vars.game.seatingOrder)
+        return math.ceil(total_players / 2)
 
     def _determine_outcome(self) -> VoteOutcome:
         """Determine the outcome of the vote."""

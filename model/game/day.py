@@ -102,22 +102,17 @@ class Day:
         if not nominee:
             self.votes.append(Vote(nominee, nominator))
             if self.aboutToDie is not None:
+                votes_needed = int(math.ceil((max(self.aboutToDie[1].votes + 1, self.votes[-1].majority))))
+            else:
+                votes_needed = int(math.ceil(self.votes[-1].majority))
+            if self.aboutToDie is not None:
                 announcement = await message_utils.safe_send(
                     global_vars.channel,
                     "{}, the storytellers have been nominated by {}. {} to tie, {} to execute.".format(
                         global_vars.player_role.mention,
                         nominator.display_name if nominator else "the storytellers",
-                        str(
-                            int(
-                                math.ceil(
-                                    max(
-                                        self.aboutToDie[1].votes,
-                                        self.votes[-1].majority,
-                                    )
-                                )
-                            )
-                        ),
-                        str(int(math.ceil(self.aboutToDie[1].votes + 1))),
+                        str(int(self.aboutToDie[1].votes)),
+                        str(votes_needed),
                     ),
                 )
             else:
@@ -126,7 +121,7 @@ class Day:
                     "{}, the storytellers have been nominated by {}. {} to execute.".format(
                         global_vars.player_role.mention,
                         nominator.display_name if nominator else "the storytellers",
-                        str(int(math.ceil(self.votes[-1].majority))),
+                        str(votes_needed),
                     ),
                 )
             await announcement.pin()
@@ -136,11 +131,6 @@ class Day:
             # Send nomination buttons to ST channels for storyteller nominations
             nominee_name = "the storytellers"
             nominator_name = nominator.display_name if nominator else "the storytellers"
-
-            if self.aboutToDie is not None:
-                votes_needed = int(math.ceil(self.aboutToDie[1].votes + 1))
-            else:
-                votes_needed = int(math.ceil(self.votes[-1].majority))
 
             await model.nomination_buttons.send_nomination_buttons_to_st_channels(
                 nominee_name, nominator_name, votes_needed
@@ -195,6 +185,11 @@ class Day:
             if not proceed:
                 # do not proceed with collecting votes
                 return
+            # Calculate votes needed based on whether there's already someone about to die
+            if self.aboutToDie is not None:
+                votes_needed = int(math.ceil((max(self.aboutToDie[1].votes + 1, self.votes[-1].majority))))
+            else:
+                votes_needed = int(math.ceil(self.votes[-1].majority))
             if self.aboutToDie is not None:
                 announcement = await message_utils.safe_send(
                     global_vars.channel,
@@ -204,17 +199,8 @@ class Day:
                         if not nominee.user in global_vars.gamemaster_role.members
                         else "the storytellers",
                         nominator.display_name if nominator else "the storytellers",
-                        str(
-                            int(
-                                math.ceil(
-                                    max(
-                                        self.aboutToDie[1].votes,
-                                        self.votes[-1].majority,
-                                    )
-                                )
-                            )
-                        ),
-                        str(int(math.ceil(self.aboutToDie[1].votes + 1))),
+                        str(int(self.aboutToDie[1].votes)),
+                        str(votes_needed),
                     ),
                 )
             else:
@@ -226,7 +212,7 @@ class Day:
                         if not nominee.user in global_vars.gamemaster_role.members
                         else "the storytellers",
                         nominator.display_name if nominator else "the storytellers",
-                        str(int(math.ceil(self.votes[-1].majority))),
+                        str(votes_needed),
                     ),
                 )
             await announcement.pin()
@@ -236,12 +222,6 @@ class Day:
             # Send nomination buttons to ST channels for active players
             nominee_name = nominee.display_name if nominee.user not in global_vars.gamemaster_role.members else "the storytellers"
             nominator_name = nominator.display_name if nominator else "the storytellers"
-
-            # Calculate votes needed based on whether there's already someone about to die
-            if self.aboutToDie is not None:
-                votes_needed = int(math.ceil(self.aboutToDie[1].votes + 1))
-            else:
-                votes_needed = int(math.ceil(self.votes[-1].majority))
 
             await model.nomination_buttons.send_nomination_buttons_to_st_channels(
                 nominee_name, nominator_name, votes_needed

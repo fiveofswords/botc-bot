@@ -122,7 +122,11 @@ class Vote(BaseVote):
 
     def _calculate_majority(self) -> int:
         """Calculate the majority needed for this vote type."""
-        living_voters = [person for person in self.order if not person.is_ghost]
+        # If a Voudon is in play and alive, majority is 1 (special rule)
+        if in_play_voudon():
+            return 1
+        # Use the game's seating order for counting unique living players
+        living_voters = [person for person in global_vars.game.seatingOrder if not person.is_ghost]
         return math.ceil(len(living_voters) / 2)
 
     def _determine_outcome(self) -> VoteOutcome:
@@ -208,17 +212,21 @@ class Vote(BaseVote):
 
     def _should_skip_voter(self, voter: 'model.player.Player') -> bool:
         """Check if a player should be skipped (not asked to vote)."""
-        player_banshee_ability = character_utils.the_ability(voter.character, model.characters.Banshee)
-        player_is_active_banshee = player_banshee_ability and player_banshee_ability.is_screaming
-        voudon_is_active = in_play_voudon()
 
         # Call vote modifiers
         for person in global_vars.game.seatingOrder:
             if isinstance(person.character, model.characters.VoteModifier):
                 person.character.on_vote_call(voter)
 
+        the_voudon = in_play_voudon()
+        if the_voudon:
+           #  only the dead and the voudon may vote, so skip the rest
+           return not ((voter == the_voudon) or voter.is_ghost)
+
         # Skip ghosts without dead votes (unless they have special abilities)
-        return voter.is_ghost and voter.dead_votes < 1 and not player_is_active_banshee and not voudon_is_active
+        player_banshee_ability = character_utils.the_ability(voter.character, model.characters.Banshee)
+        player_is_active_banshee = player_banshee_ability and player_banshee_ability.is_screaming
+        return voter.is_ghost and voter.dead_votes < 1 and not player_is_active_banshee and not the_voudon
 
     # Helper methods
     async def _update_previous_about_to_die_message(self, suffix: str) -> None:
