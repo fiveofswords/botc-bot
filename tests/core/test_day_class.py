@@ -786,7 +786,6 @@ class TestAnnouncementAndOutcomeConsistency:
         # Calculate expected thresholds (as day.nomination would)
         with patch('model.game.vote.in_play_voudon', return_value=None):
             test_vote = Vote(nominee=bob, nominator=charlie)
-            majority = test_vote.majority  # 2
             announced_execute = 3  # max(3, 2) = 3
             announced_tie = prev_vote.votes  # 2
 
