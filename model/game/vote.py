@@ -125,7 +125,8 @@ class Vote(BaseVote):
         # If a Voudon is in play and alive, majority is 1 (special rule)
         if in_play_voudon():
             return 1
-        living_voters = [person for person in self.order if not person.is_ghost]
+        # Use the game's seating order for counting unique living players
+        living_voters = [person for person in global_vars.game.seatingOrder if not person.is_ghost]
         return math.ceil(len(living_voters) / 2)
 
     def _determine_outcome(self) -> VoteOutcome:
