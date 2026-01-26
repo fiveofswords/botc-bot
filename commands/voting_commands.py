@@ -2,8 +2,12 @@
 
 import discord
 
+import global_vars
+import model.game
+import model.nomination_buttons
 from commands.command_enums import HelpSection, UserType, GamePhase
 from commands.registry import registry, CommandArgument
+from utils import message_utils, game_utils
 
 
 @registry.command(
@@ -12,11 +16,34 @@ from commands.registry import registry, CommandArgument
     help_sections=[HelpSection.MISC],
     user_types=[UserType.STORYTELLER],
     required_phases=[GamePhase.DAY],  # Day only
-    implemented=False
 )
 async def cancelnomination_command(message: discord.Message, argument: str):
     """Cancel the current nomination and vote."""
-    raise NotImplementedError("Registry implementation not ready - using bot_impl")
+    if not global_vars.game.days[-1].votes or global_vars.game.days[-1].votes[-1].done:
+        await message_utils.safe_send(message.author, "There's no vote right now.")
+        return
+
+    # Reset hand status for all players
+    for player_in_game in global_vars.game.seatingOrder:
+        player_in_game.hand_raised = False
+        player_in_game.hand_locked_for_vote = False
+
+    await global_vars.game.update_seating_order_message()
+    current_nomination = global_vars.game.days[-1].votes[-1]
+    nominator = current_nomination.nominator
+    if nominator:
+        nominator.can_nominate = True
+
+    await current_nomination.delete()
+    await global_vars.game.days[-1].open_pms()
+    await global_vars.game.days[-1].open_noms()
+    await message_utils.safe_send(global_vars.channel, "Nomination canceled!")
+
+    # Clear nomination button messages from ST channels
+    await model.nomination_buttons.clear_nomination_messages()
+
+    if global_vars.game is not model.game.NULL_GAME:
+        game_utils.backup("current_game.pckl")
 
 
 @registry.command(
