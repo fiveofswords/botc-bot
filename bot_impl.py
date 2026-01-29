@@ -208,10 +208,12 @@ async def on_message(message):
                 is_exile = isinstance(vote, TravelerVote)
                 voter_is_voudon = voting_player == voudon_in_play
                 voter_is_dead = voting_player.is_ghost
-                if not is_exile and (vt > 0 and voudon_in_play and (not (voter_is_voudon or voter_is_dead))):
-                    await message_utils.safe_send(global_vars.channel,
-                                                  "Voudon is in play. Only the Voudon and dead may vote.")
-                    return
+                if not is_exile:
+                    if (voudon_in_play and vt > 0):
+                        if (not (voter_is_voudon or voter_is_dead)):
+                            await message_utils.safe_send(global_vars.channel,
+                                                          "Voudon is in play. Only the Voudon and dead may vote.")
+                            return
 
                 await vote.vote(vt, voter=voting_player)
                 if global_vars.game is not game.NULL_GAME:
