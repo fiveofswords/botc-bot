@@ -212,6 +212,51 @@ async def test_on_message_vote_command(mock_discord_setup, setup_test_game):
 
 
 @pytest.mark.asyncio
+async def test_living_non_voudon_can_vote_on_traveler_exile(mock_discord_setup, setup_test_game):
+    """A living non-Voudon player should be able to vote when the nomination is a Traveler exile."""
+    await setup_test_game['game'].start_day()
+
+    # For the purpose of this test we can treat Charlie as the nominee for a traveler exile
+    charlie_player = setup_test_game['players']['charlie']
+
+    # Import TravelerVote and set up an exile vote
+    from model.game.traveler_vote import TravelerVote
+    vote = TravelerVote(
+        charlie_player,  # Nominee (traveler)
+        setup_test_game['players']['bob']  # Nominator
+    )
+    setup_test_game['game'].days[-1].votes.append(vote)
+
+    # Make current voter Alice and ensure she is a living non-voudon
+    vote.position = 0
+    vote.order = [setup_test_game['players']['alice'], setup_test_game['players']['bob'], charlie_player]
+
+    # Alice votes
+    alice_vote = MockMessage(
+        id=6,
+        content="@vote yes",
+        channel=mock_discord_setup['channels']['town_square'],
+        author=mock_discord_setup['members']['alice'],
+        guild=mock_discord_setup['guild']
+    )
+
+    # Mock the vote method so we can assert it was invoked
+    original_vote = vote.vote
+    vote.vote = AsyncMock()
+
+    with patch('model.game.vote.in_play_voudon', return_value=charlie_player):
+        with patch('utils.player_utils.get_player', return_value=setup_test_game['players']['alice']):
+            with patch('utils.game_utils.backup', return_value=None), patch('utils.message_utils.safe_send', new_callable=AsyncMock), patch('bot_client.client', MagicMock()):
+                await on_message(alice_vote)
+
+                # Verify vote was called for Alice
+                vote.vote.assert_called_once_with(1, voter=setup_test_game['players']['alice'])
+
+    # Restore original vote implementation
+    vote.vote = original_vote
+
+
+@pytest.mark.asyncio
 async def test_on_message_inactive_game(mock_discord_setup):
     """Test that commands are rejected when no game is active."""
     # Set game to NULL_GAME to test inactive game handling
@@ -637,8 +682,7 @@ async def test_on_message_direct_nominate_command(mock_discord_setup, setup_test
     # Process the message
     with patch('utils.player_utils.select_player', return_value=setup_test_game['players']['charlie']):
         with patch('utils.game_utils.backup', return_value=None), patch('utils.message_utils.safe_send',
-                                                                new_callable=AsyncMock), patch(
-                'bot_client.client', MagicMock()):
+                                                                new_callable=AsyncMock):
             await on_message(alice_message)
 
             # Verify nomination was called with correct args
@@ -954,7 +998,6 @@ async def test_complete_voting_workflow(mock_discord_setup, setup_test_game):
     vote.vote.side_effect = final_vote_side_effect
 
     # Mock functions for execution
-    from model.player import Player
     original_kill = Player.kill
     Player.kill = AsyncMock(return_value=True)
 
@@ -1530,7 +1573,6 @@ async def test_end_to_end_nomination_vote_execution(mock_discord_setup, setup_te
     vote.vote.side_effect = bob_vote_effect
 
     # Mock functions for execution
-    from model.player import Player
     original_kill = Player.kill
     Player.kill = AsyncMock(return_value=True)
 
@@ -2572,7 +2614,6 @@ async def test_setatheist_command(mock_discord_setup, setup_test_game):
     """Test the setatheist command."""
     # Create a direct message channel for storyteller
     st_dm_channel = MockChannel(400, "dm-storyteller")
-    st_dm_channel.guild = None  # Simulate DM
 
     # 1. Test enabling atheist mode
     setatheist_on_message = MockMessage(

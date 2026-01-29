@@ -23,6 +23,7 @@ import model.player
 import model.settings
 import time_utils
 from commands.registry import registry
+from model import TravelerVote
 from model.game import game
 from utils import player_utils, message_utils, update_presence, text_utils, character_utils, game_utils
 
@@ -203,10 +204,16 @@ async def on_message(message):
 
                 vt = int(argument == "yes" or argument == "y")
                 voudon_in_play = model.game.vote.in_play_voudon()
-                if vt > 0 and voudon_in_play and voting_player != voudon_in_play and not voting_player.is_ghost:
-                    await message_utils.safe_send(global_vars.channel,
-                                                  "Voudon is in play. Only the Voudon and dead may vote.")
-                    return
+                # voudon restricts votes on execution of players to only voudon and the dead players, but anyone may vote on exile of a traveler.
+                is_exile = isinstance(vote, TravelerVote)
+                voter_is_voudon = voting_player == voudon_in_play
+                voter_is_dead = voting_player.is_ghost
+                if not is_exile:
+                    if (voudon_in_play and vt > 0):
+                        if (not (voter_is_voudon or voter_is_dead)):
+                            await message_utils.safe_send(global_vars.channel,
+                                                          "Voudon is in play. Only the Voudon and dead may vote.")
+                            return
 
                 await vote.vote(vt, voter=voting_player)
                 if global_vars.game is not game.NULL_GAME:
