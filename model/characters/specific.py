@@ -988,6 +988,14 @@ class Gnome(base.Traveler):
         self.role_name = "Gnome"
 
 
+class Cacklejack(base.Traveler):
+    """The Cacklejack."""
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.role_name = "Cacklejack"
+
+
 class Bureaucrat(base.Traveler, base.DayStartModifier, base.VoteBeginningModifier):
     """The bureaucrat."""
     
