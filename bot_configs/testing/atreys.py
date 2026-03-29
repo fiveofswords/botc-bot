@@ -18,4 +18,4 @@ OBSERVER_ROLE = "observer"
 
 CHANNEL_SUFFIX = "debugbotc"
 
-PREFIXES = (',', '@')
+PREFIXES = ('@', ',')

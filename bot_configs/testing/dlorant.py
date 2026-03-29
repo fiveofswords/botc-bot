@@ -22,4 +22,4 @@ OBSERVER_ROLE = "botc-observer"
 # Channel Creation Metadata
 CHANNEL_SUFFIX = 'test'
 
-PREFIXES = (',', '@')
+PREFIXES = ('@', ',')

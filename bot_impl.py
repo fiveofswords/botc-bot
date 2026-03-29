@@ -51,7 +51,7 @@ except ImportError:
     config.INACTIVE_ROLE = "inactive"
     config.OBSERVER_ROLE = "observer"
     config.CHANNEL_SUFFIX = 'test'
-    config.PREFIXES = (',', '@')
+    config.PREFIXES = ('@', ',')
 
 
 
@@ -153,7 +153,6 @@ async def on_message(message):
 
         # Votes
         if message.content.startswith(config.PREFIXES):
-
             if " " in message.content:
                 command = message.content[1: message.content.index(" ")].lower()
                 argument = message.content[message.content.index(" ") + 1:].lower()
@@ -219,6 +218,7 @@ async def on_message(message):
                 if global_vars.game is not game.NULL_GAME:
                     game_utils.backup("current_game.pckl")
                 return
+    # end of public command handling
 
     # Update activity from a player's Storyteller channel
     if global_vars.game is not game.NULL_GAME:
@@ -232,6 +232,7 @@ async def on_message(message):
 
         # Check if command
         if message.content.startswith(config.PREFIXES):
+            command_prefix = message.content[0]
 
             # Generate command and arguments
             if " " in message.content:
@@ -397,19 +398,12 @@ async def on_message(message):
                     await message_utils.safe_send(message.author,
                                     f'Successfully created the channel https://discord.com/channels/{global_vars.server.id}/{st_channel.id}!')
 
+                st_channel_link = f"https://discord.com/channels/{global_vars.server.id}/{st_channel.id}"
+                main_channel_link = f"https://discord.com/channels/{global_vars.server.id}/{global_vars.channel.id}"
+                storyteller_nick = global_vars.server.get_member(message.author.id).display_name
                 await message_utils.safe_send(
                     player,
-                    "Hello, {player_nick}! {storyteller_nick} welcomes you to Blood on the Clocktower on Discord! I'm {bot_nick}, the bot used on #{channel_name} in {server_name} to run games. Your Storyteller channel for this game is #{st_channel}\n\nThis is where you'll perform your private messaging during the game. To send a pm to a player, type `@pm [name]`.\n\nFor more info, type `@help`, or ask the storyteller(s): {storytellers}.".format(
-                        bot_nick=bot_nick,
-                        channel_name=channel_name,
-                        server_name=server_name,
-                        st_channel=st_channel,
-                        storytellers=sts,
-                        player_nick=player.display_name,
-                        storyteller_nick=global_vars.server.get_member(
-                            message.author.id
-                        ).display_name,
-                    ),
+                    f"Hello, {player.display_name}! {storyteller_nick} welcomes you to Blood on the Clocktower on Discord! I'm {bot_nick}, the bot used on {main_channel_link} to run games. Your Storyteller channel for this game is {st_channel_link}\n\nThis bot channel is where you'll perform your private messaging during the game. To send a pm to a player, type `{config.PREFIXES[0]}pm [name]`.\n\nFor more info, type `{config.PREFIXES[0]}help`, or ask the storyteller(s): {sts}."
                 )
                 await message_utils.safe_send(message.author, f'Welcomed {player.display_name} successfully!')
                 return
@@ -1511,7 +1505,7 @@ async def on_message(message):
                 if global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
                     argument = argument.split(" ")
                     if len(argument) != 1:
-                        await message_utils.safe_send(message.author, "Usage: @whispers <player>")
+                        await message_utils.safe_send(message.author, f"Usage: {command_prefix}whispers <player>")
                         return
                     if len(argument) == 1:
                         person = await player_utils.select_player(
@@ -1969,7 +1963,7 @@ async def on_message(message):
 
                     if vote.order[vote.position].user != person.user:
                         await message_utils.safe_send(message.author,
-                                                      "It's not their vote right now. Do you mean @presetvote?")
+                                                      f"It's not their vote right now. Do you mean {command_prefix}presetvote?")
                         return
 
                     vt = int(argument == "yes" or argument == "y")
@@ -1987,7 +1981,7 @@ async def on_message(message):
                 voting_player = player_utils.get_player(message.author)
                 if vote.order[vote.position].user != voting_player.user:
                     await message_utils.safe_send(message.author,
-                                                  "It's not your vote right now. Do you mean @presetvote?")
+                                                  f"It's not your vote right now. Do you mean {command_prefix}presetvote?")
                     return
 
                 vt = int(argument == "yes" or argument == "y")
@@ -2294,13 +2288,12 @@ async def on_message(message):
                 if global_vars.game is game.NULL_GAME or global_vars.gamemaster_role not in global_vars.server.get_member(
                         message.author.id).roles:
                     await message_utils.safe_send(message.author,
-                                                  "Command {} not recognized. For a list of commands, type @help.".format(
-                                                      command))
+                                                  f"Command {command} not recognized. For a list of commands, type {command_prefix}help.")
                     return
                 argument = argument.split(" ")
                 if len(argument) != 3:
                     await message_utils.safe_send(message.author,
-                                                  "adjustvotes takes three arguments: `@adjustvotes amnesiac target multiplier`. For example `@adjustvotes alfred charlie 2`")
+                                                  f"adjustvotes takes three arguments: `{command_prefix}adjustvotes amnesiac target multiplier`. For example `{command_prefix}adjustvotes alfred charlie 2`")
                     return
                 try:
                     multiplier = int(argument[2])
@@ -2338,7 +2331,7 @@ async def on_message(message):
                     argument = argument.split(" ")
                     if len(argument) > 2:
                         await message_utils.safe_send(message.author,
-                                                      "defaultvote takes at most two arguments: @defaultvote <vote = no> <time = 3600>")
+                                                      f"defaultvote takes at most two arguments: {command_prefix}defaultvote <vote = no> <time = 3600>")
                         return
                     elif len(argument) == 1:
                         try:
@@ -2350,27 +2343,26 @@ async def on_message(message):
                                 time = 3600
                             else:
                                 await message_utils.safe_send(message.author,
-                                                              "{} is not a valid number of minutes or vote.".format(
-                                                                  argument[0]))
+                                                              f"{argument[0]} is not a valid number of minutes or vote.")
                                 return
                     else:
                         if argument[0] in ["yes", "y", "no", "n"]:
                             vt = argument[0] in ["yes", "y"]
                         else:
-                            await message_utils.safe_send(message.author, "{} is not a valid vote.".format(argument[0]))
+                            await message_utils.safe_send(message.author, f"{argument[0]} is not a valid vote.")
                             return
+                        minutes_delay = argument[1]
                         try:
-                            time = int(argument[1]) * 60
+                            time = int(minutes_delay) * 60
                         except ValueError:
                             await message_utils.safe_send(message.author,
-                                                          "{} is not a valid number of minutes.".format(argument[1]))
+                                                          f"{minutes_delay} is not a valid number of minutes.")
                             return
 
                     global_settings.set_default_vote(message.author.id, vt, time)
                     global_settings.save()
                     await message_utils.safe_send(message.author,
-                                                  "Successfully set default {} vote at {} minutes.".format(
-                                                      ["no", "yes"][vt], str(int(time / 60))))
+                                                  f"Successfully set default {['no', 'yes'][vt]} vote at {minutes_delay} minutes.")
                     return
 
             # Sends pm
@@ -2762,8 +2754,7 @@ async def on_message(message):
             # Command unrecognized
             else:
                 await message_utils.safe_send(message.author,
-                                              "Command {} not recognized. For a list of commands, type @help.".format(
-                                                  command))
+                                              f"Command {command} not recognized. For a list of commands, type {command_prefix}help.")
 
 
 async def warn_missing_player_channels(channel_to_send, players_missing_channels):
@@ -2771,7 +2762,7 @@ async def warn_missing_player_channels(channel_to_send, players_missing_channels
     chan = "channels" if plural else "a channel"
     playz = "those players" if plural else "that player"
     await message_utils.safe_send(channel_to_send,
-                    f"Missing {chan} for: {', '.join([x.display_name for x in players_missing_channels])}.  Please run `@welcome` for {playz} to create {chan} for them.")
+                    f"Missing {chan} for: {', '.join([x.display_name for x in players_missing_channels])}.  Please run `{config.PREFIXES[0]}welcome` for {playz} to create {chan} for them.")
 
 
 # in_play_voudon has been moved to model/characters/specific.py
@@ -2921,6 +2912,7 @@ async def on_message_edit(before, after):
                 return
 
             (message_author_player).has_skipped = True
+            print("skipping")
             if global_vars.game is not game.NULL_GAME:
                 game_utils.backup("current_game.pckl")
 
@@ -2950,7 +2942,7 @@ async def on_message_edit(before, after):
 
     # On unpin
     elif before.channel == global_vars.channel and before.pinned == True and after.pinned == False:
-
+        print("unskipping")
         # Unskip
         if "skip" in after.content.lower():
             (message_author_player).has_skipped = False
