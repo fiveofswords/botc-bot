@@ -39,17 +39,55 @@ class ChannelManager:
                              player: discord.Member) -> discord.TextChannel:
         """
         Creates a new text for the given player, and puts it in the out of play category.
+
+        On failure due to the target category being full, raises RuntimeError with a clear message
+        so callers can handle it predictably.
         """
         cleaned_display_name = self._cleanup_display_name(player)
-        # Create the new channel with the player's name
-        new_channel = await self._out_of_play_category.create_text_channel(
-            name=f"👤{cleaned_display_name}-x-{self._channel_suffix}",
-            overwrites={
-                self._server.default_role: discord.PermissionOverwrite(read_messages=False, send_messages=False),
-                self._st_role: discord.PermissionOverwrite(read_messages=True, send_messages=True, manage_channels=True),
-                self._client.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-                player: discord.PermissionOverwrite(read_messages=True, send_messages=True, manage_channels=True)
-            })
+
+        # Validate out of play category is configured
+        if self._out_of_play_category is None:
+            bot_client.logger.error("Out-of-play category is not configured; cannot create player channel.")
+            raise RuntimeError("Out-of-play category is not configured.")
+
+        # Discord enforces a hard limit of 50 channels per category. Pre-check to avoid an HTTPException
+        try:
+            current_count = len(self._out_of_play_category.channels)
+        except Exception:
+            # If for some reason channels can't be determined, log and proceed to attempt creation which will
+            # raise a Discord HTTPException we will handle below.
+            current_count = None
+
+        if current_count is not None and current_count >= 50:
+            bot_client.logger.warning(
+                "Cannot create new player channel: out_of_play category already contains 50 channels."
+            )
+            raise RuntimeError("Out-of-play category is full (50 channels).")
+
+        # Create the new channel with the player's name. Catch Discord HTTP errors and convert the
+        # specific full-category case into a RuntimeError with a clear message so callers can react.
+        try:
+            new_channel = await self._out_of_play_category.create_text_channel(
+                name=f"👤{cleaned_display_name}-x-{self._channel_suffix}",
+                overwrites={
+                    self._server.default_role: discord.PermissionOverwrite(read_messages=False, send_messages=False),
+                    self._st_role: discord.PermissionOverwrite(read_messages=True, send_messages=True, manage_channels=True),
+                    self._client.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+                    player: discord.PermissionOverwrite(read_messages=True, send_messages=True, manage_channels=True)
+                })
+        except discord.HTTPException as e:
+            # Detect the specific full-category error if Discord returns it despite the pre-check (race condition)
+            err_text = str(e)
+            if "Maximum number of channels" in err_text:
+                bot_client.logger.warning(
+                    "Failed to create player channel because the out_of_play category reached Discord's limit (50)."
+                )
+                raise RuntimeError("Out-of-play category is full (50 channels).") from e
+
+            # Re-raise other HTTP errors so callers can choose how to handle them
+            bot_client.logger.error(f"Failed to create player channel due to Discord HTTP error: {e}")
+            raise
+
         bot_client.logger.info(f"Channel {new_channel.name} has been created.")
         game_settings.set_st_channel(player.id, new_channel.id).save()
         return new_channel

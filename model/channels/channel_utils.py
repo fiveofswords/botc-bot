@@ -4,11 +4,12 @@ import discord
 
 import bot_client
 import global_vars
-from model.channels import ChannelManager
 from utils import message_utils
 
 
 async def reorder_channels(st_channels: list[discord.TextChannel]):
+    from model.channels import ChannelManager
+
     result = await ChannelManager(bot_client.client).setup_channels_in_order(st_channels)
     if not result:
         for st in global_vars.gamemaster_role.members:

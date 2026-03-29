@@ -99,6 +99,7 @@ async def on_ready():
         f"whisper_channel: {global_vars.whisper_channel.name if global_vars.whisper_channel else None}, "
         f"townsquare_channel: {global_vars.channel.name}, "
         f"out_of_play_category: {global_vars.out_of_play_category.name if global_vars.out_of_play_category else None}, "
+        f"total_channels: {len(global_vars.server.channels)}, "
     )
 
     for role in global_vars.server.roles:
@@ -393,10 +394,24 @@ async def on_message(message):
                 game_settings = model.settings.GameSettings.load()
                 st_channel = bot_client.client.get_channel(game_settings.get_st_channel(player.id))
                 if not st_channel:
-                    st_channel = await model.channels.ChannelManager(bot_client.client).create_channel(game_settings,
-                                                                                                       player)
-                    await message_utils.safe_send(message.author,
-                                    f'Successfully created the channel https://discord.com/channels/{global_vars.server.id}/{st_channel.id}!')
+                    try:
+                        st_channel = await (
+                            model.channels.ChannelManager(bot_client.client).create_channel(game_settings, player)
+                        )
+                        await message_utils.safe_send(message.author,
+                                                      f'Successfully created the channel https://discord.com/channels/{global_vars.server.id}/{st_channel.id}!')
+                    except RuntimeError as rte:
+                        # Known, handled failure mode (e.g. category full)
+                        bot_client.logger.warning(f"Could not create storyteller channel for {player.display_name}: {rte}")
+                        await message_utils.safe_send(message.author,
+                                                      "I couldn't create the player's channel because the 'Out of Play' category is full (50 channels). Please remove old channels or move them to a different category, then try again.")
+                        return
+                    except discord.HTTPException as http_err:
+                        # Unexpected Discord error - log and notify the storyteller, re-raise to allow higher-level handling if needed
+                        bot_client.logger.error(f"Discord HTTP error when creating storyteller channel for {player.display_name}: {http_err}")
+                        await message_utils.safe_send(message.author,
+                                                      f"I failed to create the player's channel due to a Discord API error: {http_err}. Please try again, and if the problem persists, contact support.")
+                        return
 
                 st_channel_link = f"https://discord.com/channels/{global_vars.server.id}/{st_channel.id}"
                 main_channel_link = f"https://discord.com/channels/{global_vars.server.id}/{global_vars.channel.id}"
@@ -2640,8 +2655,7 @@ async def on_message(message):
                     return
 
                 if not global_vars.game.days[-1].votes or global_vars.game.days[-1].votes[-1].done:
-                    await message_utils.safe_send(message.author,
-                                                  "You can only raise or lower your hand during an active vote.")
+                    await message_utils.safe_send(message.author, "You can only raise or lower your hand during an active vote.")
                     return
 
                 if player.hand_locked_for_vote:
@@ -2809,6 +2823,11 @@ async def on_message_edit(before, after):
                 await after.unpin()
                 return
 
+            if global_vars.game.days[-1].votes == [] or global_vars.game.days[-1].votes[-1].done == True:
+                await message_utils.safe_send(global_vars.channel, "There's no vote right now.")
+                await after.unpin()
+                return
+
             if global_vars.game.days[-1].isNoms == False:
                 await message_utils.safe_send(global_vars.channel, "Nominations aren't open right now.")
                 await after.unpin()
@@ -2826,7 +2845,7 @@ async def on_message_edit(before, after):
 
             banshee_ability_of_player = character_utils.the_ability(message_author_player.character,
                                                                     model.characters.Banshee) if message_author_player else None
-            banshee_override = banshee_ability_of_player and banshee_ability_of_player.is_screaming and not banshee_ability_of_player.is_poisoned
+            banshee_override = banshee_ability_of_player is not None and banshee_ability_of_player.is_screaming
 
             if message_author_player.is_ghost and not traveler_called and not message_author_player.riot_nominee and not banshee_override:
                 await message_utils.safe_send(global_vars.channel, "You are dead, and so cannot nominate.")
@@ -2841,7 +2860,7 @@ async def on_message_edit(before, after):
                 await after.unpin()
                 return
             if not (message_author_player).can_nominate and not traveler_called and not banshee_override:
-                await message_utils.safe_send(global_vars.channel, "You have already nominated.")
+                await message_utils.safe_send(message.author, "You have already nominated.")
                 await after.unpin()
                 return
 
@@ -2975,3 +2994,4 @@ async def on_member_update(before, after):
             for st in global_vars.game.storytellers:
                 if st.user.id == after.id:
                     global_vars.game.storytellers.remove(st)
+
