@@ -2,6 +2,10 @@
 
 A Discord bot for playing Blood on the Clocktower.
 
+
+Blood on the Clocktower, BOTC, and all the character names and other IP associated with it, are owned by TPI and reproduced here with permission. Do not reproduce their work without their permission.
+
+
 ## Features
 
 - Full game management (setup, day/night phases, voting, nominations)
