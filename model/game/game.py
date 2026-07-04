@@ -25,7 +25,7 @@ class Game:
 
     days: list['model.game.day.Day']
     isDay: bool
-    script: 'model.game.script.Script'
+    is_atheist: bool
     seatingOrder: list['model.player.Player']
     whisper_mode: 'WhisperMode'
     seatingOrderMessage: 'discord.Message | None'
@@ -34,7 +34,7 @@ class Game:
     show_tally: bool
     has_automated_life_and_death: bool
 
-    def __init__(self, seating_order, seating_order_message, info_channel_seating_order_message, script,
+    def __init__(self, seating_order, seating_order_message, info_channel_seating_order_message,
                  skip_storytellers=False):
         """Initialize a Game.
         
@@ -49,7 +49,7 @@ class Game:
         from model import player
         self.days = []
         self.isDay = False
-        self.script = script
+        self.is_atheist = False
         self.seatingOrder = seating_order
         self.whisper_mode = WhisperMode.ALL
         self.seatingOrderMessage = seating_order_message
@@ -244,5 +244,5 @@ class Game:
 import model.game.day
 
 # Create a null game to use as a placeholder
-NULL_GAME = Game(seating_order=[], seating_order_message=None, info_channel_seating_order_message=None, script=[],
+NULL_GAME = Game(seating_order=[], seating_order_message=None, info_channel_seating_order_message=None,
                  skip_storytellers=True)

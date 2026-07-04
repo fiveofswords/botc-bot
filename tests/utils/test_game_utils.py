@@ -170,21 +170,19 @@ class TestRemoveBackup:
         mock_game = MagicMock()
         mock_game.days = []
         mock_game.isDay = False
-        mock_game.script = []
         mock_global_vars.game = mock_game
 
         # When removing backups
         with patch('utils.game_utils.dir') as mock_dir:
             # Return game attributes that should be backed up
-            mock_dir.return_value = ['days', 'isDay', 'script', '__class__', '__call__']
+            mock_dir.return_value = ['days', 'isDay', '__class__', '__call__']
             remove_backup("test.pckl")
 
             # Then all backup files (main + attributes) should be removed
-            assert mock_remove.call_count == 4  # Main file + 3 attribute files
+            assert mock_remove.call_count == 3  # Main file + 2 attribute files
             mock_remove.assert_any_call("test.pckl")
             mock_remove.assert_any_call("days_test.pckl")
             mock_remove.assert_any_call("isDay_test.pckl")
-            mock_remove.assert_any_call("script_test.pckl")
 
     @patch('os.path.exists')
     @patch('os.remove')

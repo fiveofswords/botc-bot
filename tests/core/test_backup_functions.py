@@ -8,7 +8,6 @@ import pytest
 
 import global_vars
 from model import Game
-from model.game import Script
 from tests.fixtures.discord_mocks import mock_discord_setup
 from utils import backup, load, remove_backup
 
@@ -18,11 +17,10 @@ def test_backup():
     # Setup mocks
     mock_game = MagicMock()
     # Use a side_effect with a list to return the attributes we want
-    dir_mock = MagicMock(side_effect=lambda: ["seatingOrder", "seatingOrderMessage", "script"])
+    dir_mock = MagicMock(side_effect=lambda: ["seatingOrder", "seatingOrderMessage"])
     mock_game.__dir__ = dir_mock
     mock_game.seatingOrder = []
     mock_game.seatingOrderMessage = MagicMock(id=12345)
-    mock_game.script = Script([])
 
     # Mock global variables
     original_game = global_vars.game
@@ -35,10 +33,10 @@ def test_backup():
             backup("test_backup.pckl")
 
             # Verify file is opened for each attribute
-            assert mock_file.call_count == 3  # Once for objects list + once per attribute
+            assert mock_file.call_count == 2  # Once for objects list + once per attribute
 
             # Verify dill.dump is called with correct arguments
-            assert mock_dump.call_count == 3  # Once for objects list + once per attribute
+            assert mock_dump.call_count == 2  # Once for objects list + once per attribute
 
     # Restore global variable
     global_vars.game = original_game
@@ -78,26 +76,24 @@ async def test_load(mock_discord_setup):
             with patch('dill.load') as mock_load:
                 # Configure mock_load to return test values
                 mock_load.side_effect = [
-                    ["seatingOrder", "seatingOrderMessage", "script"],  # First load: object list
+                    ["seatingOrder", "seatingOrderMessage"],  # First load: object list
                     [],  # seatingOrder
-                    12345,  # seatingOrderMessage (message ID)
-                    Script([])  # script
+                    12345  # seatingOrderMessage (message ID)
                 ]
 
                 # Call the function under test
                 game = await load("test_backup.pckl")
 
                 # Verify file is opened for reading
-                assert mock_file.call_count == 4  # Once for objects list + once per attribute
+                assert mock_file.call_count == 3  # Once for objects list + once per attribute
 
                 # Verify dill.load is called
-                assert mock_load.call_count == 4  # Once for objects list + once per attribute
+                assert mock_load.call_count == 3  # Once for objects list + once per attribute
 
                 # Verify game attributes
                 assert isinstance(game, Game)
                 assert game.seatingOrder == []
                 assert game.seatingOrderMessage == mock_message
-                assert isinstance(game.script, Script)
 
 
 @pytest.mark.asyncio
@@ -111,7 +107,7 @@ async def test_load_missing_file():
                 mock_isfile.side_effect = lambda path: False if "seatingOrderMessage" in path else True
 
                 # Configure mock_load to return test values
-                mock_load.return_value = ["seatingOrder", "seatingOrderMessage", "script"]
+                mock_load.return_value = ["seatingOrder", "seatingOrderMessage"]
 
                 # Call the function under test
                 game = await load("test_backup.pckl")
@@ -126,16 +122,15 @@ def test_remove_backup():
     mock_game = MagicMock()
     mock_game.seatingOrder = []
     mock_game.seatingOrderMessage = MagicMock()
-    mock_game.script = MagicMock()
 
     # Use a side_effect with a list to return the attributes we want
-    dir_mock = MagicMock(return_value=["seatingOrder", "seatingOrderMessage", "script"])
+    dir_mock = MagicMock(return_value=["seatingOrder", "seatingOrderMessage"])
     mock_game.__dir__ = dir_mock
     orig_callable = callable
 
     # Mock callable check to always return False for our attributes
     def mock_callable(obj):
-        if obj in [mock_game.seatingOrder, mock_game.seatingOrderMessage, mock_game.script]:
+        if obj in [mock_game.seatingOrder, mock_game.seatingOrderMessage]:
             return False
         return orig_callable(obj)
 
@@ -147,8 +142,7 @@ def test_remove_backup():
     exists_side_effect = {
         "test_backup.pckl": True,
         "seatingOrder_test_backup.pckl": True,
-        "seatingOrderMessage_test_backup.pckl": True,
-        "script_test_backup.pckl": True
+        "seatingOrderMessage_test_backup.pckl": True
     }
 
     # Mock os.path.exists to return True for all files
@@ -165,10 +159,9 @@ def test_remove_backup():
                 mock_remove.assert_any_call("test_backup.pckl")
                 mock_remove.assert_any_call("seatingOrder_test_backup.pckl")
                 mock_remove.assert_any_call("seatingOrderMessage_test_backup.pckl")
-                mock_remove.assert_any_call("script_test_backup.pckl")
 
                 # Verify correct number of calls based on our mock attributes
-                assert mock_remove.call_count == 4  # 1 for main file + 3 attributes
+                assert mock_remove.call_count == 3  # 1 for main file + 3 attributes
 
     # Restore original game
     global_vars.game = original_game

@@ -108,12 +108,11 @@ async def load(fileName):
         The loaded game object
     """
     from model.game.game import Game
-    from model.game.script import Script
 
     with open(fileName, "rb") as file:
         objects = dill.load(file)
 
-    game = Game([], None, None, Script([]))
+    game = Game([], None, None)
     for obj in objects:
         if not os.path.isfile(obj + "_" + fileName):
             print("Incomplete backup found.")
