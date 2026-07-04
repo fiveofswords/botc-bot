@@ -2908,8 +2908,8 @@ async def test_on_message_startgame_hand_raised_display(mock_discord_setup):
             patch('model.channels.ChannelManager.remove_ghost'):
 
         mock_wait_for.side_effect = [
-            mock_order_message,  # Seating order
-            mock_roles_message # Script
+            mock_order_message,
+            mock_roles_message
         ]
 
         # To check hand_raised, we need to modify a Player object *after* it's created by startgame,

@@ -161,7 +161,7 @@ def test_remove_backup():
                 mock_remove.assert_any_call("seatingOrderMessage_test_backup.pckl")
 
                 # Verify correct number of calls based on our mock attributes
-                assert mock_remove.call_count == 3  # 1 for main file + 3 attributes
+                assert mock_remove.call_count == 3  # 1 for main file + 2 attributes
 
     # Restore original game
     global_vars.game = original_game

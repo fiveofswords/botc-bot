@@ -14,7 +14,7 @@ class Game:
     Attributes:
         days: List of days that have passed
         isDay: Whether it is currently day
-        script: The script being used
+        is_atheist: If an atheist is on script
         seatingOrder: The seating order of players
         whisper_mode: The current whisper mode
         seatingOrderMessage: The message with the seating order
@@ -42,7 +42,6 @@ class Game:
             seating_order: The seating order of players
             seating_order_message: The message with the seating order
             info_channel_seating_order_message: The info channel seating order message
-            script: The script being used
             skip_storytellers: Whether to skip adding storytellers
         """
         # Dynamic import to avoid circular import

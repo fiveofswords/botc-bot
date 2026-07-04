@@ -1299,12 +1299,18 @@ class Nightwatchman(base.Townsfolk):
         self.role_name = "Nightwatchman"
 
 
-class Atheist(base.Townsfolk):
+class Atheist(base.Townsfolk, base.DayStartModifier):
     """The atheist."""
     
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Atheist"
+
+    async def on_day_start(self, origin, kills):
+        # message storytellers if there is an atheist set but the game is not set to allow st nominations.
+        if not global_vars.game.is_atheist:
+            await utils.message_utils.notify_storytellers("An atheist is in play. Use the `setatheist true` command to allow nominations on storytellers.")
+        return await super().on_day_start(origin, kills)
 
 
 class Huntsman(base.Townsfolk):
