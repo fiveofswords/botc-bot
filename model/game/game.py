@@ -14,7 +14,7 @@ class Game:
     Attributes:
         days: List of days that have passed
         isDay: Whether it is currently day
-        script: The script being used
+        is_atheist: If an atheist is on script
         seatingOrder: The seating order of players
         whisper_mode: The current whisper mode
         seatingOrderMessage: The message with the seating order
@@ -25,7 +25,7 @@ class Game:
 
     days: list['model.game.day.Day']
     isDay: bool
-    script: 'model.game.script.Script'
+    is_atheist: bool
     seatingOrder: list['model.player.Player']
     whisper_mode: 'WhisperMode'
     seatingOrderMessage: 'discord.Message | None'
@@ -34,7 +34,7 @@ class Game:
     show_tally: bool
     has_automated_life_and_death: bool
 
-    def __init__(self, seating_order, seating_order_message, info_channel_seating_order_message, script,
+    def __init__(self, seating_order, seating_order_message, info_channel_seating_order_message,
                  skip_storytellers=False):
         """Initialize a Game.
         
@@ -42,14 +42,13 @@ class Game:
             seating_order: The seating order of players
             seating_order_message: The message with the seating order
             info_channel_seating_order_message: The info channel seating order message
-            script: The script being used
             skip_storytellers: Whether to skip adding storytellers
         """
         # Dynamic import to avoid circular import
         from model import player
         self.days = []
         self.isDay = False
-        self.script = script
+        self.is_atheist = False
         self.seatingOrder = seating_order
         self.whisper_mode = WhisperMode.ALL
         self.seatingOrderMessage = seating_order_message
@@ -244,5 +243,5 @@ class Game:
 import model.game.day
 
 # Create a null game to use as a placeholder
-NULL_GAME = Game(seating_order=[], seating_order_message=None, info_channel_seating_order_message=None, script=[],
+NULL_GAME = Game(seating_order=[], seating_order_message=None, info_channel_seating_order_message=None,
                  skip_storytellers=True)

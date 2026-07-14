@@ -10,7 +10,7 @@ import pytest
 import global_vars
 from model import Game, Player
 from model.characters import Character
-from model.game import Day, Script
+from model.game import Day
 from tests.fixtures.discord_mocks import mock_discord_setup, MockChannel
 from tests.fixtures.game_fixtures import setup_test_game
 
@@ -59,9 +59,9 @@ async def test_game_initialization(setup_test_game):
     assert isinstance(game.days, list)
     assert len(game.days) == 1
 
-    # Verify script is initialized
-    assert hasattr(game, 'script')
-    assert game.script is not None
+    # Verify is_atheist is initialized
+    assert hasattr(game, 'is_atheist')
+    assert game.is_atheist is False
 
 
 # test_game_end was removed - functionality is covered by integration tests in 
@@ -350,7 +350,7 @@ async def test_game_functions_correctly_with_none_info_channel_message(mock_info
         "**Seating Order:**\nAlice\nBob")
 
     # Create Game with None for info channel message
-    game = Game(seating_order, seating_message, None, Script([]))
+    game = Game(seating_order, seating_message, None)
 
     # Verify initial state
     assert game.info_channel_seating_order_message is None

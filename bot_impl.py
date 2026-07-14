@@ -15,7 +15,6 @@ import global_vars
 import model.channels
 import model.channels.channel_utils
 import model.characters
-import model.game.script
 import model.game.vote
 import model.game.whisper_mode
 import model.nomination_buttons
@@ -558,28 +557,6 @@ async def on_message(message):
                         model.player.Player(characters[x], alignments[x], users[x], st_channels[x], position=x)
                     )
 
-                msg = await message_utils.safe_send(
-                    message.author,
-                    "What roles are on the script? (send the text of the json file from the script creator)"
-                )
-                try:
-                    script_message = await bot_client.client.wait_for(
-                        "message",
-                        check=(lambda x: x.author == message.author and x.channel == msg.channel),
-                        timeout=200,
-                    )
-                except asyncio.TimeoutError:
-                    await message_utils.safe_send(message.author, "Timed out.")
-                    return
-
-                if script_message.content == "cancel":
-                    await message_utils.safe_send(message.author, "Game cancelled!")
-                    return
-
-                script_list = ''.join(script_message.content.split())[8:-3].split('"},{"id":"')
-
-                script = model.game.script.Script(script_list)
-
                 # Setup ST channels
                 tasks = [model.channels.ChannelManager(bot_client.client).remove_ghost(st_channel.id) for st_channel in
                          st_channels]
@@ -633,10 +610,16 @@ async def on_message(message):
                     except Exception as e:
                         print(f"Error creating info channel seating order message: {e}")
 
-                global_vars.game = game.Game(seating_order, seating_order_message, info_channel_message, script)
+                global_vars.game = game.Game(seating_order, seating_order_message, info_channel_message)
 
                 game_utils.backup("current_game.pckl")
                 await update_presence(bot_client.client)
+
+                # Prompt about atheist if on script
+                await message_utils.safe_send(
+                    message.author,
+                    "If the Atheist is on the script, use `@setatheist true` to enable storyteller nominations."
+                )
 
                 return
 
@@ -1877,7 +1860,7 @@ async def on_message(message):
                         await message_utils.safe_send(message.author, "You have already nominated.")
                         return
 
-                if global_vars.game.script.is_atheist:
+                if global_vars.game.is_atheist:
                     if story_teller_is_nominated:
                         if None in [x.nominee for x in global_vars.game.days[-1].votes]:
                             await message_utils.safe_send(message.author,
@@ -2854,7 +2837,7 @@ async def on_message_edit(before, after):
                 await after.unpin()
                 return
 
-            if global_vars.game.script.is_atheist:
+            if global_vars.game.is_atheist:
                 storyteller_nomination = await model.game.vote.is_storyteller(argument)
                 if storyteller_nomination:
                     if None in [x.nominee for x in global_vars.game.days[-1].votes]:

@@ -13,7 +13,6 @@ import global_vars
 from model.characters import Character, Storyteller
 from model.game.day import Day
 from model.game.game import Game
-from model.game.script import Script
 from model.game.vote import Vote
 from model.player import Player
 from model.player import STORYTELLER_ALIGNMENT
@@ -33,8 +32,7 @@ async def setup_test_game(mock_discord_setup):
         game = Game(
             seating_order=[players['alice'], players['bob'], players['charlie']],
             seating_order_message=messages['seating_message'],
-            info_channel_seating_order_message=messages['info_channel_seating_message'],
-            script=Script([])
+            info_channel_seating_order_message=messages['info_channel_seating_message']
         )
 
         # Add a mocked day to the game

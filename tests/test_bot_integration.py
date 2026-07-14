@@ -16,7 +16,6 @@ from bot_impl import on_member_update, on_message, on_message_edit
 from model.characters import Character, Storyteller
 from model.game.day import Day
 from model.game.game import NULL_GAME, Game
-from model.game.script import Script
 from model.game.vote import Vote
 from model.player import STORYTELLER_ALIGNMENT, Player
 from tests.fixtures.common_patches import full_bot_setup_patches_combined
@@ -81,7 +80,7 @@ async def setup_test_game(mock_discord_setup):
     with patch('utils.game_utils.update_presence'):
         # Create game object with patched methods
         game = Game(seating_order=[alice_player, bob_player, charlie_player], seating_order_message=seating_message,
-                    info_channel_seating_order_message=info_channel_seating_message, script=Script([]))
+                    info_channel_seating_order_message=info_channel_seating_message)
 
         # Create a Day object with mocked methods to avoid Discord API calls
         day = Day()
@@ -2624,16 +2623,17 @@ async def test_setatheist_command(mock_discord_setup, setup_test_game):
     )
 
     # Set initial state - atheist mode off
-    setup_test_game['game'].script.isAtheist = False
+    setup_test_game['game'].is_atheist = False
 
     with patch('utils.game_utils.backup') as mock_backup:
         with patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
+            # todo: test using message rather than field manipulation
             # Set atheist mode directly instead of using on_message which might not work in tests
-            setup_test_game['game'].script.isAtheist = True
+            setup_test_game['game'].is_atheist = True
             mock_backup()
 
-            # Verify atheist mode was set in the script object
-            assert setup_test_game['game'].script.isAtheist is True
+            # Verify atheist mode was set in the game object
+            assert setup_test_game['game'].is_atheist is True
 
             # Call safe_send with our own message for confirmation
             await mock_safe_send(
@@ -2655,11 +2655,11 @@ async def test_setatheist_command(mock_discord_setup, setup_test_game):
     with patch('utils.game_utils.backup') as mock_backup:
         with patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
             # Set atheist mode directly instead of using on_message which might not work in tests
-            setup_test_game['game'].script.isAtheist = False
+            setup_test_game['game'].is_atheist = False
             mock_backup()
 
-            # Verify atheist mode was disabled in the script object
-            assert setup_test_game['game'].script.isAtheist is False
+            # Verify atheist mode was disabled in the game object
+            assert setup_test_game['game'].is_atheist is False
 
             # Call safe_send with our own message for confirmation
             await mock_safe_send(
@@ -2898,9 +2898,6 @@ async def test_on_message_startgame_hand_raised_display(mock_discord_setup):
     mock_roles_message = MockMessage(id=3002, content="Washerwoman\nInvestigator\nSpy",
                                      author=mock_discord_setup['members']['storyteller'],
                                      channel=storyteller_dm_channel)
-    mock_script_message = MockMessage(id=3003, content='[{"id":"washerwoman"},{"id":"investigator"},{"id":"spy"}]',
-                                      author=mock_discord_setup['members']['storyteller'],
-                                      channel=storyteller_dm_channel)
 
     with patch('bot_client.client.wait_for', new_callable=AsyncMock) as mock_wait_for, \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send, \
@@ -2911,9 +2908,8 @@ async def test_on_message_startgame_hand_raised_display(mock_discord_setup):
             patch('model.channels.ChannelManager.remove_ghost'):
 
         mock_wait_for.side_effect = [
-            mock_order_message,  # Seating order
-            mock_roles_message,  # Roles
-            mock_script_message  # Script
+            mock_order_message,
+            mock_roles_message
         ]
 
         # To check hand_raised, we need to modify a Player object *after* it's created by startgame,
