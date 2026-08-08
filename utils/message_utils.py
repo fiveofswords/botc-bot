@@ -23,7 +23,7 @@ def _split_text(text: str, max_length: int = 2000) -> list[str]:
 
 
 async def safe_send(
-        channel: discord.abc.Messageable | discord.Member | discord.User,
+        channel: discord.abc.Messageable | discord.Member | discord.User | None,
         content: str | None = None,
     **kwargs
 ) -> discord.Message | None:
@@ -38,6 +38,10 @@ async def safe_send(
     Returns:
         The sent message or None if failed
     """
+    if channel is None:
+        # log issue
+        bot_client.logger.warning(f"The channel to send is None. message dropped: {content}")
+        return None
     try:
         # Handle empty content
         if not content and not any(k in kwargs for k in ['embed', 'embeds', 'file', 'files']):

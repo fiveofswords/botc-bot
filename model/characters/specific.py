@@ -1808,30 +1808,69 @@ class Ojo(base.Demon):
         self.role_name = "Ojo"
 
 
-class Riot(base.Demon, base.NominationModifier):
+class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
     """The riot."""
     
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Riot"
-    
+        self.day_3_notification_sent = False
+
+    async def on_day_start(self, origin, kills):
+        if not global_vars.game.has_automated_life_and_death:
+            return True
+        if self.parent.is_ghost:
+            return True
+        if self.is_poisoned:
+            await utils.message_utils.safe_send(origin, "There is a poisoned riot on day 3. What happens now is up to the storytellers.")
+            return True
+
+        # Check if there's a minion in the game
+        has_minion = any(isinstance(player.character, base.Minion) for player in global_vars.game.seatingOrder)
+
+        current_day_number = len(global_vars.game.days) + 1
+        if current_day_number >= 3 and not self.day_3_notification_sent and has_minion:
+            self.day_3_notification_sent = True
+            await utils.notify_storytellers(f"""
+                Riot is active on day {current_day_number}!
+                Please update all minion characters to Riot at the appropriate time{"." if current_day_number == 3 else "?"}
+                """.strip())
+            for memb in global_vars.gamemaster_role.members:
+                await utils.message_utils.safe_send(
+                    memb,
+                    "Riot is active on day 3! Update all Minion characters to Riot sometime today if you have not already.",
+                )
+
+        return True
+
     async def on_nomination(self, nominee, nominator, proceed):
+        assert global_vars.game is not None
         if not global_vars.game.has_automated_life_and_death:
             return proceed
         if self.is_poisoned or self.parent.is_ghost or not nominee:
             return proceed
-            
+        
+        this_day = global_vars.game.days[-1]
+        current_day_number = len(global_vars.game.days)
+        
+        # Days 1-2: Regular nominations, no riot behavior
+        if current_day_number < 3:
+            return proceed
+        
+        # Day 3: Riot chaining behavior
         nominee_nick = nominator.display_name if nominator else "the storytellers"
-        announcemnt = await utils.message_utils.safe_send(
+        announcement = await utils.message_utils.safe_send(
             global_vars.channel,
             "{}, {} has been nominated by {}."
             .format(global_vars.player_role.mention, nominee.user.mention, nominee_nick),
         )
-        await announcemnt.pin()
-        this_day = global_vars.game.days[-1]
-        this_day.votes[-1].announcements.append(announcemnt.id)
+        if announcement:
+            await announcement.pin()
+        else:
+            bot_client.logger.warning("announcent to pin not received!")
+        this_day.votes[-1].announcements.append(announcement.id)
         
-        if not this_day.riot_active:
+        if not this_day.riot_active and global_vars.game.show_tally:
             # show tally on first nomination
             import itertools
             message_tally = {
@@ -1874,9 +1913,7 @@ class Riot(base.Demon, base.NominationModifier):
             await nominee.kill()
             
         riot_announcement = f"Riot is in play. {nominee.user.mention} to nominate"
-        if len(global_vars.game.days) < 3:
-            riot_announcement = riot_announcement + " or skip"
-            
+        
         if nominator:
             nominator.riot_nominee = False
         else:

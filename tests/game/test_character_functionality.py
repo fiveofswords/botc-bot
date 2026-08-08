@@ -9,9 +9,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import pytest_asyncio
 
+import global_vars
 from model.characters.base import Character, VoteModifier, NominationModifier, DeathModifier, Storyteller, Demon
 from model.characters.registry import CHARACTER_REGISTRY
-from model.characters.specific import Washerwoman, FortuneTeller
+from model.characters.specific import Washerwoman, FortuneTeller, Riot
 from model.player import Player, STORYTELLER_ALIGNMENT
 from tests.fixtures.discord_mocks import MockMember, MockChannel
 
@@ -219,3 +220,150 @@ async def test_storyteller_abilities(setup_character_test):
 
         # Verify the message was sent
         mock_message.assert_called_once_with(washerwoman, "This is a secret message.")
+
+
+@pytest.mark.asyncio
+@patch('model.characters.specific.utils.notify_storytellers', new_callable=AsyncMock)
+@patch('utils.message_utils.safe_send', new_callable=AsyncMock)
+async def test_riot_day_3_reminder_sent_on_day_start_once(mock_safe_send, mock_notify_storytellers):
+    """Riot should notify storytellers at start of day 3, once, if a minion exists."""
+    from model.characters.specific import Boomdandy
+
+    riot_parent = MagicMock()
+    riot_parent.is_ghost = False
+    riot = Riot(riot_parent)
+
+    # Create a minion player
+    minion_player = MagicMock()
+    minion_char = Boomdandy(minion_player)
+    minion_player.character = minion_char
+
+    global_vars.game = MagicMock()
+    global_vars.game.has_automated_life_and_death = True
+    global_vars.game.days = [MagicMock(), MagicMock()]  # about to start day 3
+    global_vars.game.seatingOrder = [minion_player]
+
+    st1 = MagicMock()
+    st2 = MagicMock()
+    global_vars.gamemaster_role = MagicMock()
+    global_vars.gamemaster_role.members = [st1, st2]
+
+    await riot.on_day_start(origin=MagicMock(), kills=[])
+
+    storyteller_reminder = mock_notify_storytellers.await_args.args[0]
+    reminder = "Riot is active on day 3! Update all Minion characters to Riot sometime today if you have not already."
+
+    assert riot.day_3_notification_sent is True
+    mock_notify_storytellers.assert_awaited_once()
+    assert "Riot is active on day 3!" in storyteller_reminder
+    assert "Please update all minion characters to Riot at the appropriate time." in storyteller_reminder
+    assert mock_safe_send.await_count == 2
+    mock_safe_send.assert_any_await(st1, reminder)
+    mock_safe_send.assert_any_await(st2, reminder)
+    assert all(call.args[1].isascii() for call in mock_safe_send.await_args_list)
+
+    await riot.on_day_start(origin=MagicMock(), kills=[])
+    assert mock_safe_send.await_count == 2
+    mock_notify_storytellers.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@patch('model.characters.specific.utils.notify_storytellers', new_callable=AsyncMock)
+@patch('utils.message_utils.safe_send', new_callable=AsyncMock)
+async def test_riot_day_3_reminder_not_sent_without_minion(mock_safe_send, mock_notify_storytellers):
+    """Riot should NOT notify storytellers if no minion exists in the game."""
+    riot_parent = MagicMock()
+    riot_parent.is_ghost = False
+    riot = Riot(riot_parent)
+
+    global_vars.game = MagicMock()
+    global_vars.game.has_automated_life_and_death = True
+    global_vars.game.days = [MagicMock(), MagicMock()]  # about to start day 3
+    global_vars.game.seatingOrder = []  # No minions
+
+    st1 = MagicMock()
+    global_vars.gamemaster_role = MagicMock()
+    global_vars.gamemaster_role.members = [st1]
+
+    await riot.on_day_start(origin=MagicMock(), kills=[])
+
+    # Notification should NOT be sent
+    assert riot.day_3_notification_sent is False
+    mock_notify_storytellers.assert_not_awaited()
+    mock_safe_send.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@patch('utils.character_utils.has_ability', return_value=False)
+@patch('utils.message_utils.safe_send', new_callable=AsyncMock)
+async def test_riot_nomination_no_longer_sends_day_3_reminder(mock_safe_send, _mock_has_ability):
+    """Riot nomination chain should proceed without sending day-3 reminder text."""
+    riot_parent = MagicMock()
+    riot_parent.is_ghost = False
+    riot = Riot(riot_parent)
+
+    vote = MagicMock()
+    vote.announcements = []
+    this_day = MagicMock()
+    this_day.votes = [vote]
+    this_day.riot_active = False
+    this_day.st_riot_kill_override = False
+    this_day.open_noms = AsyncMock()
+
+    global_vars.game = MagicMock()
+    global_vars.game.has_automated_life_and_death = True
+    global_vars.game.show_tally = False
+    global_vars.game.days = [MagicMock(), MagicMock(), this_day]
+    global_vars.game.seatingOrder = []
+
+    global_vars.player_role = MagicMock()
+    global_vars.player_role.mention = "@players"
+    global_vars.channel = MagicMock()
+
+    global_vars.gamemaster_role = MagicMock()
+    global_vars.gamemaster_role.members = [MagicMock()]
+
+    announcement_message = MagicMock()
+    announcement_message.id = 100
+    announcement_message.pin = AsyncMock()
+    riot_message = MagicMock()
+    riot_message.id = 101
+    riot_message.pin = AsyncMock()
+    mock_safe_send.side_effect = [announcement_message, riot_message]
+
+    nominee = MagicMock()
+    nominee.display_name = "Nominee"
+    nominee.user.mention = "@nominee"
+    nominee.character.is_poisoned = False
+    nominee.kill = AsyncMock()
+    nominee.riot_nominee = False
+    nominee.can_nominate = False
+
+    nominator = MagicMock()
+    nominator.display_name = "Nominator"
+    nominator.character.is_poisoned = False
+    nominator.is_ghost = False
+    nominator.riot_nominee = True
+
+    result = await riot.on_nomination(nominee, nominator, True)
+
+    reminder = "Riot is active on day 3! Please manually update all Minion characters to Riot."
+    sent_texts = [call.args[1] for call in mock_safe_send.await_args_list if len(call.args) > 1]
+
+    assert result is False
+    assert riot.day_3_notification_sent is False
+    assert reminder not in sent_texts
+    assert sent_texts == [
+        "@players, @nominee has been nominated by Nominator.",
+        "Riot is in play. @nominee to nominate",
+    ]
+    assert all(text.isascii() for text in sent_texts)
+    announcement_message.pin.assert_awaited_once()
+    assert vote.announcements == [100]
+    assert this_day.riot_active is True
+    nominee.kill.assert_awaited_once()
+    assert nominator.riot_nominee is False
+    assert nominee.riot_nominee is True
+    assert nominee.can_nominate is True
+    this_day.open_noms.assert_awaited_once()
+
