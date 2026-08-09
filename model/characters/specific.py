@@ -1819,11 +1819,6 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
     async def on_day_start(self, origin, kills):
         if not global_vars.game.has_automated_life_and_death:
             return True
-        if self.parent.is_ghost:
-            return True
-        if self.is_poisoned:
-            await utils.message_utils.safe_send(origin, "There is a poisoned riot on day 3. What happens now is up to the storytellers.")
-            return True
 
         # Check if there's a minion in the game
         has_minion = any(isinstance(player.character, base.Minion) for player in global_vars.game.seatingOrder)
@@ -1831,15 +1826,24 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
         current_day_number = len(global_vars.game.days) + 1
         if current_day_number >= 3 and not self.day_3_notification_sent and has_minion:
             self.day_3_notification_sent = True
+
+            # Send minion update reminder regardless of Riot's state
+            # (even if poisoned or ghost, storytellers need to update minions) 
+            # todo: --- maybe. gotta check
             await utils.notify_storytellers(f"""
                 Riot is active on day {current_day_number}!
                 Please update all minion characters to Riot at the appropriate time{"." if current_day_number == 3 else "?"}
                 """.strip())
-            for memb in global_vars.gamemaster_role.members:
-                await utils.message_utils.safe_send(
-                    memb,
-                    "Riot is active on day 3! Update all Minion characters to Riot sometime today if you have not already.",
-                )
+
+        # fixme: only if ALL riots are poisoned should this message be sent.
+        # If Riot is poisoned, don't chain (storytellers handle the decision)
+        if self.is_poisoned:
+            await utils.message_utils.safe_send(origin, "There is a poisoned riot on day 3. What happens now is up to the storytellers.")
+            return True
+
+        # If Riot is a ghost, don't chain
+        if self.parent.is_ghost:
+            return True
 
         return True
 
@@ -1847,6 +1851,10 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
         assert global_vars.game is not None
         if not global_vars.game.has_automated_life_and_death:
             return proceed
+
+        # todo: is not nominee indicative of the storytellers being nominated?
+        
+        # Don't chain if Riot is poisoned or a ghost
         if self.is_poisoned or self.parent.is_ghost or not nominee:
             return proceed
         
@@ -1900,18 +1908,20 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
             
         this_day.riot_active = True
         
-        # handle the soldier jinx - If Riot nominates the Soldier, the Soldier does not die
-        soldier_jinx = nominator and nominee and not nominee.character.is_poisoned and utils.character_utils.has_ability(
-            nominator.character, Riot) and utils.character_utils.has_ability(nominee.character, Soldier)
-        golem_jinx = nominator and nominee and not nominator.character.is_poisoned and not nominator.is_ghost and utils.character_utils.has_ability(
-            nominee.character, Riot) and utils.character_utils.has_ability(nominator.character, Golem)
+        # REMOVED: Old soldier_jinx and golem_jinx logic
+        # Soldier jinx is handled by storyteller intervention (they stop the game and announce good wins)
+        # Golem jinx is removed entirely per clarifications
+        # TODO: Future work - Golem smash should apply BEFORE Riot execute (sequencing issue)
+
+        # Kill the nominee (all nominees die during Riot chaining)
         if not nominator:
             if this_day.st_riot_kill_override:
                 this_day.st_riot_kill_override = False
                 await nominee.kill()
-        elif not (soldier_jinx or golem_jinx):
+        else:
+            # Riots always kill their nominees
             await nominee.kill()
-            
+
         riot_announcement = f"Riot is in play. {nominee.user.mention} to nominate"
         
         if nominator:
