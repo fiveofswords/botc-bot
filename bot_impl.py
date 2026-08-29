@@ -57,6 +57,36 @@ except ImportError:
 # Load all commands into the registry
 commands.loader.load_all_commands()
 
+
+async def _send_nomination_denial_if_needed(current_day, nominator_player, denial_recipient, log_context: str) -> bool:
+    """Send standardized domain nomination denial, returning True when blocked."""
+    denial_reason = current_day.nomination_denial_reason(nominator_player)
+    if not denial_reason:
+        return False
+    bot_client.logger.info(
+        "%s denied reason=%s nominator=%s",
+        log_context,
+        denial_reason,
+        nominator_player.display_name if nominator_player else None,
+    )
+    await message_utils.safe_send(denial_recipient, current_day.nomination_denial_message(denial_reason))
+    return True
+
+
+async def _submit_nomination_with_domain_result(current_day, nominee, nominator, denial_recipient, log_context: str) -> bool:
+    """Execute Day.nomination and handle any domain denial result consistently."""
+    denial_reason = await current_day.nomination(nominee, nominator)
+    if not denial_reason:
+        return True
+    bot_client.logger.info(
+        "%s denied reason=%s nominator=%s",
+        log_context,
+        denial_reason,
+        nominator.display_name if nominator else None,
+    )
+    await message_utils.safe_send(denial_recipient, current_day.nomination_denial_message(denial_reason))
+    return False
+
 ### API Stuff
 try:
     member_cache = discord.MemberCacheFlags(
@@ -1866,6 +1896,13 @@ async def on_message(message):
                                 player_dies,
                             )
                 else:
+                    if await _send_nomination_denial_if_needed(
+                        global_vars.game.days[-1],
+                        nominator_player,
+                        message.author,
+                        "riot.nominate_command",
+                    ):
+                        return
                     if global_vars.game.days[-1].riot_active:
                         if not nominator_player.riot_nominee:
                             await message_utils.safe_send(message.author, "Riot is active, you may not nominate.")
@@ -1898,7 +1935,16 @@ async def on_message(message):
                                                           "The storytellers have already been nominated today.")
                             await message.unpin()
                             return
-                        await global_vars.game.days[-1].nomination(None, nominator_player)
+                        nomination_ok = await _submit_nomination_with_domain_result(
+                            global_vars.game.days[-1],
+                            None,
+                            nominator_player,
+                            message.author,
+                            "riot.nominate_command",
+                        )
+                        if not nomination_ok:
+                            await message.unpin()
+                            return
                         if global_vars.game is not game.NULL_GAME:
                             game_utils.backup("current_game.pckl")
                         await message.unpin()
@@ -1934,7 +1980,15 @@ async def on_message(message):
 
                 model.game.vote.remove_banshee_nomination(banshee_ability_of_player)
 
-                await global_vars.game.days[-1].nomination(person, nominator_player)
+                nomination_ok = await _submit_nomination_with_domain_result(
+                    global_vars.game.days[-1],
+                    person,
+                    nominator_player,
+                    message.author,
+                    "riot.nominate_command",
+                )
+                if not nomination_ok:
+                    return
                 bot_client.logger.info(
                     "riot.nominate_command submitted nominee=%s nominator=%s",
                     person.display_name,
@@ -2862,6 +2916,15 @@ async def on_message_edit(before, after):
                 await after.unpin()
                 return
 
+            if await _send_nomination_denial_if_needed(
+                global_vars.game.days[-1],
+                message_author_player,
+                global_vars.channel,
+                "riot.pin_nominate",
+            ):
+                await after.unpin()
+                return
+
             names = await player_utils.generate_possibilities(argument, global_vars.game.seatingOrder)
             traveler_called = len(names) == 1 and isinstance(names[0].character, model.characters.Traveler)
 
@@ -2906,7 +2969,16 @@ async def on_message_edit(before, after):
                         await after.unpin()
                         return
                     model.game.vote.remove_banshee_nomination(banshee_ability_of_player)
-                    await global_vars.game.days[-1].nomination(None, message_author_player)
+                    nomination_ok = await _submit_nomination_with_domain_result(
+                        global_vars.game.days[-1],
+                        None,
+                        message_author_player,
+                        global_vars.channel,
+                        "riot.pin_nominate",
+                    )
+                    if not nomination_ok:
+                        await after.unpin()
+                        return
                     if global_vars.game is not game.NULL_GAME:
                         game_utils.backup("current_game.pckl")
                     await after.unpin()
@@ -2923,7 +2995,16 @@ async def on_message_edit(before, after):
 
                 model.game.vote.remove_banshee_nomination(banshee_ability_of_player)
 
-                await global_vars.game.days[-1].nomination(names[0], message_author_player)
+                nomination_ok = await _submit_nomination_with_domain_result(
+                    global_vars.game.days[-1],
+                    names[0],
+                    message_author_player,
+                    global_vars.channel,
+                    "riot.pin_nominate",
+                )
+                if not nomination_ok:
+                    await after.unpin()
+                    return
                 bot_client.logger.info(
                     "riot.pin_nominate submitted nominee=%s nominator=%s",
                     names[0].display_name,

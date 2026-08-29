@@ -10,7 +10,7 @@ from unittest.mock import patch, AsyncMock, MagicMock
 import pytest
 
 import global_vars
-from bot_impl import on_message
+from bot_impl import on_message, on_message_edit
 from model.game import WhisperMode
 # Import test fixtures from shared fixtures
 from tests.fixtures.discord_mocks import (
@@ -509,6 +509,76 @@ async def test_nominate_command_riot_active_blocks_non_current_riot_nominee(mock
     mock_safe_send.assert_called_with(
         mock_discord_setup['members']['alice'],
         "Riot is active, you may not nominate.",
+    )
+    setup_test_game['game'].days[-1].nomination.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_nominate_command_riot_storyteller_turn_blocks_player(mock_discord_setup, setup_test_game):
+    """When Riot storyteller-turn is latched, player command nominations are denied."""
+    global_vars.game = setup_test_game['game']
+    global_vars.channel = mock_discord_setup['channels']['town_square']
+
+    setup_test_game['game'].isDay = True
+    setup_test_game['game'].days[-1].isNoms = True
+    setup_test_game['game'].days[-1].riot_storyteller_turn_active = True
+
+    alice_dm_channel = MockChannel(453, "dm-alice")
+    alice_dm_channel.guild = None
+    alice_message = MockMessage(
+        id=453,
+        content="@nominate charlie",
+        channel=alice_dm_channel,
+        author=mock_discord_setup['members']['alice'],
+        guild=None,
+    )
+
+    with patch('utils.game_utils.backup', return_value=None), \
+         patch('utils.player_utils.select_player', return_value=setup_test_game['players']['charlie']), \
+         patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
+        await on_message(alice_message)
+
+    mock_safe_send.assert_called_with(
+        mock_discord_setup['members']['alice'],
+        "Riot day is active. It is the storytellers' turn to nominate.",
+    )
+    setup_test_game['game'].days[-1].nomination.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_pin_nominate_riot_storyteller_turn_blocks_player(mock_discord_setup, setup_test_game):
+    """When Riot storyteller-turn is latched, pinned nominations are denied."""
+    global_vars.game = setup_test_game['game']
+    global_vars.channel = mock_discord_setup['channels']['town_square']
+
+    setup_test_game['game'].isDay = True
+    setup_test_game['game'].days[-1].isNoms = True
+    setup_test_game['game'].days[-1].riot_storyteller_turn_active = True
+
+    before = MockMessage(
+        id=454,
+        content="nominate charlie",
+        channel=mock_discord_setup['channels']['town_square'],
+        author=mock_discord_setup['members']['alice'],
+        guild=mock_discord_setup['guild'],
+    )
+    before.pinned = False
+
+    after = MockMessage(
+        id=454,
+        content="nominate charlie",
+        channel=mock_discord_setup['channels']['town_square'],
+        author=mock_discord_setup['members']['alice'],
+        guild=mock_discord_setup['guild'],
+    )
+    after.pinned = True
+
+    with patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
+        await on_message_edit(before, after)
+
+    mock_safe_send.assert_called_with(
+        mock_discord_setup['channels']['town_square'],
+        "Riot day is active. It is the storytellers' turn to nominate.",
     )
     setup_test_game['game'].days[-1].nomination.assert_not_called()
 

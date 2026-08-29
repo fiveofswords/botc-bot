@@ -13,6 +13,8 @@ import global_vars
 from model.characters.base import Character, VoteModifier, NominationModifier, DeathModifier, Storyteller, Demon
 from model.characters.registry import CHARACTER_REGISTRY
 from model.characters.specific import Washerwoman, FortuneTeller, Riot
+from model.game.day import Day
+from model.game.vote import Vote
 from model.player import Player, STORYTELLER_ALIGNMENT
 from tests.fixtures.discord_mocks import MockMember, MockChannel
 
@@ -505,5 +507,67 @@ async def test_riot_nomination_storyteller_nominee_passes_through(mock_safe_send
     assert result is True
     assert this_day.riot_active is False
     mock_safe_send.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@patch('utils.message_utils.safe_send', new_callable=AsyncMock)
+async def test_riot_storyteller_turn_latches_in_vote_finalize_before_noms_reopen(mock_safe_send):
+    """Storyteller nominee vote finalization should latch Riot storyteller-turn and announce once."""
+    this_day = Day()
+    this_day.open_noms = AsyncMock()
+    this_day.open_pms = AsyncMock()
+
+    riot_player = MagicMock()
+    riot_player.character.role_name = "Riot"
+    riot_player.character.is_poisoned = False
+    riot_player.is_ghost = False
+
+    global_vars.game = MagicMock()
+    global_vars.game.days = [MagicMock(), MagicMock(), this_day]
+    global_vars.game.seatingOrder = [riot_player]
+    global_vars.channel = MagicMock()
+
+    prompt_message = MagicMock()
+    prompt_message.id = 555
+    mock_safe_send.return_value = prompt_message
+
+    vote = Vote(None, MagicMock())
+    await vote._finalize_vote()
+
+    assert this_day.riot_storyteller_turn_active is True
+    mock_safe_send.assert_awaited_once_with(
+        global_vars.channel,
+        "Riot day is active. It is the storytellers' turn to nominate.",
+    )
+    this_day.open_noms.assert_awaited_once()
+    this_day.open_pms.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@patch('utils.message_utils.safe_send', new_callable=AsyncMock)
+async def test_riot_storyteller_turn_prompt_sent_once_per_transition(mock_safe_send):
+    """Riot storyteller-turn prompt should send once per transition into active state."""
+    this_day = Day()
+
+    riot_player = MagicMock()
+    riot_player.character.role_name = "Riot"
+    riot_player.character.is_poisoned = False
+    riot_player.is_ghost = False
+
+    global_vars.game = MagicMock()
+    global_vars.game.days = [MagicMock(), MagicMock(), this_day]
+    global_vars.game.seatingOrder = [riot_player]
+    global_vars.channel = MagicMock()
+
+    msg = MagicMock()
+    msg.id = 556
+    mock_safe_send.return_value = msg
+
+    await this_day.latch_riot_storyteller_turn(source="test.first")
+    await this_day.latch_riot_storyteller_turn(source="test.repeat")
+    this_day.clear_riot_storyteller_turn(source="test.clear")
+    await this_day.latch_riot_storyteller_turn(source="test.second")
+
+    assert mock_safe_send.await_count == 2
 
 

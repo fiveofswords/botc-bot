@@ -388,6 +388,8 @@ class BaseVote(ABC):
         """Finalize vote state and reopen game interactions."""
         self.done = True
         about_to_die = global_vars.game.days[-1].aboutToDie
+        if self.nominee is None:
+            await global_vars.game.days[-1].latch_riot_storyteller_turn(source="vote.finalize_storyteller_nominee")
         bot_client.logger.info(
             "vote.finalize riot_active=%s nominee=%s about_to_die=%s",
             global_vars.game.days[-1].riot_active,
