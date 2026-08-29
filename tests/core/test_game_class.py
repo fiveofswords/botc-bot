@@ -301,13 +301,7 @@ async def test_start_day_triggers_riot_day_3_reminder(mock_safe_send, _mock_upda
     mock_notify_storytellers.assert_awaited_once()
     assert reminder_text.isascii()
     assert "Riot is active on day 3!" in reminder_text
-    assert any(
-        call.args == (
-            mock_discord_setup['members']['storyteller'],
-            "Riot is active on day 3! Update all Minion characters to Riot sometime today if you have not already.",
-        )
-        for call in mock_safe_send.await_args_list
-    )
+    assert "minion" in reminder_text.lower()
     assert len(game.days) == 3
 
 

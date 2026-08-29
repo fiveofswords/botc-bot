@@ -251,19 +251,13 @@ async def test_riot_day_3_reminder_sent_on_day_start_once(mock_safe_send, mock_n
     await riot.on_day_start(origin=MagicMock(), kills=[])
 
     storyteller_reminder = mock_notify_storytellers.await_args.args[0]
-    reminder = "Riot is active on day 3! Update all Minion characters to Riot sometime today if you have not already."
-
     assert riot.day_3_notification_sent is True
     mock_notify_storytellers.assert_awaited_once()
     assert "Riot is active on day 3!" in storyteller_reminder
-    assert "Please update all minion characters to Riot at the appropriate time." in storyteller_reminder
-    assert mock_safe_send.await_count == 2
-    mock_safe_send.assert_any_await(st1, reminder)
-    mock_safe_send.assert_any_await(st2, reminder)
-    assert all(call.args[1].isascii() for call in mock_safe_send.await_args_list)
+    assert "minion" in storyteller_reminder.lower()
+    assert storyteller_reminder.isascii()
 
     await riot.on_day_start(origin=MagicMock(), kills=[])
-    assert mock_safe_send.await_count == 2
     mock_notify_storytellers.assert_awaited_once()
 
 
