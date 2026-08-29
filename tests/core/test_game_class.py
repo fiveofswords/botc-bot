@@ -243,10 +243,12 @@ async def test_start_day(mock_discord_setup, setup_test_game):
 
 
 @pytest.mark.asyncio
-@patch('model.characters.specific.utils.notify_storytellers', new_callable=AsyncMock)
+@patch('model.characters.specific.bot_client.logger.debug')
+@patch('model.characters.specific.utils.safe_send', new_callable=AsyncMock)
 @patch('model.game.game.game_utils.update_presence', new_callable=AsyncMock)
 @patch('model.game.game.message_utils.safe_send', new_callable=AsyncMock)
-async def test_start_day_triggers_riot_day_3_reminder(mock_safe_send, _mock_update_presence, mock_notify_storytellers,
+async def test_start_day_triggers_riot_day_3_reminder(mock_game_safe_send, _mock_update_presence,
+                                                       mock_riot_safe_send, mock_logger_debug,
                                                        mock_discord_setup):
     """Game.start_day should trigger Riot's day-3 storyteller reminder hook if minion exists."""
     from model.characters.specific import Boomdandy
@@ -282,7 +284,9 @@ async def test_start_day_triggers_riot_day_3_reminder(mock_safe_send, _mock_upda
 
     mock_sent_message = AsyncMock()
     mock_sent_message.pin = AsyncMock()
-    mock_safe_send.return_value = mock_sent_message
+    mock_game_safe_send.return_value = mock_sent_message
+
+    Riot._get_notification_state(0)
 
     game = Game(
         seating_order=[riot_player, minion_player, storyteller],
@@ -295,14 +299,24 @@ async def test_start_day_triggers_riot_day_3_reminder(mock_safe_send, _mock_upda
     game.has_automated_life_and_death = True
     global_vars.game = game
 
-    await game.start_day(kills=[], origin=MagicMock())
+    origin = MagicMock()
+    await game.start_day(kills=[], origin=origin)
 
-    reminder_text = mock_notify_storytellers.await_args.args[0]
-    mock_notify_storytellers.assert_awaited_once()
+    mock_riot_safe_send.assert_awaited_once()
+    reminder_text = mock_riot_safe_send.await_args.args[1]
     assert reminder_text.isascii()
     assert "Riot is active on day 3!" in reminder_text
-    assert "minion" in reminder_text.lower()
+    assert "update all minion characters to Riot" in reminder_text
+    assert any(
+        "riot.day_start decision=notify_storytellers" in call.args[0]
+        for call in mock_logger_debug.call_args_list
+    )
     assert len(game.days) == 3
+
+    game.days = [Day(), Day()]
+    await riot_player.character.on_day_start(origin=origin, kills=[])
+    assert mock_riot_safe_send.await_count == 1
+
 
 
 @pytest.mark.asyncio

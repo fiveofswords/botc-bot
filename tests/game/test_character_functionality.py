@@ -225,15 +225,16 @@ async def test_storyteller_abilities(setup_character_test):
 
 
 @pytest.mark.asyncio
-@patch('model.characters.specific.utils.notify_storytellers', new_callable=AsyncMock)
-@patch('utils.message_utils.safe_send', new_callable=AsyncMock)
-async def test_riot_day_3_reminder_sent_on_day_start_once(mock_safe_send, mock_notify_storytellers):
+@patch('model.characters.specific.bot_client.logger.debug')
+@patch('model.characters.specific.utils.safe_send', new_callable=AsyncMock)
+async def test_riot_day_3_reminder_sent_on_day_start_once(mock_safe_send, mock_logger_debug):
     """Riot should notify storytellers at start of day 3, once, if a minion exists."""
     from model.characters.specific import Boomdandy
 
     riot_parent = MagicMock()
     riot_parent.is_ghost = False
     riot = Riot(riot_parent)
+    Riot._get_notification_state(0)
 
     # Create a minion player
     minion_player = MagicMock()
@@ -252,25 +253,28 @@ async def test_riot_day_3_reminder_sent_on_day_start_once(mock_safe_send, mock_n
 
     await riot.on_day_start(origin=MagicMock(), kills=[])
 
-    storyteller_reminder = mock_notify_storytellers.await_args.args[0]
-    assert riot.day_3_notification_sent is True
-    mock_notify_storytellers.assert_awaited_once()
-    assert "Riot is active on day 3!" in storyteller_reminder
-    assert "minion" in storyteller_reminder.lower()
-    assert storyteller_reminder.isascii()
+    assert Riot._get_notification_state(3)["minion"] is True
+    assert any(
+        "riot.day_start decision=notify_storytellers" in call.args[0]
+        for call in mock_logger_debug.call_args_list
+    )
 
     await riot.on_day_start(origin=MagicMock(), kills=[])
-    mock_notify_storytellers.assert_awaited_once()
+    assert sum(
+        "riot.day_start decision=notify_storytellers" in call.args[0]
+        for call in mock_logger_debug.call_args_list
+    ) == 1
 
 
 @pytest.mark.asyncio
-@patch('model.characters.specific.utils.notify_storytellers', new_callable=AsyncMock)
-@patch('utils.message_utils.safe_send', new_callable=AsyncMock)
-async def test_riot_day_3_reminder_not_sent_without_minion(mock_safe_send, mock_notify_storytellers):
+@patch('model.characters.specific.bot_client.logger.debug')
+@patch('model.characters.specific.utils.safe_send', new_callable=AsyncMock)
+async def test_riot_day_3_reminder_not_sent_without_minion(mock_safe_send, mock_logger_debug):
     """Riot should NOT notify storytellers if no minion exists in the game."""
     riot_parent = MagicMock()
     riot_parent.is_ghost = False
     riot = Riot(riot_parent)
+    Riot._get_notification_state(0)
 
     global_vars.game = MagicMock()
     global_vars.game.has_automated_life_and_death = True
@@ -284,8 +288,11 @@ async def test_riot_day_3_reminder_not_sent_without_minion(mock_safe_send, mock_
     await riot.on_day_start(origin=MagicMock(), kills=[])
 
     # Notification should NOT be sent
-    assert riot.day_3_notification_sent is False
-    mock_notify_storytellers.assert_not_awaited()
+    assert Riot._get_notification_state(3)["minion"] is False
+    assert not any(
+        "riot.day_start decision=notify_storytellers" in call.args[0]
+        for call in mock_logger_debug.call_args_list
+    )
     mock_safe_send.assert_not_awaited()
 
 

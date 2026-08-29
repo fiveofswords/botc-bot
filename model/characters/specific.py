@@ -9,6 +9,7 @@ import bot_client
 import global_vars
 import utils.character_utils
 import utils.message_utils
+from utils import has_ability
 from . import base
 
 
@@ -1811,13 +1812,42 @@ class Ojo(base.Demon):
 class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
     """The riot."""
     
+    # Shared Riot notification state across all Riot instances.
+    __notification_sent = {
+        "day": None,
+        "automate": False,
+        "minion": False,
+        "poisoned": False,
+    }
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Riot"
-        self.day_3_notification_sent = False
+
+    @classmethod
+    def _get_notification_state(cls, current_day_number):
+        defaults = {
+            "day": None,
+            "automate": False,
+            "minion": False,
+            "poisoned": False,
+        }
+        for key, value in defaults.items():
+            cls.__notification_sent.setdefault(key, value)
+
+        if cls.__notification_sent["day"] != current_day_number:
+            cls.__notification_sent = {
+                "day": current_day_number,
+                "automate": False,
+                "minion": False,
+                "poisoned": False,
+            }
+        return cls.__notification_sent
 
     async def on_day_start(self, origin, kills):
         current_day_number = len(global_vars.game.days) + 1
+        notification_state = Riot._get_notification_state(current_day_number)
+
         bot_client.logger.debug(
             "riot.day_start automated=%s day=%s poisoned=%s riot_ghost=%s",
             global_vars.game.has_automated_life_and_death,
@@ -1827,9 +1857,9 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
         )
         if not global_vars.game.has_automated_life_and_death:
             # if there is a riot alive on day 3 and the game does not have automated life and death, prompt sts to set it.
-            if current_day_number >= 3 and not self.parent.is_ghost and not self.day_3_notification_sent:
-                await utils.message_utils.notify_storytellers("A Riot is in play. Use the `automatekills true` command to enable Riot chaining")
-                self.day_3_notification_sent = True
+            if current_day_number >= 3 and not self.parent.is_ghost and not notification_state["automate"]:
+                await utils.message_utils.safe_send(origin, "A Riot is in play. Use the `automatekills true` command to enable Riot chaining")
+                notification_state["automate"] = True
 
             bot_client.logger.debug("riot.day_start decision=skip reason=automation_disabled")
             return True
@@ -1840,28 +1870,32 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
         bot_client.logger.debug(
             "riot.day_start minion_check has_minion=%s notification_sent=%s",
             has_minion,
-            self.day_3_notification_sent,
+            Riot._get_notification_state(current_day_number)
         )
-        if current_day_number >= 3 and not self.day_3_notification_sent and has_minion:
-            self.day_3_notification_sent = True
+        if current_day_number >= 3 and not notification_state["minion"] and has_minion:
             bot_client.logger.debug(
                 "riot.day_start decision=notify_storytellers day=%s",
                 current_day_number,
             )
 
             # Send minion update reminder regardless of Riot's state
-            # (even if poisoned or ghost, storytellers need to update minions) 
-            # todo: --- maybe. gotta check
-            await utils.notify_storytellers(f"""
-                Riot is active on day {current_day_number}!
-                Please update all minion characters to Riot at the appropriate time{"." if current_day_number == 3 else "?"}
-                """.strip())
+            # (even if poisoned or ghost, storytellers need to update minions)
+            if not notification_state["minion"]:
+                await utils.safe_send(origin, f"Riot is active on day {current_day_number}!\nPlease update all minion characters to Riot at the appropriate time{"." if (current_day_number == 3) else "?"}")
+                notification_state["minion"] = True
 
-        # fixme: only if ALL riots are poisoned should this message be sent.
-        # If Riot is poisoned, don't chain (storytellers handle the decision)
-        if self.is_poisoned:
-            bot_client.logger.debug("riot.day_start decision=non_chaining reason=riot_poisoned")
-            await utils.message_utils.safe_send(origin, "There is a poisoned riot on day 3. What happens now is up to the storytellers.")
+        # Only if ALL living players with Riot abilities are poisoned should this message be sent.
+        # If every living Riot is poisoned, don't chain (storytellers handle the decision)
+        living_riots = [
+            player for player in global_vars.game.seatingOrder
+            if has_ability(player.character, Riot)
+               and not player.is_ghost
+        ]
+        if living_riots and all(riot_player.character.is_poisoned for riot_player in living_riots):
+            bot_client.logger.debug("riot.day_start decision=non_chaining reason=all_riots_poisoned")
+            if not notification_state["poisoned"]:
+                await utils.message_utils.safe_send(origin, "All living Riot players are currently poisoned. Use the `unpoison` command if appropriate.")
+                notification_state["poisoned"] = True
             return True
 
         # If Riot is a ghost, don't chain
@@ -1949,6 +1983,7 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
         )
         if announcement:
             await announcement.pin()
+            this_day.votes[-1].announcements.append(announcement.id)
         else:
             bot_client.logger.warning("announcent to pin not received!")
         bot_client.logger.debug(
@@ -1957,7 +1992,6 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
             nominator_name,
             announcement.id if announcement else None,
         )
-        this_day.votes[-1].announcements.append(announcement.id)
         
         if not this_day.riot_active and global_vars.game.show_tally:
             # show tally on first nomination
@@ -2100,3 +2134,4 @@ class Wraith(base.Minion):
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Wraith"
+
