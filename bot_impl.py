@@ -57,6 +57,36 @@ except ImportError:
 # Load all commands into the registry
 commands.loader.load_all_commands()
 
+
+async def _send_nomination_denial_if_needed(current_day, nominator_player, denial_recipient, log_context: str) -> bool:
+    """Send standardized domain nomination denial, returning True when blocked."""
+    denial_reason = current_day.nomination_denial_reason(nominator_player)
+    if not denial_reason:
+        return False
+    bot_client.logger.info(
+        "%s denied reason=%s nominator=%s",
+        log_context,
+        denial_reason,
+        nominator_player.display_name if nominator_player else None,
+    )
+    await message_utils.safe_send(denial_recipient, current_day.nomination_denial_message(denial_reason))
+    return True
+
+
+async def _submit_nomination_with_domain_result(current_day, nominee, nominator, denial_recipient, log_context: str) -> bool:
+    """Execute Day.nomination and handle any domain denial result consistently."""
+    denial_reason = await current_day.nomination(nominee, nominator)
+    if not denial_reason:
+        return True
+    bot_client.logger.info(
+        "%s denied reason=%s nominator=%s",
+        log_context,
+        denial_reason,
+        nominator.display_name if nominator else None,
+    )
+    await message_utils.safe_send(denial_recipient, current_day.nomination_denial_message(denial_reason))
+    return False
+
 ### API Stuff
 try:
     member_cache = discord.MemberCacheFlags(
@@ -1796,6 +1826,14 @@ async def on_message(message):
                 person = await player_utils.select_player(
                     message.author, argument, global_vars.game.seatingOrder
                 ) if not story_teller_is_nominated else None
+                bot_client.logger.debug(
+                    "riot.nominate_command start author=%s nominator_player=%s nominee=%s storyteller_nominee=%s riot_active=%s",
+                    message.author.display_name,
+                    nominator_player.display_name if nominator_player else None,
+                    person.display_name if person else None,
+                    story_teller_is_nominated,
+                    global_vars.game.days[-1].riot_active,
+                )
 
                 traveler_called = person is not None and isinstance(person.character, model.characters.Traveler)
 
@@ -1806,14 +1844,23 @@ async def on_message(message):
                 if not nominator_player:
                     if not global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
                         await message_utils.safe_send(message.author, "You aren't in the game, and so cannot nominate.")
+                        bot_client.logger.debug("riot.nominate_command denied reason=non_player_non_st author=%s", message.author.display_name)
                         return
                     else:
-                        if len([
+                        current_day_number = len(global_vars.game.days)
+                        living_unpoisoned_riots = len([
                             player for player in global_vars.game.seatingOrder
                             if player.character.role_name == "Riot"
                             if not player.character.is_poisoned
                             if not player.is_ghost
-                        ]) > 0:
+                        ])
+                        bot_client.logger.debug(
+                            "riot.nominate_command st_override_check author=%s day=%s living_unpoisoned_riots=%s",
+                            message.author.display_name,
+                            current_day_number,
+                            living_unpoisoned_riots,
+                        )
+                        if living_unpoisoned_riots > 0:
                             # todo: ask if the nominee dies
                             st_user = message.author
                             msg = await message_utils.safe_send(st_user, "Do they die? yes or no")
@@ -1843,10 +1890,26 @@ async def on_message(message):
                                 )
                                 return
                             global_vars.game.days[-1].st_riot_kill_override = player_dies
+                            bot_client.logger.debug(
+                                "riot.nominate_command st_override_set nominee=%s player_dies=%s",
+                                person.display_name if person else "storytellers",
+                                player_dies,
+                            )
                 else:
+                    if await _send_nomination_denial_if_needed(
+                        global_vars.game.days[-1],
+                        nominator_player,
+                        message.author,
+                        "riot.nominate_command",
+                    ):
+                        return
                     if global_vars.game.days[-1].riot_active:
                         if not nominator_player.riot_nominee:
                             await message_utils.safe_send(message.author, "Riot is active, you may not nominate.")
+                            bot_client.logger.debug(
+                                "riot.nominate_command denied reason=not_current_riot_nominee nominator=%s",
+                                nominator_player.display_name,
+                            )
                             return
                     if nominator_player.is_ghost and not traveler_called and not nominator_player.riot_nominee and not banshee_override:
                         await message_utils.safe_send(
@@ -1862,12 +1925,26 @@ async def on_message(message):
 
                 if global_vars.game.is_atheist:
                     if story_teller_is_nominated:
+                        bot_client.logger.debug(
+                            "riot.nominate_command atheist_storyteller_nomination nominator=%s riot_active=%s",
+                            nominator_player.display_name if nominator_player else "storytellers",
+                            global_vars.game.days[-1].riot_active,
+                        )
                         if None in [x.nominee for x in global_vars.game.days[-1].votes]:
                             await message_utils.safe_send(message.author,
                                                           "The storytellers have already been nominated today.")
                             await message.unpin()
                             return
-                        await global_vars.game.days[-1].nomination(None, nominator_player)
+                        nomination_ok = await _submit_nomination_with_domain_result(
+                            global_vars.game.days[-1],
+                            None,
+                            nominator_player,
+                            message.author,
+                            "riot.nominate_command",
+                        )
+                        if not nomination_ok:
+                            await message.unpin()
+                            return
                         if global_vars.game is not game.NULL_GAME:
                             game_utils.backup("current_game.pckl")
                         await message.unpin()
@@ -1877,6 +1954,19 @@ async def on_message(message):
                     return
 
                 if global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
+                    living_unpoisoned_riots = len([
+                        player for player in global_vars.game.seatingOrder
+                        if player.character.role_name == "Riot"
+                        if not player.character.is_poisoned
+                        if not player.is_ghost
+                    ])
+                    bot_client.logger.debug(
+                        "riot.nominate_command st_nomination nominee=%s st=%s day=%s living_unpoisoned_riots=%s delegation=day.nomination",
+                        person.display_name if person else "storytellers",
+                        message.author.display_name,
+                        len(global_vars.game.days),
+                        living_unpoisoned_riots,
+                    )
                     await global_vars.game.days[-1].nomination(person, None)
                     if global_vars.game is not game.NULL_GAME:
                         game_utils.backup("current_game.pckl")
@@ -1890,7 +1980,20 @@ async def on_message(message):
 
                 model.game.vote.remove_banshee_nomination(banshee_ability_of_player)
 
-                await global_vars.game.days[-1].nomination(person, nominator_player)
+                nomination_ok = await _submit_nomination_with_domain_result(
+                    global_vars.game.days[-1],
+                    person,
+                    nominator_player,
+                    message.author,
+                    "riot.nominate_command",
+                )
+                if not nomination_ok:
+                    return
+                bot_client.logger.debug(
+                    "riot.nominate_command submitted nominee=%s nominator=%s",
+                    person.display_name,
+                    nominator_player.display_name,
+                )
                 if global_vars.game is not game.NULL_GAME:
                     game_utils.backup("current_game.pckl")
                 return
@@ -2813,6 +2916,15 @@ async def on_message_edit(before, after):
                 await after.unpin()
                 return
 
+            if await _send_nomination_denial_if_needed(
+                global_vars.game.days[-1],
+                message_author_player,
+                global_vars.channel,
+                "riot.pin_nominate",
+            ):
+                await after.unpin()
+                return
+
             names = await player_utils.generate_possibilities(argument, global_vars.game.seatingOrder)
             traveler_called = len(names) == 1 and isinstance(names[0].character, model.characters.Traveler)
 
@@ -2830,6 +2942,10 @@ async def on_message_edit(before, after):
                 return
             if global_vars.game.days[-1].riot_active and not message_author_player.riot_nominee:
                 await message_utils.safe_send(global_vars.channel, "Riot is active. It is not your turn to nominate.")
+                bot_client.logger.debug(
+                    "riot.pin_nominate denied reason=not_current_riot_nominee author=%s",
+                    message_author_player.display_name,
+                )
                 await after.unpin()
                 return
             if not (message_author_player).can_nominate and not traveler_called and not banshee_override:
@@ -2840,6 +2956,11 @@ async def on_message_edit(before, after):
             if global_vars.game.is_atheist:
                 storyteller_nomination = await model.game.vote.is_storyteller(argument)
                 if storyteller_nomination:
+                    bot_client.logger.debug(
+                        "riot.pin_nominate atheist_storyteller_nomination author=%s riot_active=%s",
+                        message_author_player.display_name,
+                        global_vars.game.days[-1].riot_active,
+                    )
                     if None in [x.nominee for x in global_vars.game.days[-1].votes]:
                         await message_utils.safe_send(
                             global_vars.channel,
@@ -2848,7 +2969,16 @@ async def on_message_edit(before, after):
                         await after.unpin()
                         return
                     model.game.vote.remove_banshee_nomination(banshee_ability_of_player)
-                    await global_vars.game.days[-1].nomination(None, message_author_player)
+                    nomination_ok = await _submit_nomination_with_domain_result(
+                        global_vars.game.days[-1],
+                        None,
+                        message_author_player,
+                        global_vars.channel,
+                        "riot.pin_nominate",
+                    )
+                    if not nomination_ok:
+                        await after.unpin()
+                        return
                     if global_vars.game is not game.NULL_GAME:
                         game_utils.backup("current_game.pckl")
                     await after.unpin()
@@ -2865,7 +2995,21 @@ async def on_message_edit(before, after):
 
                 model.game.vote.remove_banshee_nomination(banshee_ability_of_player)
 
-                await global_vars.game.days[-1].nomination(names[0], message_author_player)
+                nomination_ok = await _submit_nomination_with_domain_result(
+                    global_vars.game.days[-1],
+                    names[0],
+                    message_author_player,
+                    global_vars.channel,
+                    "riot.pin_nominate",
+                )
+                if not nomination_ok:
+                    await after.unpin()
+                    return
+                bot_client.logger.debug(
+                    "riot.pin_nominate submitted nominee=%s nominator=%s",
+                    names[0].display_name,
+                    message_author_player.display_name,
+                )
                 if global_vars.game is not game.NULL_GAME:
                     game_utils.backup("current_game.pckl")
                 await after.unpin()

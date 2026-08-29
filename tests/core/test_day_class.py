@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 import global_vars
-from model.game.day import Day
+from model.game.day import Day, NOMINATION_DENIAL_RIOT_STORYTELLER_TURN
 from model.game.vote import Vote
 from model.game.base_vote import VoteOutcome
 from model.game.whisper_mode import WhisperMode
@@ -294,6 +294,65 @@ async def test_nomination_with_fixture(mock_discord_setup, setup_test_game):
 
             # Restore the original close_noms method
             day.close_noms = original_close_noms
+
+
+@pytest.mark.asyncio
+async def test_nomination_denied_by_riot_storyteller_turn_has_no_side_effects(mock_discord_setup, setup_test_game):
+    """Day.nomination should return Riot storyteller-turn reason and avoid nomination side effects."""
+    day = Day()
+    day.riot_storyteller_turn_active = True
+    day.close_noms = AsyncMock()
+
+    global_vars.game = setup_test_game['game']
+    global_vars.game.days = [day]
+    global_vars.game.whisper_mode = WhisperMode.ALL
+    global_vars.game.show_tally = False
+    global_vars.game.seatingOrder = [setup_test_game['players']['alice'], setup_test_game['players']['bob']]
+
+    denial_reason = await day.nomination(setup_test_game['players']['bob'], setup_test_game['players']['alice'])
+
+    assert denial_reason == NOMINATION_DENIAL_RIOT_STORYTELLER_TURN
+    assert day.riot_storyteller_turn_active is True
+    assert day.votes == []
+    assert global_vars.game.whisper_mode == WhisperMode.ALL
+    day.close_noms.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_storyteller_nomination_allowed_and_clears_riot_storyteller_turn(mock_discord_setup, setup_test_game):
+    """Storyteller nominations should remain allowed and clear Riot storyteller-turn latch."""
+    day = Day()
+    day.riot_storyteller_turn_active = True
+    day.close_noms = AsyncMock()
+
+    global_vars.game = setup_test_game['game']
+    global_vars.game.days = [day]
+    global_vars.game.whisper_mode = WhisperMode.ALL
+    global_vars.game.show_tally = False
+    global_vars.game.seatingOrder = [setup_test_game['players']['alice'], setup_test_game['players']['bob']]
+    global_vars.player_role = mock_discord_setup['roles']['player']
+    global_vars.gamemaster_role = mock_discord_setup['roles']['gamemaster']
+    global_vars.gamemaster_role.members = [mock_discord_setup['members']['storyteller']]
+    global_vars.channel = mock_discord_setup['channels']['town_square']
+
+    mock_vote = MagicMock()
+    mock_vote.majority = 2
+    mock_vote.announcements = []
+    mock_vote.call_next = AsyncMock()
+
+    mock_announcement = MagicMock()
+    mock_announcement.id = 333
+    mock_announcement.pin = AsyncMock()
+
+    with patch('model.game.day.Vote', return_value=mock_vote), \
+         patch('utils.message_utils.safe_send', new_callable=AsyncMock, return_value=mock_announcement), \
+         patch('model.nomination_buttons.send_nomination_buttons_to_st_channels', new_callable=AsyncMock):
+        denial_reason = await day.nomination(setup_test_game['players']['alice'], None)
+
+    assert denial_reason is None
+    assert day.riot_storyteller_turn_active is False
+    day.close_noms.assert_awaited_once()
+    mock_vote.call_next.assert_awaited_once()
 
 
 class TestNominationThresholds:

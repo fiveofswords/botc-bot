@@ -2,7 +2,7 @@
 Tests for the Game class in bot_impl.py
 """
 
-from unittest.mock import AsyncMock, patch, Mock
+from unittest.mock import AsyncMock, MagicMock, patch, Mock
 
 import discord.errors
 import pytest
@@ -10,6 +10,7 @@ import pytest
 import global_vars
 from model import Game, Player
 from model.characters import Character
+from model.characters.specific import Riot
 from model.game import Day
 from tests.fixtures.discord_mocks import mock_discord_setup, MockChannel
 from tests.fixtures.game_fixtures import setup_test_game
@@ -239,6 +240,83 @@ async def test_start_day(mock_discord_setup, setup_test_game):
 
     # Verify day count increases
     assert len(game.days) == 2
+
+
+@pytest.mark.asyncio
+@patch('model.characters.specific.bot_client.logger.debug')
+@patch('model.characters.specific.utils.safe_send', new_callable=AsyncMock)
+@patch('model.game.game.game_utils.update_presence', new_callable=AsyncMock)
+@patch('model.game.game.message_utils.safe_send', new_callable=AsyncMock)
+async def test_start_day_triggers_riot_day_3_reminder(mock_game_safe_send, _mock_update_presence,
+                                                       mock_riot_safe_send, mock_logger_debug,
+                                                       mock_discord_setup):
+    """Game.start_day should trigger Riot's day-3 storyteller reminder hook if minion exists."""
+    from model.characters.specific import Boomdandy
+
+    riot_player = Player(
+        Riot,
+        "evil",
+        mock_discord_setup['members']['charlie'],
+        mock_discord_setup['channels']['st_charlie'],
+        0,
+    )
+    minion_player = Player(
+        Boomdandy,
+        "evil",
+        mock_discord_setup['members']['bob'],
+        mock_discord_setup['channels']['st_bob'],
+        1,
+    )
+    storyteller = Player(
+        Character,
+        "good",
+        mock_discord_setup['members']['alice'],
+        mock_discord_setup['channels']['st_alice'],
+        2,
+    )
+
+    global_vars.channel = mock_discord_setup['channels']['town_square']
+    global_vars.player_role = mock_discord_setup['roles']['player']
+    global_vars.gamemaster_role = mock_discord_setup['roles']['gamemaster']
+    global_vars.gamemaster_role.members = [mock_discord_setup['members']['storyteller']]
+    global_vars.inactive_role = mock_discord_setup['roles']['inactive']
+    global_vars.whisper_channel = None
+
+    mock_sent_message = AsyncMock()
+    mock_sent_message.pin = AsyncMock()
+    mock_game_safe_send.return_value = mock_sent_message
+
+    Riot._get_notification_state(0)
+
+    game = Game(
+        seating_order=[riot_player, minion_player, storyteller],
+        seating_order_message=AsyncMock(),
+        info_channel_seating_order_message=AsyncMock(),
+        skip_storytellers=True,
+    )
+    game.days = [Day(), Day()]
+    game.storytellers = [mock_discord_setup['members']['storyteller']]
+    game.has_automated_life_and_death = True
+    global_vars.game = game
+
+    origin = MagicMock()
+    await game.start_day(kills=[], origin=origin)
+
+    mock_riot_safe_send.assert_awaited_once()
+    reminder_text = mock_riot_safe_send.await_args.args[1]
+    assert reminder_text.isascii()
+    assert "Riot is active on day 3!" in reminder_text
+    assert "update all minion characters to Riot" in reminder_text
+    assert any(
+        "riot.day_start decision=notify_storytellers" in call.args[0]
+        for call in mock_logger_debug.call_args_list
+    )
+    assert len(game.days) == 3
+
+    game.days = [Day(), Day()]
+    await riot_player.character.on_day_start(origin=origin, kills=[])
+    assert mock_riot_safe_send.await_count == 1
+
 
 
 @pytest.mark.asyncio

@@ -8,7 +8,14 @@ import global_vars
 import model.characters
 import model.game.whisper_mode
 import model.nomination_buttons
+import model.player
 from utils import message_utils, game_utils
+
+
+NOMINATION_DENIAL_RIOT_STORYTELLER_TURN = "riot_storyteller_turn"
+NOMINATION_DENIAL_MESSAGES = {
+    NOMINATION_DENIAL_RIOT_STORYTELLER_TURN: "Riot day is active. It is the storytellers' turn to nominate.",
+}
 
 
 class Day:
@@ -37,6 +44,7 @@ class Day:
     aboutToDie: tuple['model.player.Player | None', 'model.game.base_vote.BaseVote'] | None
     riot_active: bool
     st_riot_kill_override: bool
+    riot_storyteller_turn_active: bool
 
     def __init__(self):
         """Initialize a Day."""
@@ -50,6 +58,69 @@ class Day:
         self.aboutToDie = None
         self.riot_active = False
         self.st_riot_kill_override = False
+        self.riot_storyteller_turn_active = False
+
+    def is_eligible_riot_day(self) -> bool:
+        """Return True when Riot day enforcement is eligible (day 3+ with living, unpoisoned Riot)."""
+        if len(global_vars.game.days) < 3:
+            return False
+        return any(
+            player.character.role_name == "Riot"
+            and not player.character.is_poisoned
+            and not player.is_ghost
+            for player in global_vars.game.seatingOrder
+        )
+
+    def should_block_player_nomination_for_riot_storyteller_turn(self, nominator: model.player.Player | None) -> bool:
+        """Return True when Riot storyteller-turn latch is active and a non-storyteller player is nominating."""
+        if not self.riot_storyteller_turn_active or nominator is None:
+            return False
+        return nominator.alignment != model.player.STORYTELLER_ALIGNMENT
+
+    def nomination_denial_reason(self, nominator: model.player.Player | None) -> str | None:
+        """Return a domain reason code when a nomination must be denied, else None."""
+        if self.should_block_player_nomination_for_riot_storyteller_turn(nominator):
+            return NOMINATION_DENIAL_RIOT_STORYTELLER_TURN
+        return None
+
+    @staticmethod
+    def nomination_denial_message(reason: str) -> str:
+        """Map a nomination denial reason code to a user-facing message."""
+        return NOMINATION_DENIAL_MESSAGES.get(reason, "Nomination denied.")
+
+    async def latch_riot_storyteller_turn(self, source: str) -> None:
+        """Latch Riot storyteller-turn and send exactly one transition message."""
+        if not self.is_eligible_riot_day():
+            return
+        transitioned = not self.riot_storyteller_turn_active
+        self.riot_storyteller_turn_active = True
+        bot_client.logger.info(
+            "riot.storyteller_turn_set day=%s source=%s transitioned=%s",
+            len(global_vars.game.days),
+            source,
+            transitioned,
+        )
+        if transitioned:
+            msg = await message_utils.safe_send(
+                global_vars.channel,
+                "Riot day is active. It is the storytellers' turn to nominate.",
+            )
+            bot_client.logger.info(
+                "riot.storyteller_turn_prompt_sent source=%s message_id=%s",
+                source,
+                msg.id if msg else None,
+            )
+
+    def clear_riot_storyteller_turn(self, source: str) -> None:
+        """Clear Riot storyteller-turn latch when storytellers take their nomination turn."""
+        if not self.riot_storyteller_turn_active:
+            return
+        self.riot_storyteller_turn_active = False
+        bot_client.logger.info(
+            "riot.storyteller_turn_cleared day=%s source=%s",
+            len(global_vars.game.days),
+            source,
+        )
 
     async def open_pms(self):
         """Opens PMs."""
@@ -87,7 +158,7 @@ class Day:
 
         await game_utils.update_presence(bot_client.client)
 
-    async def nomination(self, nominee, nominator):
+    async def nomination(self, nominee, nominator) -> str | None:
         """Handle a nomination.
         
         Args:
@@ -95,11 +166,34 @@ class Day:
             nominator: The player making the nomination
         """
 
+        denial_reason = self.nomination_denial_reason(nominator)
+        if denial_reason:
+            bot_client.logger.info(
+                "nomination.denied reason=%s nominee=%s nominator=%s",
+                denial_reason,
+                nominee.display_name if nominee else "storytellers",
+                nominator.display_name if nominator else "storytellers",
+            )
+            return denial_reason
+
+        if nominator is None:
+            self.clear_riot_storyteller_turn(source="day.nomination_storyteller_accepted")
+
         global_vars.game.whisper_mode = model.game.whisper_mode.WhisperMode.NEIGHBORS
+        nominee_name = nominee.display_name if nominee else "storytellers"
+        nominator_name = nominator.display_name if nominator else "storytellers"
+        bot_client.logger.debug(
+            "nomination.start nominee=%s nominator=%s riot_active=%s votes_today=%s",
+            nominee_name,
+            nominator_name,
+            self.riot_active,
+            len(self.votes),
+        )
         await self.close_noms()
 
         # todo: if organ grinder ability is active, then this first message should not be output.
         if not nominee:
+            bot_client.logger.debug("nomination.branch storyteller_nominee")
             self.votes.append(Vote(nominee, nominator))
             if self.aboutToDie is not None:
                 votes_needed = int(math.ceil((max(self.aboutToDie[1].votes + 1, self.votes[-1].majority))))
@@ -142,13 +236,26 @@ class Day:
             #  There may need to be some rework based on NominationModifier priority
             for person in global_vars.game.seatingOrder:
                 if isinstance(person.character, model.characters.NominationModifier) and proceed:
+                    bot_client.logger.debug(
+                        "nomination.modifier_call modifier=%s nominee=%s nominator=%s",
+                        person.character.role_name,
+                        nominee_name,
+                        nominator_name,
+                    )
                     proceed = await person.character.on_nomination(
                         nominee, nominator, proceed
                     )
+                    bot_client.logger.debug(
+                        "nomination.modifier_result modifier=%s proceed=%s",
+                        person.character.role_name,
+                        proceed,
+                    )
             if not proceed:
                 # do not proceed with collecting votes
+                bot_client.logger.debug("nomination.stop reason=modifier_intercepted nominee=%s", nominee_name)
                 return
         elif isinstance(nominee.character, model.characters.Traveler):
+            bot_client.logger.debug("nomination.branch traveler_nominee nominee=%s", nominee_name)
             nominee.can_be_nominated = False
             self.votes.append(TravelerVote(nominee, nominator))
             announcement = await message_utils.safe_send(
@@ -171,6 +278,7 @@ class Day:
                 nominee_name, nominator_name, votes_needed, is_exile=True
             )
         else:
+            bot_client.logger.debug("nomination.branch regular_nominee nominee=%s", nominee_name)
             nominee.can_be_nominated = False
             self.votes.append(Vote(nominee, nominator))
             # FIXME:there might be a case where a player earlier in the seating order makes the nomination not proceed
@@ -179,11 +287,23 @@ class Day:
             proceed = True
             for person in global_vars.game.seatingOrder:
                 if isinstance(person.character, model.characters.NominationModifier) and proceed:
+                    bot_client.logger.debug(
+                        "nomination.modifier_call modifier=%s nominee=%s nominator=%s",
+                        person.character.role_name,
+                        nominee_name,
+                        nominator_name,
+                    )
                     proceed = await person.character.on_nomination(
                         nominee, nominator, proceed
                     )
+                    bot_client.logger.debug(
+                        "nomination.modifier_result modifier=%s proceed=%s",
+                        person.character.role_name,
+                        proceed,
+                    )
             if not proceed:
                 # do not proceed with collecting votes
+                bot_client.logger.debug("nomination.stop reason=modifier_intercepted nominee=%s", nominee_name)
                 return
             # Calculate votes needed based on whether there's already someone about to die
             if self.aboutToDie is not None:
@@ -233,11 +353,23 @@ class Day:
             #  There may need to be some rework based on NominationModifier priority
             for person in global_vars.game.seatingOrder:
                 if isinstance(person.character, model.characters.NominationModifier) and proceed:
+                    bot_client.logger.debug(
+                        "nomination.modifier_call_post_announce modifier=%s nominee=%s nominator=%s",
+                        person.character.role_name,
+                        nominee_name,
+                        nominator_name,
+                    )
                     proceed = await person.character.on_nomination(
                         nominee, nominator, proceed
                     )
+                    bot_client.logger.debug(
+                        "nomination.modifier_result_post_announce modifier=%s proceed=%s",
+                        person.character.role_name,
+                        proceed,
+                    )
             if not proceed:
                 # do not proceed with collecting user input for this vote
+                bot_client.logger.debug("nomination.stop reason=modifier_intercepted_after_announce nominee=%s", nominee_name)
                 return
 
         if (global_vars.game.show_tally):
@@ -279,7 +411,14 @@ class Day:
             await message_utils.safe_send(global_vars.channel, messageText)
 
         self.votes[-1].announcements.append(announcement.id)
+        bot_client.logger.debug(
+            "nomination.vote_started nominee=%s vote_index=%s announcement_id=%s",
+            nominee_name,
+            len(self.votes) - 1,
+            announcement.id,
+        )
         await self.votes[-1].call_next()
+        return None
 
     async def end(self):
         """Ends the day."""
