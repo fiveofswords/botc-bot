@@ -310,7 +310,10 @@ async def test_riot_nomination_player_day3_with_eligible_riot_intercepts(mock_sa
     global_vars.game.has_automated_life_and_death = True
     global_vars.game.show_tally = False
     global_vars.game.days = [MagicMock(), MagicMock(), this_day]
-    global_vars.game.seatingOrder = [riot_parent]
+    other_player = MagicMock()
+    other_player.is_ghost = False
+    other_player.character.role_name = "Townsfolk"
+    global_vars.game.seatingOrder = [riot_parent, other_player, MagicMock(is_ghost=False), MagicMock(is_ghost=False)]
 
     global_vars.player_role = MagicMock()
     global_vars.player_role.mention = "@players"
@@ -361,6 +364,137 @@ async def test_riot_nomination_player_day3_with_eligible_riot_intercepts(mock_sa
 
 @pytest.mark.asyncio
 @patch('utils.message_utils.safe_send', new_callable=AsyncMock)
+async def test_riot_nomination_player_day3_stops_when_living_players_le_two(mock_safe_send):
+    """Riot should end the chain when a storyteller override kill leaves two or fewer living players."""
+    riot_parent = MagicMock()
+    riot_parent.is_ghost = False
+    riot = Riot(riot_parent)
+    riot_parent.character = riot
+
+    this_day = MagicMock()
+    this_day.votes = [MagicMock(announcements=[])]
+    this_day.riot_active = False
+    this_day.st_riot_kill_override = True
+    this_day.open_noms = AsyncMock()
+
+    global_vars.game = MagicMock()
+    global_vars.game.has_automated_life_and_death = True
+    global_vars.game.show_tally = False
+    global_vars.game.days = [MagicMock(), MagicMock(), this_day]
+
+    class Nominee:
+        def __init__(self):
+            self.display_name = "Nominee"
+            self.user = MagicMock()
+            self.user.mention = "@nominee"
+            self.is_ghost = False
+            self.character = MagicMock()
+            self.character.role_name = "Townsfolk"
+            self.character.is_poisoned = False
+            self.riot_nominee = False
+            self.can_nominate = False
+
+        async def kill(self):
+            self.is_ghost = True
+            return True
+
+    nominee = Nominee()
+
+    other_player = MagicMock()
+    other_player.is_ghost = False
+    other_player.character.role_name = "Townsfolk"
+
+    global_vars.game.seatingOrder = [riot_parent, other_player, nominee]
+
+    global_vars.player_role = MagicMock()
+    global_vars.player_role.mention = "@players"
+    global_vars.channel = MagicMock()
+
+    announcement_message = MagicMock()
+    announcement_message.id = 200
+    announcement_message.pin = AsyncMock()
+    mock_safe_send.side_effect = [announcement_message, MagicMock()]
+
+    result = await riot.on_nomination(nominee, None, True)
+
+    assert result is False
+    assert [call.args[1] for call in mock_safe_send.await_args_list if len(call.args) > 1] == [
+        "@players, @nominee has been nominated by the storytellers.",
+        "The game is over! Please wait for the storytellers to conclude the game.",
+    ]
+    this_day.open_noms.assert_not_awaited()
+    assert nominee.is_ghost is True
+    assert nominee.riot_nominee is False
+    assert nominee.can_nominate is False
+
+
+@pytest.mark.asyncio
+@patch('utils.message_utils.safe_send', new_callable=AsyncMock)
+async def test_riot_nomination_player_day3_continues_when_living_players_gt_two(mock_safe_send):
+    """Riot should continue the chain when more than two living players remain."""
+    riot_parent = MagicMock()
+    riot_parent.is_ghost = False
+    riot = Riot(riot_parent)
+    riot_parent.character = riot
+
+    this_day = MagicMock()
+    this_day.votes = [MagicMock(announcements=[])]
+    this_day.riot_active = False
+    this_day.st_riot_kill_override = False
+    this_day.open_noms = AsyncMock()
+
+    global_vars.game = MagicMock()
+    global_vars.game.has_automated_life_and_death = True
+    global_vars.game.show_tally = False
+    global_vars.game.days = [MagicMock(), MagicMock(), this_day]
+
+    nominee = MagicMock()
+    nominee.display_name = "Nominee"
+    nominee.user.mention = "@nominee"
+    nominee.is_ghost = False
+    nominee.kill = AsyncMock(side_effect=lambda: setattr(nominee, 'is_ghost', True))
+    nominee.riot_nominee = False
+    nominee.can_nominate = False
+
+    other_players = []
+    for _ in range(2):
+        player = MagicMock()
+        player.is_ghost = False
+        player.character.role_name = "Townsfolk"
+        other_players.append(player)
+
+    global_vars.game.seatingOrder = [riot_parent, *other_players, nominee]
+
+    global_vars.player_role = MagicMock()
+    global_vars.player_role.mention = "@players"
+    global_vars.channel = MagicMock()
+
+    announcement_message = MagicMock()
+    announcement_message.id = 300
+    announcement_message.pin = AsyncMock()
+    riot_message = MagicMock()
+    riot_message.id = 301
+    mock_safe_send.side_effect = [announcement_message, riot_message]
+
+    nominator = MagicMock()
+    nominator.display_name = "Nominator"
+    nominator.riot_nominee = True
+
+    result = await riot.on_nomination(nominee, nominator, True)
+
+    assert result is False
+    assert [call.args[1] for call in mock_safe_send.await_args_list if len(call.args) > 1] == [
+        "@players, @nominee has been nominated by Nominator.",
+        "Riot is in play. @nominee to nominate",
+    ]
+    nominee.kill.assert_awaited_once()
+    this_day.open_noms.assert_awaited_once()
+    assert nominee.riot_nominee is True
+    assert nominee.can_nominate is True
+
+
+@pytest.mark.asyncio
+@patch('utils.message_utils.safe_send', new_callable=AsyncMock)
 async def test_riot_nomination_storyteller_day3_with_eligible_riot_intercepts(mock_safe_send):
     """Day 3+ storyteller-initiated nomination should enter Riot chain when an eligible Riot exists."""
     riot_parent = MagicMock()
@@ -380,7 +514,13 @@ async def test_riot_nomination_storyteller_day3_with_eligible_riot_intercepts(mo
     global_vars.game.has_automated_life_and_death = True
     global_vars.game.show_tally = False
     global_vars.game.days = [MagicMock(), MagicMock(), this_day]
-    global_vars.game.seatingOrder = [riot_parent]
+    other_players = []
+    for _ in range(2):
+        player = MagicMock()
+        player.is_ghost = False
+        player.character.role_name = "Townsfolk"
+        other_players.append(player)
+    global_vars.game.seatingOrder = [riot_parent, *other_players, MagicMock(is_ghost=False)]
 
     global_vars.player_role = MagicMock()
     global_vars.player_role.mention = "@players"

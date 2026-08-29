@@ -1996,17 +1996,27 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
         # TODO: Future work - Golem smash should apply BEFORE Riot execute (sequencing issue)
 
         # Kill the nominee (all nominees die during Riot chaining)
+        did_kill = False
         if not nominator:
             if this_day.st_riot_kill_override:
                 this_day.st_riot_kill_override = False
                 bot_client.logger.debug("riot.nomination kill decision=execute_by_st_override nominee=%s", nominee_name)
-                await nominee.kill()
+                did_kill = await nominee.kill()
             else:
                 bot_client.logger.debug("riot.nomination kill decision=spare_by_st_override nominee=%s", nominee_name)
         else:
             # Riots always kill their nominees
             bot_client.logger.debug("riot.nomination kill decision=execute nominee=%s", nominee_name)
-            await nominee.kill()
+            did_kill = await nominee.kill()
+
+        if did_kill:
+            living_players = [player for player in global_vars.game.seatingOrder if not player.is_ghost]
+            if len(living_players) <= 2:
+                await utils.message_utils.safe_send(
+                    global_vars.channel,
+                    "The game is over! Please wait for the storytellers to conclude the game.",
+                )
+                return False
 
         riot_announcement = f"Riot is in play. {nominee.user.mention} to nominate"
         
