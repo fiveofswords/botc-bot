@@ -1827,7 +1827,7 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
         )
         if not global_vars.game.has_automated_life_and_death:
             # if there is a riot alive on day 3 and the game does not have automated life and death, prompt sts to set it.
-            if current_day_number >= 3 and not self.parent.is_ghost:
+            if current_day_number >= 3 and not self.parent.is_ghost and not self.day_3_notification_sent:
                 await utils.message_utils.notify_storytellers("A Riot is in play. Use the `automatekills true` command to enable Riot chaining")
                 self.day_3_notification_sent = True
 
