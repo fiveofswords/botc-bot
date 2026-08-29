@@ -1817,15 +1817,32 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
         self.day_3_notification_sent = False
 
     async def on_day_start(self, origin, kills):
+        current_day_number = len(global_vars.game.days) + 1
+        bot_client.logger.info(
+            "riot.day_start automated=%s day=%s poisoned=%s riot_ghost=%s",
+            global_vars.game.has_automated_life_and_death,
+            current_day_number,
+            self.is_poisoned,
+            self.parent.is_ghost,
+        )
         if not global_vars.game.has_automated_life_and_death:
+            bot_client.logger.info("riot.day_start decision=skip reason=automation_disabled")
             return True
 
         # Check if there's a minion in the game
         has_minion = any(isinstance(player.character, base.Minion) for player in global_vars.game.seatingOrder)
 
-        current_day_number = len(global_vars.game.days) + 1
+        bot_client.logger.info(
+            "riot.day_start minion_check has_minion=%s notification_sent=%s",
+            has_minion,
+            self.day_3_notification_sent,
+        )
         if current_day_number >= 3 and not self.day_3_notification_sent and has_minion:
             self.day_3_notification_sent = True
+            bot_client.logger.info(
+                "riot.day_start decision=notify_storytellers day=%s",
+                current_day_number,
+            )
 
             # Send minion update reminder regardless of Riot's state
             # (even if poisoned or ghost, storytellers need to update minions) 
@@ -1838,24 +1855,50 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
         # fixme: only if ALL riots are poisoned should this message be sent.
         # If Riot is poisoned, don't chain (storytellers handle the decision)
         if self.is_poisoned:
+            bot_client.logger.info("riot.day_start decision=non_chaining reason=riot_poisoned")
             await utils.message_utils.safe_send(origin, "There is a poisoned riot on day 3. What happens now is up to the storytellers.")
             return True
 
         # If Riot is a ghost, don't chain
         if self.parent.is_ghost:
+            bot_client.logger.info("riot.day_start decision=non_chaining reason=riot_dead")
             return True
 
+        bot_client.logger.info("riot.day_start decision=ready")
         return True
 
     async def on_nomination(self, nominee, nominator, proceed):
         assert global_vars.game is not None
+        nominee_name = nominee.display_name if nominee else "storytellers"
+        nominator_name = nominator.display_name if nominator else "storytellers"
+        bot_client.logger.info(
+            "riot.nomination start proceed=%s nominee=%s nominator=%s automated=%s poisoned=%s riot_ghost=%s",
+            proceed,
+            nominee_name,
+            nominator_name,
+            global_vars.game.has_automated_life_and_death,
+            self.is_poisoned,
+            self.parent.is_ghost,
+        )
         if not global_vars.game.has_automated_life_and_death:
+            bot_client.logger.info("riot.nomination decision=pass_through reason=automation_disabled")
             return proceed
 
         # todo: is not nominee indicative of the storytellers being nominated?
         
         # Don't chain if Riot is poisoned or a ghost
         if self.is_poisoned or self.parent.is_ghost or not nominee:
+            reasons = []
+            if self.is_poisoned:
+                reasons.append("riot_poisoned")
+            if self.parent.is_ghost:
+                reasons.append("riot_dead")
+            if not nominee:
+                reasons.append("storyteller_nomination")
+            bot_client.logger.info(
+                "riot.nomination decision=pass_through reason=%s",
+                ",".join(reasons),
+            )
             return proceed
         
         this_day = global_vars.game.days[-1]
@@ -1863,6 +1906,10 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
         
         # Days 1-2: Regular nominations, no riot behavior
         if current_day_number < 3:
+            bot_client.logger.info(
+                "riot.nomination decision=pass_through reason=pre_day3 day=%s",
+                current_day_number,
+            )
             return proceed
         
         # Day 3: Riot chaining behavior
@@ -1876,6 +1923,12 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
             await announcement.pin()
         else:
             bot_client.logger.warning("announcent to pin not received!")
+        bot_client.logger.info(
+            "riot.nomination announce nominee=%s nominator=%s announcement_id=%s",
+            nominee_name,
+            nominator_name,
+            announcement.id if announcement else None,
+        )
         this_day.votes[-1].announcements.append(announcement.id)
         
         if not this_day.riot_active and global_vars.game.show_tally:
@@ -1907,6 +1960,7 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
             await utils.message_utils.safe_send(global_vars.channel, messageText)
             
         this_day.riot_active = True
+        bot_client.logger.info("riot.nomination riot_chain_activated day=%s", current_day_number)
         
         # REMOVED: Old soldier_jinx and golem_jinx logic
         # Soldier jinx is handled by storyteller intervention (they stop the game and announce good wins)
@@ -1917,9 +1971,13 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
         if not nominator:
             if this_day.st_riot_kill_override:
                 this_day.st_riot_kill_override = False
+                bot_client.logger.info("riot.nomination kill decision=execute_by_st_override nominee=%s", nominee_name)
                 await nominee.kill()
+            else:
+                bot_client.logger.info("riot.nomination kill decision=spare_by_st_override nominee=%s", nominee_name)
         else:
             # Riots always kill their nominees
+            bot_client.logger.info("riot.nomination kill decision=execute nominee=%s", nominee_name)
             await nominee.kill()
 
         riot_announcement = f"Riot is in play. {nominee.user.mention} to nominate"
@@ -1933,13 +1991,20 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
         if nominee:
             nominee.riot_nominee = True
             nominee.can_nominate = True
+            bot_client.logger.info(
+                "riot.nomination next_nominator nominee=%s can_nominate=%s",
+                nominee_name,
+                nominee.can_nominate,
+            )
 
         msg = await utils.message_utils.safe_send(
             global_vars.channel,
             riot_announcement,
         )
+        bot_client.logger.info("riot.nomination prompt_sent message_id=%s", msg.id if msg else None)
         
         await this_day.open_noms()
+        bot_client.logger.info("riot.nomination decision=intercept proceed=False")
         return False
 
 

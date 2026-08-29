@@ -96,10 +96,20 @@ class Day:
         """
 
         global_vars.game.whisper_mode = model.game.whisper_mode.WhisperMode.NEIGHBORS
+        nominee_name = nominee.display_name if nominee else "storytellers"
+        nominator_name = nominator.display_name if nominator else "storytellers"
+        bot_client.logger.info(
+            "nomination.start nominee=%s nominator=%s riot_active=%s votes_today=%s",
+            nominee_name,
+            nominator_name,
+            self.riot_active,
+            len(self.votes),
+        )
         await self.close_noms()
 
         # todo: if organ grinder ability is active, then this first message should not be output.
         if not nominee:
+            bot_client.logger.info("nomination.branch storyteller_nominee")
             self.votes.append(Vote(nominee, nominator))
             if self.aboutToDie is not None:
                 votes_needed = int(math.ceil((max(self.aboutToDie[1].votes + 1, self.votes[-1].majority))))
@@ -142,13 +152,26 @@ class Day:
             #  There may need to be some rework based on NominationModifier priority
             for person in global_vars.game.seatingOrder:
                 if isinstance(person.character, model.characters.NominationModifier) and proceed:
+                    bot_client.logger.info(
+                        "nomination.modifier_call modifier=%s nominee=%s nominator=%s",
+                        person.character.role_name,
+                        nominee_name,
+                        nominator_name,
+                    )
                     proceed = await person.character.on_nomination(
                         nominee, nominator, proceed
                     )
+                    bot_client.logger.info(
+                        "nomination.modifier_result modifier=%s proceed=%s",
+                        person.character.role_name,
+                        proceed,
+                    )
             if not proceed:
                 # do not proceed with collecting votes
+                bot_client.logger.info("nomination.stop reason=modifier_intercepted nominee=%s", nominee_name)
                 return
         elif isinstance(nominee.character, model.characters.Traveler):
+            bot_client.logger.info("nomination.branch traveler_nominee nominee=%s", nominee_name)
             nominee.can_be_nominated = False
             self.votes.append(TravelerVote(nominee, nominator))
             announcement = await message_utils.safe_send(
@@ -171,6 +194,7 @@ class Day:
                 nominee_name, nominator_name, votes_needed, is_exile=True
             )
         else:
+            bot_client.logger.info("nomination.branch regular_nominee nominee=%s", nominee_name)
             nominee.can_be_nominated = False
             self.votes.append(Vote(nominee, nominator))
             # FIXME:there might be a case where a player earlier in the seating order makes the nomination not proceed
@@ -179,11 +203,23 @@ class Day:
             proceed = True
             for person in global_vars.game.seatingOrder:
                 if isinstance(person.character, model.characters.NominationModifier) and proceed:
+                    bot_client.logger.info(
+                        "nomination.modifier_call modifier=%s nominee=%s nominator=%s",
+                        person.character.role_name,
+                        nominee_name,
+                        nominator_name,
+                    )
                     proceed = await person.character.on_nomination(
                         nominee, nominator, proceed
                     )
+                    bot_client.logger.info(
+                        "nomination.modifier_result modifier=%s proceed=%s",
+                        person.character.role_name,
+                        proceed,
+                    )
             if not proceed:
                 # do not proceed with collecting votes
+                bot_client.logger.info("nomination.stop reason=modifier_intercepted nominee=%s", nominee_name)
                 return
             # Calculate votes needed based on whether there's already someone about to die
             if self.aboutToDie is not None:
@@ -233,11 +269,23 @@ class Day:
             #  There may need to be some rework based on NominationModifier priority
             for person in global_vars.game.seatingOrder:
                 if isinstance(person.character, model.characters.NominationModifier) and proceed:
+                    bot_client.logger.info(
+                        "nomination.modifier_call_post_announce modifier=%s nominee=%s nominator=%s",
+                        person.character.role_name,
+                        nominee_name,
+                        nominator_name,
+                    )
                     proceed = await person.character.on_nomination(
                         nominee, nominator, proceed
                     )
+                    bot_client.logger.info(
+                        "nomination.modifier_result_post_announce modifier=%s proceed=%s",
+                        person.character.role_name,
+                        proceed,
+                    )
             if not proceed:
                 # do not proceed with collecting user input for this vote
+                bot_client.logger.info("nomination.stop reason=modifier_intercepted_after_announce nominee=%s", nominee_name)
                 return
 
         if (global_vars.game.show_tally):
@@ -279,6 +327,12 @@ class Day:
             await message_utils.safe_send(global_vars.channel, messageText)
 
         self.votes[-1].announcements.append(announcement.id)
+        bot_client.logger.info(
+            "nomination.vote_started nominee=%s vote_index=%s announcement_id=%s",
+            nominee_name,
+            len(self.votes) - 1,
+            announcement.id,
+        )
         await self.votes[-1].call_next()
 
     async def end(self):

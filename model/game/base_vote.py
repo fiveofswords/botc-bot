@@ -4,6 +4,7 @@ from enum import Enum
 
 import discord
 
+import bot_client
 import global_vars
 import model.settings
 from model import nomination_buttons
@@ -293,6 +294,19 @@ class BaseVote(ABC):
 
         # Determine outcome and apply effects
         outcome = self._determine_outcome()
+        nominee_name = player_utils.get_player_display_name(self.nominee)
+        riot_active = global_vars.game.days[-1].riot_active
+        nominee_is_storyteller = self.nominee is None
+        bot_client.logger.info(
+            "vote.end nominee=%s nominator=%s outcome=%s votes=%s majority=%s riot_active=%s storyteller_nominee=%s",
+            nominee_name,
+            player_utils.get_player_display_name(self.nominator),
+            outcome.value,
+            self.votes,
+            self.majority,
+            riot_active,
+            nominee_is_storyteller,
+        )
         await self._apply_outcome_effects(outcome)
 
         # Send announcement
@@ -373,6 +387,13 @@ class BaseVote(ABC):
     async def _finalize_vote(self) -> None:
         """Finalize vote state and reopen game interactions."""
         self.done = True
+        about_to_die = global_vars.game.days[-1].aboutToDie
+        bot_client.logger.info(
+            "vote.finalize riot_active=%s nominee=%s about_to_die=%s",
+            global_vars.game.days[-1].riot_active,
+            player_utils.get_player_display_name(self.nominee),
+            player_utils.get_player_display_name(about_to_die[0]) if about_to_die else None,
+        )
         await global_vars.game.days[-1].open_noms()
         await global_vars.game.days[-1].open_pms()
 
