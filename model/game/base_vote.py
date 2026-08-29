@@ -297,7 +297,7 @@ class BaseVote(ABC):
         nominee_name = player_utils.get_player_display_name(self.nominee)
         riot_active = global_vars.game.days[-1].riot_active
         nominee_is_storyteller = self.nominee is None
-        bot_client.logger.info(
+        bot_client.logger.debug(
             "vote.end nominee=%s nominator=%s outcome=%s votes=%s majority=%s riot_active=%s storyteller_nominee=%s",
             nominee_name,
             player_utils.get_player_display_name(self.nominator),
@@ -390,7 +390,7 @@ class BaseVote(ABC):
         about_to_die = global_vars.game.days[-1].aboutToDie
         if self.nominee is None:
             await global_vars.game.days[-1].latch_riot_storyteller_turn(source="vote.finalize_storyteller_nominee")
-        bot_client.logger.info(
+        bot_client.logger.debug(
             "vote.finalize riot_active=%s nominee=%s about_to_die=%s",
             global_vars.game.days[-1].riot_active,
             player_utils.get_player_display_name(self.nominee),

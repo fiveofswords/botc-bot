@@ -9,4 +9,6 @@ WORKDIR /app
 # Install any dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+ENV FIVEOFSWORDS_LOG_LEVEL=INFO
+
 CMD ["python", "./bot.py"]

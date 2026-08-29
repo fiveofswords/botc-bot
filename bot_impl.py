@@ -1826,7 +1826,7 @@ async def on_message(message):
                 person = await player_utils.select_player(
                     message.author, argument, global_vars.game.seatingOrder
                 ) if not story_teller_is_nominated else None
-                bot_client.logger.info(
+                bot_client.logger.debug(
                     "riot.nominate_command start author=%s nominator_player=%s nominee=%s storyteller_nominee=%s riot_active=%s",
                     message.author.display_name,
                     nominator_player.display_name if nominator_player else None,
@@ -1844,7 +1844,7 @@ async def on_message(message):
                 if not nominator_player:
                     if not global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
                         await message_utils.safe_send(message.author, "You aren't in the game, and so cannot nominate.")
-                        bot_client.logger.info("riot.nominate_command denied reason=non_player_non_st author=%s", message.author.display_name)
+                        bot_client.logger.debug("riot.nominate_command denied reason=non_player_non_st author=%s", message.author.display_name)
                         return
                     else:
                         current_day_number = len(global_vars.game.days)
@@ -1854,7 +1854,7 @@ async def on_message(message):
                             if not player.character.is_poisoned
                             if not player.is_ghost
                         ])
-                        bot_client.logger.info(
+                        bot_client.logger.debug(
                             "riot.nominate_command st_override_check author=%s day=%s living_unpoisoned_riots=%s",
                             message.author.display_name,
                             current_day_number,
@@ -1890,7 +1890,7 @@ async def on_message(message):
                                 )
                                 return
                             global_vars.game.days[-1].st_riot_kill_override = player_dies
-                            bot_client.logger.info(
+                            bot_client.logger.debug(
                                 "riot.nominate_command st_override_set nominee=%s player_dies=%s",
                                 person.display_name if person else "storytellers",
                                 player_dies,
@@ -1906,7 +1906,7 @@ async def on_message(message):
                     if global_vars.game.days[-1].riot_active:
                         if not nominator_player.riot_nominee:
                             await message_utils.safe_send(message.author, "Riot is active, you may not nominate.")
-                            bot_client.logger.info(
+                            bot_client.logger.debug(
                                 "riot.nominate_command denied reason=not_current_riot_nominee nominator=%s",
                                 nominator_player.display_name,
                             )
@@ -1925,7 +1925,7 @@ async def on_message(message):
 
                 if global_vars.game.is_atheist:
                     if story_teller_is_nominated:
-                        bot_client.logger.info(
+                        bot_client.logger.debug(
                             "riot.nominate_command atheist_storyteller_nomination nominator=%s riot_active=%s",
                             nominator_player.display_name if nominator_player else "storytellers",
                             global_vars.game.days[-1].riot_active,
@@ -1960,7 +1960,7 @@ async def on_message(message):
                         if not player.character.is_poisoned
                         if not player.is_ghost
                     ])
-                    bot_client.logger.info(
+                    bot_client.logger.debug(
                         "riot.nominate_command st_nomination nominee=%s st=%s day=%s living_unpoisoned_riots=%s delegation=day.nomination",
                         person.display_name if person else "storytellers",
                         message.author.display_name,
@@ -1989,7 +1989,7 @@ async def on_message(message):
                 )
                 if not nomination_ok:
                     return
-                bot_client.logger.info(
+                bot_client.logger.debug(
                     "riot.nominate_command submitted nominee=%s nominator=%s",
                     person.display_name,
                     nominator_player.display_name,
@@ -2942,7 +2942,7 @@ async def on_message_edit(before, after):
                 return
             if global_vars.game.days[-1].riot_active and not message_author_player.riot_nominee:
                 await message_utils.safe_send(global_vars.channel, "Riot is active. It is not your turn to nominate.")
-                bot_client.logger.info(
+                bot_client.logger.debug(
                     "riot.pin_nominate denied reason=not_current_riot_nominee author=%s",
                     message_author_player.display_name,
                 )
@@ -2956,7 +2956,7 @@ async def on_message_edit(before, after):
             if global_vars.game.is_atheist:
                 storyteller_nomination = await model.game.vote.is_storyteller(argument)
                 if storyteller_nomination:
-                    bot_client.logger.info(
+                    bot_client.logger.debug(
                         "riot.pin_nominate atheist_storyteller_nomination author=%s riot_active=%s",
                         message_author_player.display_name,
                         global_vars.game.days[-1].riot_active,
@@ -3005,7 +3005,7 @@ async def on_message_edit(before, after):
                 if not nomination_ok:
                     await after.unpin()
                     return
-                bot_client.logger.info(
+                bot_client.logger.debug(
                     "riot.pin_nominate submitted nominee=%s nominator=%s",
                     names[0].display_name,
                     message_author_player.display_name,
