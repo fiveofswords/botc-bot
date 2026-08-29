@@ -956,7 +956,7 @@ def test_storyteller_reseat_commands(mock_discord_setup, setup_test_game):
 async def test_storyteller_welcome_command_simplified(mock_discord_setup, setup_test_game):
     """
     Test a simplified version of the welcome command functionality.
-    
+
     Instead of testing the full welcome command, we'll test that the basic
     command structure works in a highly mocked environment. This approach
     avoids complex dependencies like client.user.id that are hard to mock.

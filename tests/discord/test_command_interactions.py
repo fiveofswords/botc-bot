@@ -802,7 +802,7 @@ async def test_help_command(mock_discord_setup, setup_test_game):
 
             # Verify specialized help was sent
             assert alice_user.send.called
-            # We don't actually need to check the content since we're just 
+            # We don't actually need to check the content since we're just
             # verifying the command was processed and something was sent
 
 

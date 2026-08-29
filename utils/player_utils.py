@@ -18,10 +18,10 @@ T = TypeVar('T')
 
 def get_player_display_name(player: model.player.Player | None) -> str:
     """Get the display name of a player or 'the storytellers' if None.
-    
+
     Args:
         player: The player to get the display name for, or None for storytellers
-        
+
     Returns:
         str: The player's display name or 'the storytellers'
     """
@@ -31,10 +31,10 @@ def get_player_display_name(player: model.player.Player | None) -> str:
 def is_player(member: discord.Member) -> bool:
     """
     Check if a Discord member is a player in the current game.
-    
+
     Args:
         member: The member to check
-        
+
     Returns:
         True if the member is a player, False otherwise
     """
@@ -44,35 +44,35 @@ def is_player(member: discord.Member) -> bool:
 def find_player_by_nick(nick: str) -> model.player.Player | None:
     """
     Find a player by their display name (case-insensitive).
-    
+
     Args:
         nick: The nickname/display name to search for
-        
+
     Returns:
         The player object if found, None otherwise
     """
     nick = nick.lower()
-    
+
     # Try exact match
     for player in global_vars.game.seatingOrder:
         if player.display_name.lower() == nick:
             return player
-            
+
     # Try partial match
     for player in global_vars.game.seatingOrder:
         if nick in player.display_name.lower():
             return player
-            
+
     return None
 
 
 def who_by_id(user_id: int) -> model.player.Player | None:
     """
     Find a player by their Discord user ID.
-    
+
     Args:
         user_id: The Discord user ID
-        
+
     Returns:
         The player object if found, None otherwise
     """
@@ -85,10 +85,10 @@ def who_by_id(user_id: int) -> model.player.Player | None:
 def who_by_name(name: str) -> model.player.Player | None:
     """
     Find a player by their name.
-    
+
     Args:
         name: The name to search for
-        
+
     Returns:
         The player object if found, None otherwise
     """
@@ -98,10 +98,10 @@ def who_by_name(name: str) -> model.player.Player | None:
 def who_by_character(character_name: str) -> model.player.Player | None:
     """
     Find a player by their character name.
-    
+
     Args:
         character_name: The character name to search for
-        
+
     Returns:
         The player object if found, None otherwise
     """
@@ -115,10 +115,10 @@ def who_by_character(character_name: str) -> model.player.Player | None:
 def who(arg) -> model.player.Player | None:
     """
     Find a player by various identifiers.
-    
+
     Args:
         arg: The identifier (ID, name, or Member)
-        
+
     Returns:
         The player object if found, None otherwise
     """
@@ -139,19 +139,19 @@ def who(arg) -> model.player.Player | None:
 def get_neighbors(player: model.player.Player) -> list[model.player.Player]:
     """
     Get the neighboring players for a given player.
-    
+
     Args:
         player: The player to get neighbors for
-        
+
     Returns:
         List containing the player's neighbors (left and right)
     """
     if player not in global_vars.game.seatingOrder:
         return []
-    
+
     index = global_vars.game.seatingOrder.index(player)
     result = []
-    
+
     # Find alive left neighbor
     for i in range(1, len(global_vars.game.seatingOrder)):
         left_index = (index - i) % len(global_vars.game.seatingOrder)
@@ -159,7 +159,7 @@ def get_neighbors(player: model.player.Player) -> list[model.player.Player]:
         if not left_neighbor.is_ghost:
             result.append(left_neighbor)
             break
-    
+
     # Find alive right neighbor
     for i in range(1, len(global_vars.game.seatingOrder)):
         right_index = (index + i) % len(global_vars.game.seatingOrder)
@@ -167,24 +167,24 @@ def get_neighbors(player: model.player.Player) -> list[model.player.Player]:
         if not right_neighbor.is_ghost:
             result.append(right_neighbor)
             break
-    
+
     return result
 
 
 async def check_and_print_if_one_or_zero_to_check_in() -> None:
     """Check and notify storytellers if only one or zero players need to check in."""
     from model.player import STORYTELLER_ALIGNMENT
-    
+
     not_checked_in = [
         player
         for player in global_vars.game.seatingOrder
         if not player.has_checked_in and player.alignment != STORYTELLER_ALIGNMENT
     ]
-    
+
     if len(not_checked_in) == 1:
         for member in global_vars.gamemaster_role.members:
             await message_utils.safe_send(
-                member, 
+                member,
                 f"Just waiting on {not_checked_in[0].display_name} to check in."
             )
     elif len(not_checked_in) == 0:
@@ -195,10 +195,10 @@ async def check_and_print_if_one_or_zero_to_check_in() -> None:
 def get_player(user) -> model.player.Player | None:
     """
     Returns the Player object corresponding to user.
-    
+
     Args:
         user: The Discord user
-        
+
     Returns:
         The Player object if found, None otherwise
     """
@@ -215,11 +215,11 @@ def get_player(user) -> model.player.Player | None:
 async def generate_possibilities(text: str, people: Sequence[T]) -> list[T]:
     """
     Generates possible users with name or nickname matching text.
-    
+
     Args:
         text: The text to match against
         people: The sequence of people to search through
-        
+
     Returns:
         List of matching people
     """
@@ -235,12 +235,12 @@ async def generate_possibilities(text: str, people: Sequence[T]) -> list[T]:
 async def select_player(user: discord.User, text: str, possibilities: Sequence[T]) -> T | None:
     """
     Finds a player from players matching a string.
-    
+
     Args:
         user: The Discord user making the selection
         text: The text to match
         possibilities: The sequence of possible matches
-        
+
     Returns:
         The selected player if found, None otherwise
     """
@@ -264,12 +264,12 @@ async def choices(user: discord.User, possibilities: list[model.player.Player],
                   text: str) -> model.player.Player | None:
     """
     Clarifies which user is intended when there are multiple matches.
-    
+
     Args:
         user: The Discord user making the choice
         possibilities: List of possible players
         text: The original search text
-        
+
     Returns:
         The chosen player if selected, None otherwise
     """
@@ -312,7 +312,7 @@ async def choices(user: discord.User, possibilities: list[model.player.Player],
 async def active_in_st_chat(user):
     """
     Makes user active in storyteller chat.
-    
+
     Args:
         user: The Discord user
     """
@@ -334,7 +334,7 @@ async def active_in_st_chat(user):
 async def make_active(user):
     """
     Makes user active during the day.
-    
+
     Args:
         user: The Discord user
     """
@@ -368,7 +368,7 @@ async def make_active(user):
 async def cannot_nominate(user):
     """
     Uses user's nomination.
-    
+
     Args:
         user: The Discord user
     """
@@ -397,7 +397,7 @@ async def cannot_nominate(user):
 async def warn_missing_player_channels(channel_to_send, players_missing_channels):
     """
     Warn about missing player channels.
-    
+
     Args:
         channel_to_send: The channel to send the warning to
         players_missing_channels: List of players missing channels

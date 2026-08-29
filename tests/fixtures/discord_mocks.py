@@ -49,7 +49,7 @@ class MockClient:
         for category in self.guild.categories:
             if category.id == channel_id:
                 return category
-                
+
         return None
 
 

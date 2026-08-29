@@ -26,14 +26,14 @@ async def execute_command(command_function, message):
 async def run_command_player(command, args, player, channel, command_function):
     """
     Execute a player command for testing.
-    
+
     Args:
         command: The command name without the @ (e.g., 'vote')
         args: The command arguments as a string
         player: The player object from setup_test_game
         channel: The channel object from mock_discord_setup
         command_function: The function to call with the message
-        
+
     Returns:
         The mock safe_send object for verifying calls
     """
@@ -54,14 +54,14 @@ async def run_command_player(command, args, player, channel, command_function):
 async def run_command_storyteller(command, args, st_player, channel, command_function):
     """
     Execute a storyteller command for testing.
-    
+
     Args:
         command: The command name without the @ (e.g., 'startday')
         args: The command arguments as a string
         st_player: The storyteller player object from setup_test_game
         channel: The channel object from mock_discord_setup
         command_function: The function to call with the message
-        
+
     Returns:
         The mock safe_send object for verifying calls
     """
@@ -84,13 +84,13 @@ async def run_command_storyteller(command, args, st_player, channel, command_fun
 async def run_command_vote(vote_type, voter, vote, cmd_function=None):
     """
     Execute a vote command for testing.
-    
+
     Args:
         vote_type: The vote type ('yes', 'no', etc.)
         voter: The player voting
         vote: The Vote object
         cmd_function: The command function to call (defaults to on_message)
-        
+
     Returns:
         The AsyncMock for the vote method
     """
@@ -160,7 +160,7 @@ def patch_vote_testing(vote, game, mock_discord_setup, additional_patches=None):
 async def execute_command_with_wait_for(command_function, message, mock_discord_setup, wait_for_responses=None):
     """
     Execute a command that uses client.wait_for with predefined responses.
-    
+
     Args:
         command_function: The command function to execute
         message: The MockMessage to send
@@ -184,16 +184,16 @@ async def test_hand_command(command, player, mock_discord_setup, game,
                             expected_hand_state, hand_choice=None, prevote_choice=None):
     """
     Test a hand command (handup/handdown) with optional prevote interaction.
-    
+
     Args:
-        command: The command name ("handup" or "handdown") 
+        command: The command name ("handup" or "handdown")
         player: The player executing the command
         mock_discord_setup: Discord mock setup
         game: The game object
         expected_hand_state: Expected final hand_raised state
         hand_choice: Choice for hand status prompt ("up"/"down")
         prevote_choice: Choice for prevote prompt ("yes"/"no"/"cancel")
-    
+
     Returns:
         Dict with mock objects for assertions
     """

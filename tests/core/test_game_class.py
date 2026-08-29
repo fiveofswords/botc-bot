@@ -65,7 +65,7 @@ async def test_game_initialization(setup_test_game):
     assert game.is_atheist is False
 
 
-# test_game_end was removed - functionality is covered by integration tests in 
+# test_game_end was removed - functionality is covered by integration tests in
 # test_storyteller_commands.py::test_storyteller_endgame_command and
 # test_bot_integration.py::test_on_message_endgame_command
 

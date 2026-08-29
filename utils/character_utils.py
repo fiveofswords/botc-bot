@@ -9,10 +9,10 @@ if TYPE_CHECKING:
 def str_to_class(role: str) -> type['Character']:
     """
     Convert a role string to a character class.
-    
+
     Args:
         role: The role string to convert
-        
+
     Returns:
         The character class corresponding to the role
     """
@@ -22,11 +22,11 @@ def str_to_class(role: str) -> type['Character']:
 
 def the_ability(character, ability_class):
     """Get an ability from a character if it has that ability.
-    
+
     Args:
         character: The character to check
         ability_class: The ability class to check for
-        
+
     Returns:
         The ability instance if found, otherwise None
     """
@@ -65,11 +65,11 @@ def the_ability(character, ability_class):
 
 def has_ability(character, ability_class):
     """Check if a character has a specific ability.
-    
+
     Args:
         character: The character to check
         ability_class: The ability class to check for
-        
+
     Returns:
         bool: Whether the character has the ability
     """

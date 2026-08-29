@@ -13,11 +13,11 @@ from utils import message_utils
 async def yes_no(user: discord.User, text: str):
     """
     Ask a yes or no question of a user.
-    
+
     Args:
         user: The Discord user to ask
         text: The question text
-        
+
     Returns:
         True for yes, False for no, None for timeout/cancel
     """

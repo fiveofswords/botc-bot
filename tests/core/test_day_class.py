@@ -40,11 +40,11 @@ async def test_open_pms(mock_discord_setup, setup_test_game):
 
     # Create a mock client
     mock_client = MockClient()
-    
+
     # Apply patches for Discord message sending
     with patch('bot_client.client', mock_client), \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock):
-        
+
         # Set up global variables using fixture
         global_vars.gamemaster_role = mock_discord_setup['roles']['gamemaster']
         storyteller = mock_discord_setup['members']['storyteller']
@@ -66,11 +66,11 @@ async def test_close_pms(mock_discord_setup, setup_test_game):
 
     # Create a mock client
     mock_client = MockClient()
-    
+
     # Apply patches for Discord message sending
     with patch('bot_client.client', mock_client), \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock):
-        
+
         # Set up global variables using fixture
         global_vars.gamemaster_role = mock_discord_setup['roles']['gamemaster']
         storyteller = mock_discord_setup['members']['storyteller']
@@ -92,11 +92,11 @@ async def test_open_noms(mock_discord_setup, setup_test_game):
 
     # Create a mock client
     mock_client = MockClient()
-    
+
     # Apply patches for Discord message sending
     with patch('bot_client.client', mock_client), \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock):
-        
+
         # Set up global variables using fixture
         global_vars.gamemaster_role = mock_discord_setup['roles']['gamemaster']
         storyteller = mock_discord_setup['members']['storyteller']
@@ -121,11 +121,11 @@ async def test_close_noms(mock_discord_setup, setup_test_game):
 
     # Create a mock client
     mock_client = MockClient()
-    
+
     # Apply patches for Discord message sending
     with patch('bot_client.client', mock_client), \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock):
-        
+
         # Set up global variables using fixture
         global_vars.gamemaster_role = mock_discord_setup['roles']['gamemaster']
         storyteller = mock_discord_setup['members']['storyteller']
@@ -148,11 +148,11 @@ async def test_day_end(mock_discord_setup, setup_test_game):
 
     # Create a mock client
     mock_client = MockClient()
-    
+
     # Apply patches for Discord message sending
     with patch('bot_client.client', mock_client), \
             patch('utils.message_utils.safe_send', new_callable=AsyncMock):
-        
+
         # Set up global variables using fixture
         global_vars.gamemaster_role = mock_discord_setup['roles']['gamemaster']
         global_vars.player_role = mock_discord_setup['roles']['player']
@@ -197,7 +197,7 @@ async def test_day_end_with_execution(mock_discord_setup, setup_test_game):
 
     # Create a mock client
     mock_client = MockClient()
-    
+
     # Apply patches for Discord message sending
     with patch('bot_client.client', mock_client), \
             patch('utils.message_utils.safe_send') as mock_safe_send:
@@ -242,7 +242,7 @@ async def test_nomination_with_fixture(mock_discord_setup, setup_test_game):
 
     # Create a mock client
     mock_client = MockClient()
-    
+
     # Set up global variables using fixture
     global_vars.channel = mock_discord_setup['channels']['town_square']
     global_vars.player_role = mock_discord_setup['roles']['player']

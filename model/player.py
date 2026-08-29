@@ -61,7 +61,7 @@ class Player:
             st_channel: discord.TextChannel | None,
             position: int | None):
         """Initialize a Player.
-        
+
         Args:
             character_class: The class of character this player has
             alignment: The alignment of the player (e.g., "good", "evil")
@@ -123,11 +123,11 @@ class Player:
 
     async def kill(self, suppress: bool = False, force: bool = False) -> bool:
         """Kill the player.
-        
+
         Args:
             suppress: Whether to suppress death announcement
             force: Whether to force the kill even if death modifiers would prevent it
-            
+
         Returns:
             Whether the player dies
         """
@@ -171,7 +171,7 @@ class Player:
 
     async def execute(self, user: discord.Member, force: bool = False) -> None:
         """Execute the player.
-        
+
         Args:
             user: The user executing the player
             force: Whether to force the kill
@@ -303,7 +303,7 @@ class Player:
 
     async def change_character(self, character_class: type) -> None:
         """Change the player's character.
-        
+
         Args:
             character_class: The new character class
         """
@@ -312,7 +312,7 @@ class Player:
 
     async def change_alignment(self, alignment: str) -> None:
         """Change the player's alignment.
-        
+
         Args:
             alignment: The new alignment
         """
@@ -320,7 +320,7 @@ class Player:
 
     async def message(self, from_player: 'Player', content: str, jump: str) -> None:
         """Send a message to this player.
-        
+
         Args:
             from_player: The player sending the message
             content: The message content

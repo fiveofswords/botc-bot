@@ -10,10 +10,10 @@ class Character:
     parent: 'model.player.Player'
     role_name: str
     _is_poisoned: bool
-    
+
     def __init__(self, parent):
         """Initialize a character.
-        
+
         Args:
             parent: The player object this character belongs to
         """
@@ -99,7 +99,7 @@ class DayStartModifier(Character):
 
     async def on_day_start(self, origin, kills):
         """Called on the start of the day.
-        
+
         Returns:
             bool: Whether to continue with the day start
         """
@@ -125,7 +125,7 @@ class NominationModifier(Character):
 
     async def on_nomination(self, nominee, nominator, proceed):
         """Called when a nomination occurs.
-        
+
         Returns:
             bool: Whether the nomination proceeds
         """
@@ -151,7 +151,7 @@ class VoteBeginningModifier(Character):
 
     def modify_vote_values(self, order, values, majority):
         """Modify vote values.
-        
+
         Returns:
             tuple: order, values, majority
         """
@@ -174,7 +174,7 @@ class VoteModifier(Character):
 
     def on_vote_conclusion(self, dies, tie):
         """Called at the conclusion of voting.
-        
+
         Returns:
             tuple: Whether the nominee is about to die, whether the vote is tied
         """
@@ -183,7 +183,7 @@ class VoteModifier(Character):
 
 class DeathModifier(Character):
     """A character which triggers on a player's death."""
-    
+
     # Constants for death modifier priority
     PROTECTS_OTHERS = 1
     PROTECTS_SELF = 2
@@ -196,7 +196,7 @@ class DeathModifier(Character):
 
     def on_death(self, person, dies):
         """Called when a player is killed.
-        
+
         Returns:
             bool: Whether the player dies
         """

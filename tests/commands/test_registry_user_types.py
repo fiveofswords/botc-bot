@@ -147,7 +147,7 @@ class TestRegistryUserTypeDescriptions:
     def test_command_info_direct_instantiation(self):
         """Test CommandInfo can be instantiated directly with different description types."""
         from types import MappingProxyType
-        
+
         # Test with string description
         cmd1 = CommandInfo(
             name="test1",
@@ -282,7 +282,7 @@ class TestUserTypeConsistencyValidation:
 
         from commands.registry import CommandArgument
 
-        # Valid command with matching user types  
+        # Valid command with matching user types
         @self.registry.command(
             name="valid_args_cmd",
             arguments={

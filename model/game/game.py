@@ -10,7 +10,7 @@ from utils import message_utils, game_utils
 
 class Game:
     """Represents a game of Blood on the Clocktower.
-    
+
     Attributes:
         days: List of days that have passed
         isDay: Whether it is currently day
@@ -37,7 +37,7 @@ class Game:
     def __init__(self, seating_order, seating_order_message, info_channel_seating_order_message,
                  skip_storytellers=False):
         """Initialize a Game.
-        
+
         Args:
             seating_order: The seating order of players
             seating_order_message: The message with the seating order
@@ -108,7 +108,7 @@ class Game:
 
     async def end(self, winner):
         """Ends the game.
-        
+
         Args:
             winner: The winning team ('good', 'evil', or 'tie')
         """
@@ -156,7 +156,7 @@ class Game:
 
     async def reseat(self, new_seating_order):
         """Reseats the table.
-        
+
         Args:
             new_seating_order: The new seating order
         """
@@ -174,7 +174,7 @@ class Game:
 
     async def add_traveler(self, person):
         """Add a traveler to the game.
-        
+
         Args:
             person: The traveler to add
         """
@@ -190,7 +190,7 @@ class Game:
 
     async def remove_traveler(self, person):
         """Remove a traveler from the game.
-        
+
         Args:
             person: The traveler to remove
         """
@@ -204,7 +204,7 @@ class Game:
 
     async def start_day(self, kills=None, origin=None):
         """Start the day phase.
-        
+
         Args:
             kills: List of players to kill
             origin: The origin of the day start

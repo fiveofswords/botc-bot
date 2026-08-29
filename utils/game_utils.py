@@ -10,7 +10,7 @@ import global_vars
 
 async def update_presence(client):
     """Updates Discord Presence based on the current game state.
-    
+
     Args:
         client: The Discord client
     """
@@ -19,7 +19,7 @@ async def update_presence(client):
     # Skip actual presence updates during tests
     if not hasattr(client, 'ws') or client.ws is None:
         return
-        
+
     if global_vars.game is None or not hasattr(global_vars, 'game') or global_vars.game.seatingOrder == []:
         await client.change_presence(
             status=discord.Status.dnd, activity=discord.Game(name="No ongoing game!")
@@ -46,7 +46,7 @@ async def update_presence(client):
 
 def remove_backup(fileName):
     """Removes a backup file and its associated object files.
-    
+
     Args:
         fileName: The name of the backup file
     """
@@ -66,7 +66,7 @@ def remove_backup(fileName):
 def backup(fileName):
     """
     Backs up the game-state.
-    
+
     Args:
         fileName: The name of the backup file
     """
@@ -100,10 +100,10 @@ def backup(fileName):
 async def load(fileName):
     """
     Loads the game-state.
-    
+
     Args:
         fileName: The name of the backup file
-        
+
     Returns:
         The loaded game object
     """

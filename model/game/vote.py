@@ -29,14 +29,14 @@ def remove_banshee_nomination(banshee_ability_of_player) -> None:
 
 async def is_storyteller(arg, member_possibilities_fn=None, server_members=None, server=None, gamemaster_role=None):
     """Check if the argument refers to a storyteller.
-    
+
     Args:
         arg: The argument to check
         member_possibilities_fn: Custom function for member lookup (for testing)
         server_members: Optional server members list for testing
         server: Optional server for testing
         gamemaster_role: Optional gamemaster role for testing
-        
+
     Returns:
         True if the argument refers to a storyteller, False otherwise
     """
@@ -75,13 +75,13 @@ async def is_storyteller(arg, member_possibilities_fn=None, server_members=None,
 
 class Vote(BaseVote):
     """Stores information about a specific vote.
-    
+
     Inherits all attributes from BaseVote. See BaseVote for detailed attribute documentation.
     """
 
     def __init__(self, nominee, nominator):
         """Initialize a Vote.
-        
+
         Args:
             nominee: The player being nominated
             nominator: The player making the nomination

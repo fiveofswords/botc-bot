@@ -100,7 +100,7 @@ async def test_no_emoji_in_channel_name(setup_channel_test):
     alice_channel = setup_channel_test['channels']['st_alice']
     alice_channel.name = "alice-x-bot"  # No emoji
 
-    # Call set_ghost 
+    # Call set_ghost
     await channel_manager.set_ghost(alice_channel.id)
 
     # No assertion needed - test passes if no exception is raised

@@ -17,7 +17,7 @@ from . import base
 
 class Chef(base.Townsfolk):
     """The chef."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Chef"
@@ -25,7 +25,7 @@ class Chef(base.Townsfolk):
 
 class Empath(base.Townsfolk):
     """The empath."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Empath"
@@ -33,7 +33,7 @@ class Empath(base.Townsfolk):
 
 class Investigator(base.Townsfolk):
     """The investigator."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Investigator"
@@ -41,7 +41,7 @@ class Investigator(base.Townsfolk):
 
 class FortuneTeller(base.Townsfolk):
     """The fortune teller."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Fortune Teller"
@@ -49,7 +49,7 @@ class FortuneTeller(base.Townsfolk):
 
 class Librarian(base.Townsfolk):
     """The librarian."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Librarian"
@@ -57,7 +57,7 @@ class Librarian(base.Townsfolk):
 
 class Mayor(base.Townsfolk):
     """The mayor."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Mayor"
@@ -65,7 +65,7 @@ class Mayor(base.Townsfolk):
 
 class Monk(base.Townsfolk):
     """The monk."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Monk"
@@ -73,7 +73,7 @@ class Monk(base.Townsfolk):
 
 class Slayer(base.Townsfolk):
     """The slayer."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Slayer"
@@ -81,7 +81,7 @@ class Slayer(base.Townsfolk):
 
 class Soldier(base.Townsfolk):
     """The soldier."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Soldier"
@@ -89,7 +89,7 @@ class Soldier(base.Townsfolk):
 
 class Ravenkeeper(base.Townsfolk):
     """The ravenkeeper."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Ravenkeeper"
@@ -97,7 +97,7 @@ class Ravenkeeper(base.Townsfolk):
 
 class Undertaker(base.Townsfolk):
     """The undertaker."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Undertaker"
@@ -105,7 +105,7 @@ class Undertaker(base.Townsfolk):
 
 class Washerwoman(base.Townsfolk):
     """The washerwoman."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Washerwoman"
@@ -113,19 +113,19 @@ class Washerwoman(base.Townsfolk):
 
 class Virgin(base.Townsfolk, base.NominationModifier):
     """The virgin."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Virgin"
-    
+
     def refresh(self):
         super().refresh()
         self.beenNominated = False
-    
+
     async def on_nomination(self, nominee, nominator, proceed):
         if not global_vars.game.has_automated_life_and_death:
             return proceed
-            
+
         # Returns bool -- whether the nomination proceeds
         if nominee == self.parent:
             if not self.beenNominated:
@@ -139,7 +139,7 @@ class Virgin(base.Townsfolk, base.NominationModifier):
 
 class Chambermaid(base.Townsfolk):
     """The chambermaid."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Chambermaid"
@@ -147,7 +147,7 @@ class Chambermaid(base.Townsfolk):
 
 class Exorcist(base.Townsfolk):
     """The exorcist."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Exorcist"
@@ -155,24 +155,24 @@ class Exorcist(base.Townsfolk):
 
 class Fool(base.Townsfolk, base.DeathModifier):
     """The fool."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Fool"
-    
+
     def refresh(self):
         super().refresh()
         self.can_escape_death = True
-    
+
     def on_death(self, person, dies):
         if self.parent == person and not self.is_poisoned and self.can_escape_death and dies:
             self.can_escape_death = False
             return False
         return dies
-    
+
     def on_death_priority(self):
         return base.DeathModifier.PROTECTS_SELF
-    
+
     def extra_info(self):
         if self.can_escape_death:
             return "Fool: Not Used"
@@ -181,7 +181,7 @@ class Fool(base.Townsfolk, base.DeathModifier):
 
 class Gambler(base.Townsfolk):
     """The gambler."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Gambler"
@@ -189,7 +189,7 @@ class Gambler(base.Townsfolk):
 
 class Gossip(base.Townsfolk):
     """The gossip."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Gossip"
@@ -197,7 +197,7 @@ class Gossip(base.Townsfolk):
 
 class Grandmother(base.Townsfolk):
     """The grandmother."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Grandmother"
@@ -205,7 +205,7 @@ class Grandmother(base.Townsfolk):
 
 class Innkeeper(base.Townsfolk):
     """The innkeeper."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Innkeeper"
@@ -213,7 +213,7 @@ class Innkeeper(base.Townsfolk):
 
 class Minstrel(base.Townsfolk):
     """The minstrel."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Minstrel"
@@ -221,7 +221,7 @@ class Minstrel(base.Townsfolk):
 
 class Pacifist(base.Townsfolk):
     """The pacifist."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Pacifist"
@@ -229,7 +229,7 @@ class Pacifist(base.Townsfolk):
 
 class Professor(base.Townsfolk):
     """The professor."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Professor"
@@ -237,27 +237,27 @@ class Professor(base.Townsfolk):
 
 class Sailor(base.Townsfolk, base.DeathModifier):
     """The sailor."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Sailor"
-    
+
     def on_death(self, person, dies):
         if self.parent == person and not self.is_poisoned:
             return False
         return dies
-    
+
     def on_death_priority(self):
         return base.DeathModifier.PROTECTS_SELF
 
 
 class TeaLady(base.Townsfolk, base.DeathModifier):
     """The tea lady."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Tea Lady"
-    
+
     def on_death(self, person, dies):
         # look left for living neighbor
         if not dies:
@@ -268,14 +268,14 @@ class TeaLady(base.Townsfolk, base.DeathModifier):
         while neighbor1.is_ghost:
             ccw = ccw - 1
             neighbor1 = global_vars.game.seatingOrder[ccw]
-            
+
         # look right for living neighbor
         cw = self.parent.position + 1 - player_count
         neighbor2 = global_vars.game.seatingOrder[cw]
         while neighbor2.is_ghost:
             cw = cw + 1
             neighbor2 = global_vars.game.seatingOrder[cw]
-            
+
         if (
             # fixme: This does not consider neighbors who may falsely register as good or evil (recluse/spy)
             neighbor1.alignment == "good"
@@ -285,14 +285,14 @@ class TeaLady(base.Townsfolk, base.DeathModifier):
         ):
             return False
         return dies
-    
+
     def on_death_priority(self):
         return base.DeathModifier.PROTECTS_OTHERS
 
 
 class Artist(base.Townsfolk):
     """The artist."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Artist"
@@ -300,7 +300,7 @@ class Artist(base.Townsfolk):
 
 class Clockmaker(base.Townsfolk):
     """The clockmaker."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Clockmaker"
@@ -308,7 +308,7 @@ class Clockmaker(base.Townsfolk):
 
 class Dreamer(base.Townsfolk):
     """The dreamer."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Dreamer"
@@ -316,7 +316,7 @@ class Dreamer(base.Townsfolk):
 
 class Flowergirl(base.Townsfolk):
     """The flowergirl."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Flowergirl"
@@ -324,7 +324,7 @@ class Flowergirl(base.Townsfolk):
 
 class Juggler(base.Townsfolk):
     """The juggler."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Juggler"
@@ -332,7 +332,7 @@ class Juggler(base.Townsfolk):
 
 class Mathematician(base.Townsfolk):
     """The mathematician."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Mathematician"
@@ -340,7 +340,7 @@ class Mathematician(base.Townsfolk):
 
 class Oracle(base.Townsfolk):
     """The oracle."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Oracle"
@@ -348,15 +348,15 @@ class Oracle(base.Townsfolk):
 
 class Philosopher(base.Townsfolk, base.AbilityModifier):
     """The philosopher."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Philosopher"
-    
+
     def refresh(self):
         super().refresh()
         self.abilities = []
-    
+
     def add_ability(self, role):
         is_set = False
         for ability in self.abilities:
@@ -365,14 +365,14 @@ class Philosopher(base.Townsfolk, base.AbilityModifier):
                 is_set = True
         if not is_set:
             self.abilities = [role(self.parent)]
-    
+
     def extra_info(self):
         return "\n".join([("Philosophering: {}\n{}".format(x.role_name, x.extra_info())) for x in self.abilities])
 
 
 class Sage(base.Townsfolk):
     """The sage."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Sage"
@@ -380,7 +380,7 @@ class Sage(base.Townsfolk):
 
 class Savant(base.Townsfolk):
     """The savant."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Savant"
@@ -388,7 +388,7 @@ class Savant(base.Townsfolk):
 
 class Seamstress(base.Townsfolk):
     """The seamstress."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Seamstress"
@@ -396,7 +396,7 @@ class Seamstress(base.Townsfolk):
 
 class SnakeCharmer(base.Townsfolk):
     """The snake charmer."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Snake Charmer"
@@ -404,7 +404,7 @@ class SnakeCharmer(base.Townsfolk):
 
 class TownCrier(base.Townsfolk):
     """The town crier."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Town Crier"
@@ -412,7 +412,7 @@ class TownCrier(base.Townsfolk):
 
 class Courtier(base.Townsfolk):
     """The courtier."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Courtier"
@@ -422,7 +422,7 @@ class Courtier(base.Townsfolk):
 
 class Drunk(base.Outsider):
     """The drunk."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Drunk"
@@ -430,7 +430,7 @@ class Drunk(base.Outsider):
 
 class Goon(base.Outsider):
     """The goon."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Goon"
@@ -438,7 +438,7 @@ class Goon(base.Outsider):
 
 class Butler(base.Outsider):
     """The butler."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Butler"
@@ -446,7 +446,7 @@ class Butler(base.Outsider):
 
 class Saint(base.Outsider):
     """The saint."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Saint"
@@ -454,7 +454,7 @@ class Saint(base.Outsider):
 
 class Recluse(base.Outsider):
     """The recluse."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Recluse"
@@ -462,7 +462,7 @@ class Recluse(base.Outsider):
 
 class Moonchild(base.Outsider):
     """The moonchild."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Moonchild"
@@ -470,7 +470,7 @@ class Moonchild(base.Outsider):
 
 class Lunatic(base.Outsider):
     """The lunatic."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Lunatic"
@@ -478,7 +478,7 @@ class Lunatic(base.Outsider):
 
 class Tinker(base.Outsider):
     """The tinker."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Tinker"
@@ -486,7 +486,7 @@ class Tinker(base.Outsider):
 
 class Barber(base.Outsider):
     """The barber."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Barber"
@@ -494,7 +494,7 @@ class Barber(base.Outsider):
 
 class Klutz(base.Outsider):
     """The klutz."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Klutz"
@@ -502,7 +502,7 @@ class Klutz(base.Outsider):
 
 class Mutant(base.Outsider):
     """The mutant."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Mutant"
@@ -510,7 +510,7 @@ class Mutant(base.Outsider):
 
 class Sweetheart(base.Outsider):
     """The sweetheart."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Sweetheart"
@@ -520,7 +520,7 @@ class Sweetheart(base.Outsider):
 
 class Godfather(base.Minion):
     """The godfather."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Godfather"
@@ -528,7 +528,7 @@ class Godfather(base.Minion):
 
 class Mastermind(base.Minion):
     """The mastermind."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Mastermind"
@@ -536,7 +536,7 @@ class Mastermind(base.Minion):
 
 class Spy(base.Minion):
     """The spy."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Spy"
@@ -544,7 +544,7 @@ class Spy(base.Minion):
 
 class Poisoner(base.Minion):
     """The poisoner."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Poisoner"
@@ -552,7 +552,7 @@ class Poisoner(base.Minion):
 
 class ScarletWoman(base.Minion):
     """The scarlet woman."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Scarlet Woman"
@@ -560,7 +560,7 @@ class ScarletWoman(base.Minion):
 
 class Baron(base.Minion):
     """The baron."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Baron"
@@ -568,18 +568,18 @@ class Baron(base.Minion):
 
 class Assassin(base.Minion, base.DayStartModifier, base.DeathModifier):
     """The assassin."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Assassin"
-    
+
     def refresh(self):
         super().refresh()
         self.target = None
-    
+
     def extra_info(self):
         return "Assassinated: {}".format(self.target and self.target.display_name)
-    
+
     async def on_day_start(self, origin, kills):
         if not global_vars.game.has_automated_life_and_death:
             return True
@@ -592,12 +592,12 @@ class Assassin(base.Minion, base.DayStartModifier, base.DeathModifier):
                     "message",
                     check=(lambda x: x.author == origin and x.channel == msg.channel),
                     timeout=200)
-                    
+
                 # Cancel
                 if choice.content.lower() == "cancel":
                     await utils.message_utils.safe_send(origin, "Action cancelled!")
                     return False
-                    
+
                 # Yes
                 if choice.content.lower() == "yes" or choice.content.lower() == "y":
                     msg = await utils.message_utils.safe_send(origin, "Who is Assassinated?")
@@ -609,17 +609,17 @@ class Assassin(base.Minion, base.DayStartModifier, base.DeathModifier):
                     if player_choice.content.lower() == "cancel":
                         await utils.message_utils.safe_send(origin, "Action cancelled!")
                         return False
-                        
+
                     from utils.player_utils import select_player
                     assassination_target = await select_player(origin, player_choice.content, global_vars.game.seatingOrder)
                     if assassination_target is None:
                         return False
                     self.target = assassination_target
-                    
+
                     if assassination_target not in kills:
                         kills.append(assassination_target)
                     return True
-                    
+
                 # No
                 elif choice.content.lower() == "no" or choice.content.lower() == "n":
                     return True
@@ -631,21 +631,21 @@ class Assassin(base.Minion, base.DayStartModifier, base.DeathModifier):
             except asyncio.TimeoutError:
                 await utils.message_utils.safe_send(origin, "Message timed out!")
                 return False
-    
+
     def on_death(self, person, dies):
         if self.is_poisoned or self.parent.is_ghost:
             return dies
         if person == self.target:
             return True
         return dies
-    
+
     def on_death_priority(self):
         return base.DeathModifier.FORCES_KILL
 
 
 class DevilSAdvocate(base.Minion):
     """The devil's advocate."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Devil's Advocate"
@@ -653,16 +653,16 @@ class DevilSAdvocate(base.Minion):
 
 class Witch(base.Minion, base.NominationModifier, base.DayStartModifier):
     """The witch."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Witch"
         self.witched = None
-    
+
     def refresh(self):
         super().refresh()
         self.witched = None
-    
+
     async def on_day_start(self, origin, kills):
         self.witched = None
         if not global_vars.game.has_automated_life_and_death:
@@ -685,15 +685,15 @@ class Witch(base.Minion, base.NominationModifier, base.DayStartModifier):
         except asyncio.TimeoutError:
             await utils.message_utils.safe_send(origin, "Timed out.")
             return False
-            
+
         from utils.player_utils import select_player
         person = await select_player(origin, reply.content, global_vars.game.seatingOrder)
         if person is None:
             return False
-            
+
         self.witched = person
         return True
-    
+
     async def on_nomination(self, nominee, nominator, proceed):
         if not global_vars.game.has_automated_life_and_death:
             return proceed
@@ -712,7 +712,7 @@ class Witch(base.Minion, base.NominationModifier, base.DayStartModifier):
         ):
             await self.witched.kill()
         return proceed
-    
+
     def extra_info(self):
         if self.witched:
             return f"Witched: {self.witched.display_name}"
@@ -721,7 +721,7 @@ class Witch(base.Minion, base.NominationModifier, base.DayStartModifier):
 
 class EvilTwin(base.Minion):
     """The evil twin."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Evil Twin"
@@ -729,7 +729,7 @@ class EvilTwin(base.Minion):
 
 class Cerenovus(base.Minion):
     """The cerenovus."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Cerenovus"
@@ -737,7 +737,7 @@ class Cerenovus(base.Minion):
 
 class PitHag(base.Minion):
     """The pit-hag."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Pit-Hag"
@@ -745,7 +745,7 @@ class PitHag(base.Minion):
 
 class Vizier(base.Minion):
     """The vizier."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Vizier"
@@ -755,7 +755,7 @@ class Vizier(base.Minion):
 
 class Vortox(base.Demon):
     """The vortox."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Vortox"
@@ -763,7 +763,7 @@ class Vortox(base.Demon):
 
 class FangGu(base.Demon):
     """The fang gu."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Fang Gu"
@@ -771,7 +771,7 @@ class FangGu(base.Demon):
 
 class Imp(base.Demon):
     """The imp."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Imp"
@@ -779,7 +779,7 @@ class Imp(base.Demon):
 
 class Kazali(base.Demon):
     """The kazali."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Kazali"
@@ -787,7 +787,7 @@ class Kazali(base.Demon):
 
 class LordOfTyphon(base.Demon):
     """The lord of typhon."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Lord of Typhon"
@@ -795,7 +795,7 @@ class LordOfTyphon(base.Demon):
 
 class NoDashii(base.Demon):
     """The no dashii."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "No Dashii"
@@ -803,7 +803,7 @@ class NoDashii(base.Demon):
 
 class Po(base.Demon):
     """The po."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Po"
@@ -811,7 +811,7 @@ class Po(base.Demon):
 
 class Pukka(base.Demon):
     """The pukka."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Pukka"
@@ -819,7 +819,7 @@ class Pukka(base.Demon):
 
 class Shabaloth(base.Demon):
     """The shabaloth."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Shabaloth"
@@ -827,7 +827,7 @@ class Shabaloth(base.Demon):
 
 class Vigormortis(base.Demon):
     """The vigormortis."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Vigormortis"
@@ -835,7 +835,7 @@ class Vigormortis(base.Demon):
 
 class Zombuul(base.Demon):
     """The zombuul."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Zombuul"
@@ -845,7 +845,7 @@ class Zombuul(base.Demon):
 
 class Beggar(base.Traveler):
     """The beggar."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Beggar"
@@ -853,7 +853,7 @@ class Beggar(base.Traveler):
 
 class Gunslinger(base.Traveler):
     """The gunslinger."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Gunslinger"
@@ -861,7 +861,7 @@ class Gunslinger(base.Traveler):
 
 class Scapegoat(base.Traveler):
     """The scapegoat."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Scapegoat"
@@ -869,15 +869,15 @@ class Scapegoat(base.Traveler):
 
 class Apprentice(base.Traveler, base.AbilityModifier):
     """The apprentice."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Apprentice"
-    
+
     def refresh(self):
         super().refresh()
         self.abilities = []
-    
+
     def add_ability(self, role):
         is_set = False
         for ability in self.abilities:
@@ -886,18 +886,18 @@ class Apprentice(base.Traveler, base.AbilityModifier):
                 is_set = True
         if not is_set:
             self.abilities = [role(self.parent)]
-    
+
     def extra_info(self):
         return "\n".join([("Apprenticing: {}\n{}".format(x.role_name, x.extra_info())) for x in self.abilities])
 
 
 class Matron(base.Traveler, base.DayStartModifier):
     """The matron."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Matron"
-    
+
     async def on_day_start(self, origin, kills):
         if self.parent.is_ghost or self.parent in kills:
             return True
@@ -909,7 +909,7 @@ class Matron(base.Traveler, base.DayStartModifier):
 
 class Judge(base.Traveler):
     """The judge."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Judge"
@@ -917,7 +917,7 @@ class Judge(base.Traveler):
 
 class Voudon(base.Traveler):
     """The voudon."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Voudon"
@@ -926,7 +926,7 @@ class Voudon(base.Traveler):
 
 class Bishop(base.Traveler):
     """The bishop."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "bishop"
@@ -934,7 +934,7 @@ class Bishop(base.Traveler):
 
 class Butcher(base.Traveler):
     """The butcher."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Butcher"
@@ -942,7 +942,7 @@ class Butcher(base.Traveler):
 
 class BoneCollector(base.Traveler):
     """The bone collector."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Bone Collector"
@@ -951,7 +951,7 @@ class BoneCollector(base.Traveler):
 
 class Harlot(base.Traveler):
     """The harlot."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Harlot"
@@ -959,7 +959,7 @@ class Harlot(base.Traveler):
 
 class Barista(base.Traveler):
     """The barista."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Barista"
@@ -967,7 +967,7 @@ class Barista(base.Traveler):
 
 class Deviant(base.Traveler):
     """The deviant."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Deviant"
@@ -975,7 +975,7 @@ class Deviant(base.Traveler):
 
 class Gangster(base.Traveler):
     """The gangster."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Gangster"
@@ -983,7 +983,7 @@ class Gangster(base.Traveler):
 
 class Gnome(base.Traveler):
     """The gnome."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Gnome"
@@ -999,12 +999,12 @@ class Cacklejack(base.Traveler):
 
 class Bureaucrat(base.Traveler, base.DayStartModifier, base.VoteBeginningModifier):
     """The bureaucrat."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Bureaucrat"
         self.target = None
-    
+
     async def on_day_start(self, origin, kills):
         if self.is_poisoned or self.parent.is_ghost == True or self.parent in kills:
             self.target = None
@@ -1020,30 +1020,30 @@ class Bureaucrat(base.Traveler, base.DayStartModifier, base.VoteBeginningModifie
         except asyncio.TimeoutError:
             await utils.message_utils.safe_send(origin, "Timed out.")
             return
-            
+
         from utils.player_utils import select_player
         person = await select_player(origin, reply.content, global_vars.game.seatingOrder)
         if person is None:
             return
-            
+
         self.target = person
         return True
-    
+
     def modify_vote_values(self, order, values, majority):
         if self.target and not self.is_poisoned and not self.parent.is_ghost:
             values[self.target] = (values[self.target][0], values[self.target][1] * 3)
-            
+
         return order, values, majority
 
 
 class Thief(base.Traveler, base.DayStartModifier, base.VoteBeginningModifier):
     """The thief."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Thief"
         self.target = None
-    
+
     async def on_day_start(self, origin, kills):
         if self.parent.is_ghost == True or self.parent in kills:
             self.target = None
@@ -1059,19 +1059,19 @@ class Thief(base.Traveler, base.DayStartModifier, base.VoteBeginningModifier):
         except asyncio.TimeoutError:
             await utils.message_utils.safe_send(origin, "Timed out.")
             return
-            
+
         from utils.player_utils import select_player
         person = await select_player(origin, reply.content, global_vars.game.seatingOrder)
         if person is None:
             return
-            
+
         self.target = person
         return True
-    
+
     def modify_vote_values(self, order, values, majority):
         if self.target and not self.is_poisoned and not self.parent.is_ghost:
             values[self.target] = (values[self.target][0], values[self.target][1] * -1)
-            
+
         return order, values, majority
 
 
@@ -1079,11 +1079,11 @@ class Thief(base.Traveler, base.DayStartModifier, base.VoteBeginningModifier):
 
 class Cannibal(base.Townsfolk, base.AbilityModifier):
     """The cannibal."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Cannibal"
-    
+
     def add_ability(self, role):
         is_set = False
         for ability in self.abilities:
@@ -1092,14 +1092,14 @@ class Cannibal(base.Townsfolk, base.AbilityModifier):
                 is_set = True
         if not is_set:
             self.abilities = [role(self.parent)]
-    
+
     def extra_info(self):
         return "\n".join([("Eaten: {}\n{}".format(x.role_name, x.extra_info())) for x in self.abilities])
 
 
 class Balloonist(base.Townsfolk):
     """The balloonist."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Balloonist"
@@ -1107,7 +1107,7 @@ class Balloonist(base.Townsfolk):
 
 class Fisherman(base.Townsfolk):
     """The fisherman."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Fisherman"
@@ -1115,7 +1115,7 @@ class Fisherman(base.Townsfolk):
 
 class Widow(base.Minion):
     """The widow."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Widow"
@@ -1123,7 +1123,7 @@ class Widow(base.Minion):
 
 class Goblin(base.Minion):
     """The goblin."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Goblin"
@@ -1131,7 +1131,7 @@ class Goblin(base.Minion):
 
 class Leviathan(base.Demon):
     """The leviathan."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Leviathan"
@@ -1139,14 +1139,14 @@ class Leviathan(base.Demon):
 
 class Amnesiac(base.Townsfolk, base.AbilityModifier):
     """The amnesiac."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         #      initialize the AbilityModifier aspect as well
         self.role_name = "Amnesiac"
         self.vote_mod = 1
         self.player_with_votes = None
-    
+
     def add_ability(self, role):
         is_set = False
         for ability in self.abilities:
@@ -1155,7 +1155,7 @@ class Amnesiac(base.Townsfolk, base.AbilityModifier):
                 is_set = True
         if not is_set:
             self.abilities = [role(self.parent)]
-    
+
     def extra_info(self):
         base_info = super().extra_info()
         if self.player_with_votes and self.vote_mod != 1:
@@ -1167,17 +1167,17 @@ class Amnesiac(base.Townsfolk, base.AbilityModifier):
             if info:
                 base_info = base_info + f"\n{info}"
         return base_info.strip()
-    
+
     def modify_vote_values(self, order, values, majority):
         if self.player_with_votes and not self.is_poisoned and not self.parent.is_ghost:
             values[self.player_with_votes] = (values[self.player_with_votes][0], values[self.player_with_votes][1] * self.vote_mod)
-            
+
         return order, values, majority
-    
+
     def enhance_votes(self, player, multiplier):
         self.player_with_votes = player
         self.vote_mod = multiplier
-    
+
     def on_day_end(self):
         self.vote_mod = 1
         self.player_with_votes = None
@@ -1186,7 +1186,7 @@ class Amnesiac(base.Townsfolk, base.AbilityModifier):
 
 class BountyHunter(base.Townsfolk):
     """The bounty hunter."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Bounty Hunter"
@@ -1194,7 +1194,7 @@ class BountyHunter(base.Townsfolk):
 
 class Lycanthrope(base.Townsfolk):
     """The lycanthrope."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Lycanthrope"
@@ -1202,7 +1202,7 @@ class Lycanthrope(base.Townsfolk):
 
 class CultLeader(base.Townsfolk):
     """The cult leader."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Cult Leader"
@@ -1210,7 +1210,7 @@ class CultLeader(base.Townsfolk):
 
 class General(base.Townsfolk):
     """The general."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "General"
@@ -1218,11 +1218,11 @@ class General(base.Townsfolk):
 
 class Pixie(base.Townsfolk, base.AbilityModifier):
     """The pixie."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Pixie"
-    
+
     def add_ability(self, role):
         is_set = False
         for ability in self.abilities:
@@ -1231,14 +1231,14 @@ class Pixie(base.Townsfolk, base.AbilityModifier):
                 is_set = True
         if not is_set:
             self.abilities = [role(self.parent)]
-    
+
     def extra_info(self):
         return "" if self.abilities == [] else f"Has Ability {self.abilities[0].role_name}"
 
 
 class Acrobat(base.Outsider):
     """The acrobat."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Acrobat"
@@ -1246,7 +1246,7 @@ class Acrobat(base.Outsider):
 
 class LilMonsta(base.Demon):
     """The lil' monsta."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Lil' Monsta"
@@ -1254,7 +1254,7 @@ class LilMonsta(base.Demon):
 
 class Politician(base.Outsider):
     """The politician."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Politician"
@@ -1262,7 +1262,7 @@ class Politician(base.Outsider):
 
 class Preacher(base.Townsfolk):
     """The preacher."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Preacher"
@@ -1270,7 +1270,7 @@ class Preacher(base.Townsfolk):
 
 class Noble(base.Townsfolk):
     """The noble."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Noble"
@@ -1278,7 +1278,7 @@ class Noble(base.Townsfolk):
 
 class Farmer(base.Townsfolk):
     """The farmer."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Farmer"
@@ -1286,7 +1286,7 @@ class Farmer(base.Townsfolk):
 
 class PoppyGrower(base.Townsfolk):
     """The poppy grower."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Poppy Grower"
@@ -1294,7 +1294,7 @@ class PoppyGrower(base.Townsfolk):
 
 class Nightwatchman(base.Townsfolk):
     """The nightwatchman."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Nightwatchman"
@@ -1302,7 +1302,7 @@ class Nightwatchman(base.Townsfolk):
 
 class Atheist(base.Townsfolk, base.DayStartModifier):
     """The atheist."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Atheist"
@@ -1316,7 +1316,7 @@ class Atheist(base.Townsfolk, base.DayStartModifier):
 
 class Huntsman(base.Townsfolk):
     """The huntsman."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Huntsman"
@@ -1324,14 +1324,14 @@ class Huntsman(base.Townsfolk):
 
 class Alchemist(base.Townsfolk, base.AbilityModifier):
     """The alchemist."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Alchemist"
-    
+
     def extra_info(self):
         return "\n".join([("Alchemy: {}\n{}".format(x.role_name, x.extra_info())) for x in self.abilities])
-    
+
     def add_ability(self, role):
         is_set = False
         for ability in self.abilities:
@@ -1344,7 +1344,7 @@ class Alchemist(base.Townsfolk, base.AbilityModifier):
 
 class Choirboy(base.Townsfolk):
     """The choirboy."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Choirboy"
@@ -1352,7 +1352,7 @@ class Choirboy(base.Townsfolk):
 
 class Engineer(base.Townsfolk):
     """The engineer."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Engineer"
@@ -1360,7 +1360,7 @@ class Engineer(base.Townsfolk):
 
 class King(base.Townsfolk):
     """The king."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "King"
@@ -1368,7 +1368,7 @@ class King(base.Townsfolk):
 
 class Magician(base.Townsfolk):
     """The magician."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Magician"
@@ -1376,7 +1376,7 @@ class Magician(base.Townsfolk):
 
 class HighPriestess(base.Townsfolk):
     """The high priestess."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "High Priestess"
@@ -1384,7 +1384,7 @@ class HighPriestess(base.Townsfolk):
 
 class Steward(base.Townsfolk):
     """The steward."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Steward"
@@ -1392,7 +1392,7 @@ class Steward(base.Townsfolk):
 
 class Knight(base.Townsfolk):
     """The knight."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Knight"
@@ -1400,7 +1400,7 @@ class Knight(base.Townsfolk):
 
 class Shugenja(base.Townsfolk):
     """The shugenja."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Shugenja"
@@ -1408,7 +1408,7 @@ class Shugenja(base.Townsfolk):
 
 class VillageIdiot(base.Townsfolk):
     """The village idiot."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Village Idiot"
@@ -1436,22 +1436,22 @@ BANSHEE_SCREAM = """
 
 class Banshee(base.Townsfolk, base.DayStartModifier):
     """The banshee."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Banshee"
         self.is_screaming = False
         self.remaining_nominations = 2
-    
+
     def refresh(self):
         super().refresh()
         self.is_screaming = False
-    
+
     async def on_day_start(self, origin, kills):
         if self.is_screaming:
             self.remaining_nominations = 2
             return True
-            
+
         #  check if kills includes me
         if self.parent not in kills:
             return True
@@ -1465,12 +1465,12 @@ class Banshee(base.Townsfolk, base.DayStartModifier):
                 "message",
                 check=(lambda x: x.author == origin and x.channel == msg.channel),
                 timeout=200)
-                
+
             # Cancel
             if choice.content.lower() == "cancel":
                 await utils.message_utils.safe_send(origin, "Action cancelled!")
                 return False
-                
+
             # Yes
             if choice.content.lower() == "yes" or choice.content.lower() == "y":
                 self.is_screaming = True
@@ -1489,14 +1489,14 @@ class Banshee(base.Townsfolk, base.DayStartModifier):
         except asyncio.TimeoutError:
             await utils.message_utils.safe_send(origin, "Message timed out!")
             return False
-    
+
     def extra_info(self):
         return "Banshee: Has Ability" if self.is_screaming else super().extra_info()
 
 
 class Alsaahir(base.Townsfolk):
     """The alsaahir."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Alsaahir"
@@ -1513,19 +1513,19 @@ class Princess(base.Townsfolk):
 
 class Golem(base.Outsider, base.NominationModifier):
     """The golem."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Golem"
-    
+
     def refresh(self):
         super().refresh()
         self.hasNominated = False
-    
+
     async def on_nomination(self, nominee, nominator, proceed):
         if not global_vars.game.has_automated_life_and_death:
             return proceed
-            
+
         # fixme: golem instantly kills a recluse when it should be ST decision
         if nominator == self.parent:
             if (
@@ -1541,7 +1541,7 @@ class Golem(base.Outsider, base.NominationModifier):
 
 class Damsel(base.Outsider):
     """The damsel."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Damsel"
@@ -1549,7 +1549,7 @@ class Damsel(base.Outsider):
 
 class Heretic(base.Outsider):
     """The heretic."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Heretic"
@@ -1557,7 +1557,7 @@ class Heretic(base.Outsider):
 
 class Puzzlemaster(base.Outsider):
     """The puzzlemaster."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Puzzlemaster"
@@ -1565,7 +1565,7 @@ class Puzzlemaster(base.Outsider):
 
 class Snitch(base.Outsider):
     """The snitch."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Snitch"
@@ -1573,7 +1573,7 @@ class Snitch(base.Outsider):
 
 class PlagueDoctor(base.Outsider):
     """The plague doctor."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Plague Doctor"
@@ -1581,7 +1581,7 @@ class PlagueDoctor(base.Outsider):
 
 class Hatter(base.Outsider):
     """The hatter."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Hatter"
@@ -1589,7 +1589,7 @@ class Hatter(base.Outsider):
 
 class Ogre(base.Outsider):
     """The ogre."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Ogre"
@@ -1597,7 +1597,7 @@ class Ogre(base.Outsider):
 
 class Zealot(base.Outsider):
     """The zealot."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Zealot"
@@ -1623,7 +1623,7 @@ class Hermit(base.Outsider, base.AbilityModifier):
 
 class Marionette(base.Minion):
     """The marionette."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Marionette"
@@ -1631,11 +1631,11 @@ class Marionette(base.Minion):
 
 class OrganGrinder(base.Minion, base.NominationModifier):
     """The organ grinder."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Organ Grinder"
-    
+
     async def on_nomination(self, nominee, nominator, proceed):
         if not self.is_poisoned and not self.parent.is_ghost:
             nominee_display_name = nominator.display_name if nominator else "the storytellers"
@@ -1650,7 +1650,7 @@ class OrganGrinder(base.Minion, base.NominationModifier):
             message_tally = {
                 X: 0 for X in itertools.combinations(global_vars.game.seatingOrder, 2)
             }
-            
+
             has_had_multiple_votes = len(this_day.votes) > 1
             last_vote_message = None if not has_had_multiple_votes else await global_vars.channel.fetch_message(
                 this_day.votes[-2].announcements[0])
@@ -1690,7 +1690,7 @@ class OrganGrinder(base.Minion, base.NominationModifier):
 
 class Mezepheles(base.Minion):
     """The mezepheles."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Mezepheles"
@@ -1698,7 +1698,7 @@ class Mezepheles(base.Minion):
 
 class Harpy(base.Minion):
     """The harpy."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Harpy"
@@ -1707,18 +1707,18 @@ class Harpy(base.Minion):
 # techically this should be an ability modifier on the demon in play, but having the additional ability be provided by the boffin is cleaner implementation
 class Boffin(base.Minion, base.AbilityModifier):
     """The boffin."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Boffin"
-    
+
     def extra_info(self):
         return "\n".join([("Boffin'd: {}\n{}".format(x.role_name, x.extra_info())) for x in self.abilities]).strip()
 
 
 class Xaan(base.Minion):
     """The Xaan."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Xaan"
@@ -1726,7 +1726,7 @@ class Xaan(base.Minion):
 
 class Wizard(base.Minion):
     """The Wizard."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Wizard"
@@ -1734,7 +1734,7 @@ class Wizard(base.Minion):
 
 class AlHadikhia(base.Demon):
     """The al-hadikhia."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Al-Hadikhia"
@@ -1742,7 +1742,7 @@ class AlHadikhia(base.Demon):
 
 class Legion(base.Demon):
     """The legion."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Legion"
@@ -1750,15 +1750,15 @@ class Legion(base.Demon):
 
 class Lleech(base.Demon, base.DeathModifier, base.DayStartModifier):
     """The lleech."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Lleech"
-    
+
     def refresh(self):
         super().refresh()
         self.hosted = None
-    
+
     async def on_day_start(self, origin, kills):
         if not global_vars.game.has_automated_life_and_death:
             return True
@@ -1775,25 +1775,25 @@ class Lleech(base.Demon, base.DeathModifier, base.DayStartModifier):
         except asyncio.TimeoutError:
             await utils.message_utils.safe_send(origin, "Timed out.")
             return False
-            
+
         from utils.player_utils import select_player
         person = await select_player(origin, reply.content, global_vars.game.seatingOrder)
         if person is None:
             return False
-            
+
         self.hosted = person
         return True
-    
+
     def on_death(self, person, dies):
         # todo: if the host has died, the lleech should also die
         if self.parent == person and not self.is_poisoned:
             if not (self.hosted and self.hosted.is_ghost):
                 return False
         return dies
-    
+
     def on_death_priority(self):
         return base.DeathModifier.KILLS_SELF
-    
+
     def extra_info(self):
         if self.hosted:
             return "Leech Host: " + self.hosted.display_name
@@ -1803,7 +1803,7 @@ class Lleech(base.Demon, base.DeathModifier, base.DayStartModifier):
 
 class Ojo(base.Demon):
     """The ojo."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Ojo"
@@ -1811,7 +1811,7 @@ class Ojo(base.Demon):
 
 class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
     """The riot."""
-    
+
     # Shared Riot notification state across all Riot instances.
     __notification_sent = {
         "day": None,
@@ -1973,7 +1973,7 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
             nomination_source,
             eligible_riot_count,
         )
-        
+
         # Day 3: Riot chaining behavior
         nominee_nick = nominator.display_name if nominator else "the storytellers"
         announcement = await utils.message_utils.safe_send(
@@ -1992,7 +1992,7 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
             nominator_name,
             announcement.id if announcement else None,
         )
-        
+
         if not this_day.riot_active and global_vars.game.show_tally:
             # show tally on first nomination
             import itertools
@@ -2020,7 +2020,7 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
                     messageText += "\n> All other pairs: 0"
                     break
             await utils.message_utils.safe_send(global_vars.channel, messageText)
-            
+
         this_day.riot_active = True
         bot_client.logger.debug(
             "riot.nomination riot_chain_activated day=%s source=%s eligible_riot_count=%s",
@@ -2028,7 +2028,7 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
             nomination_source,
             eligible_riot_count,
         )
-        
+
         # REMOVED: Old soldier_jinx and golem_jinx logic
         # Soldier jinx is handled by storyteller intervention (they stop the game and announce good wins)
         # Golem jinx is removed entirely per clarifications
@@ -2058,7 +2058,7 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
                 return False
 
         riot_announcement = f"Riot is in play. {nominee.user.mention} to nominate"
-        
+
         if nominator:
             nominator.riot_nominee = False
         else:
@@ -2079,7 +2079,7 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
             riot_announcement,
         )
         bot_client.logger.debug("riot.nomination prompt_sent message_id=%s", msg.id if msg else None)
-        
+
         await this_day.open_noms()
         bot_client.logger.debug(
             "riot.nomination decision=intercept proceed=False source=%s",
@@ -2090,7 +2090,7 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
 
 class Yaggababble(base.Demon):
     """The yaggababble."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Yaggababble"
@@ -2098,7 +2098,7 @@ class Yaggababble(base.Demon):
 
 class Boomdandy(base.Minion):
     """The boomdandy."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Boomdandy"
@@ -2106,7 +2106,7 @@ class Boomdandy(base.Minion):
 
 class Fearmonger(base.Minion):
     """The fearmonger."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Fearmonger"
@@ -2114,7 +2114,7 @@ class Fearmonger(base.Minion):
 
 class Psychopath(base.Minion):
     """The psychopath."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Psychopath"
@@ -2122,7 +2122,7 @@ class Psychopath(base.Minion):
 
 class Summoner(base.Minion):
     """The summoner."""
-    
+
     def __init__(self, parent):
         super().__init__(parent)
         self.role_name = "Summoner"

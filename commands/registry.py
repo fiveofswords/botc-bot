@@ -23,15 +23,15 @@ class ValidationError(Exception):
 
 class CommandArgument(NamedTuple):
     """Definition of a command argument.
-    
+
     Args:
-        name_or_choices: Either a string (for generic arguments like "player") 
+        name_or_choices: Either a string (for generic arguments like "player")
                         or a tuple of strings (for specific choices like ("yes", "no"))
         optional: Whether the argument is optional (default: False)
-    
+
     Examples:
         CommandArgument("player")                    # Required generic argument
-        CommandArgument("player", optional=True)     # Optional generic argument  
+        CommandArgument("player", optional=True)     # Optional generic argument
         CommandArgument(("yes", "no"))              # Required choice argument
         CommandArgument(("red", "blue"), optional=True) # Optional choice argument
     """
@@ -48,19 +48,19 @@ class CommandInfo(NamedTuple):
     user_types: tuple[UserType, ...]
     aliases: tuple[str, ...] = ()
     arguments: tuple[CommandArgument, ...] | MappingProxyType[UserType, tuple[CommandArgument, ...]] = ()
-    # New requirement fields  
+    # New requirement fields
     required_phases: tuple[GamePhase, ...] = ()
     implemented: bool = True
 
     def get_description_for_user(self, user_type: UserType) -> str:
         """Get the appropriate description for a specific user type.
-        
+
         Args:
             user_type: The user type to get description for
-            
+
         Returns:
             Description string for the user type
-            
+
         Raises:
             KeyError: If user_type is not found in description dict
         """
@@ -72,13 +72,13 @@ class CommandInfo(NamedTuple):
 
     def get_arguments_for_user(self, user_type: UserType) -> tuple[CommandArgument, ...]:
         """Get the appropriate arguments for a specific user type.
-        
+
         Args:
             user_type: The user type to get arguments for
-            
+
         Returns:
             Tuple of CommandArgument for the user type
-            
+
         Raises:
             KeyError: If user_type is not found in arguments dict
         """
@@ -89,10 +89,10 @@ class CommandInfo(NamedTuple):
 
     def get_formatted_name_for_user(self, user_type: UserType) -> str:
         """Get the command name formatted with arguments for a specific user type.
-        
+
         Args:
             user_type: The user type to format for
-            
+
         Returns:
             Formatted command name with arguments (e.g., "execute <player>")
         """
@@ -118,17 +118,17 @@ class CommandInfo(NamedTuple):
 
 async def validate_user_type(message: discord.Message, command_info: CommandInfo) -> None:
     """Validate that the user has permission to use this command.
-    
+
     UserType is a partition of all server members:
     - STORYTELLER: Users with gamemaster role
-    - PLAYER: Users currently in the game's seating order  
+    - PLAYER: Users currently in the game's seating order
     - OBSERVER: Users with observer role
     - PUBLIC: Other server members (not storyteller/player/observer)
-    
+
     Args:
         message: Discord message object
         command_info: Command information including user types and name
-        
+
     Raises:
         ValidationError: If user doesn't have permission
     """
@@ -175,10 +175,10 @@ async def validate_user_type(message: discord.Message, command_info: CommandInfo
 
 def validate_game_phase(required_phases: tuple[GamePhase, ...]) -> None:
     """Validate that the current game phase allows this command.
-    
+
     Args:
         required_phases: Game phases required for this command
-        
+
     Raises:
         ValidationError: If game phase doesn't allow this command
     """
@@ -193,7 +193,7 @@ def validate_game_phase(required_phases: tuple[GamePhase, ...]) -> None:
     if GamePhase.DAY in required_phases and global_vars.game.isDay:
         return  # Day phase allowed and it's day
 
-    # Check night phase  
+    # Check night phase
     if GamePhase.NIGHT in required_phases and not global_vars.game.isDay:
         return  # Night phase allowed and it's night
 
@@ -233,7 +233,7 @@ class CommandRegistry:
                 Command arguments, either shared or per user type.
             description (Union[str, dict[UserType, str]]): Help text for the command.
             help_sections (list[HelpSection]): Sections this command appears in.
-            required_phases (list[GamePhase], optional): Required game phases. 
+            required_phases (list[GamePhase], optional): Required game phases.
                 Empty list = no game needed, [DAY] = day only, [NIGHT] = night only,
                 [DAY, NIGHT] = works in any phase when game exists.
             implemented (bool): Whether this command implementation should be used (default: True).
@@ -243,9 +243,9 @@ class CommandRegistry:
             The `description` and `arguments` parameters accept either:
             - A string/list used for all user types
             - A dict mapping `UserType` to role-specific descriptions/arguments
-            
+
             **IMPORTANT**: When using dictionaries, they must contain exactly the same
-            user types as specified in `user_types`. No fallback behavior exists - 
+            user types as specified in `user_types`. No fallback behavior exists -
             missing user types will raise KeyError.
 
             Examples:
@@ -331,7 +331,7 @@ class CommandRegistry:
                 # Send validation error message to user
                 await message.channel.send(str(e))
                 return True  # Return True because we handled the command (even if it failed validation)
-                
+
         return False  # Fall back to bot_impl for unimplemented commands
 
     def get_all_commands(self) -> dict[str, CommandInfo]:
@@ -385,7 +385,7 @@ class CommandRegistry:
         # Log aliases, split by implementation status
         implemented_aliases = []
         skeleton_aliases = []
-        
+
         for alias, command in self.aliases.items():
             alias_entry = f"{alias} -> {command}"
             command_info = self.commands.get(command)
@@ -402,7 +402,7 @@ class CommandRegistry:
 
     def save_state(self) -> tuple[dict, dict]:
         """Save the current state of the registry for restoration later.
-        
+
         Returns:
             Tuple of (commands_copy, aliases_copy) for restoration
         """
@@ -410,7 +410,7 @@ class CommandRegistry:
 
     def restore_state(self, state: tuple[dict, dict]) -> None:
         """Restore the registry to a previously saved state.
-        
+
         Args:
             state: Tuple of (commands, aliases) from save_state()
         """

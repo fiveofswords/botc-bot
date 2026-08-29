@@ -24,7 +24,7 @@ __all__ = [
     'the_ability',
     'str_to_class',
 
-    # Game utilities  
+    # Game utilities
     'remove_backup',
     'update_presence',
     'backup',

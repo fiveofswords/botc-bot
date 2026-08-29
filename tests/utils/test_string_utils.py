@@ -56,7 +56,7 @@ async def test_is_storyteller():
     """Test the is_storyteller function."""
     # Import here to avoid circular import issues at module level
     from model.game.vote import is_storyteller
-    
+
     # Test with direct storyteller references
     assert await is_storyteller("storytellers") is True
     assert await is_storyteller("the storytellers") is True

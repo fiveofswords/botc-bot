@@ -30,13 +30,13 @@ for name, cls in inspect.getmembers(specific_module, inspect.isclass):
 
 def str_to_class(role_name: str) -> Type[Character]:
     """Convert a string to a character class.
-    
+
     Args:
         role_name: The name of the character class
-        
+
     Returns:
         The character class
-        
+
     Raises:
         AttributeError: If the character class is not found
     """

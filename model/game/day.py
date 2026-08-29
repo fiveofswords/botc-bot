@@ -20,7 +20,7 @@ NOMINATION_DENIAL_MESSAGES = {
 
 class Day:
     """Stores information about a specific day.
-    
+
     Attributes:
         isExecutionToday: Whether there is an execution today
         isNoms: Whether nominations are open
@@ -160,7 +160,7 @@ class Day:
 
     async def nomination(self, nominee, nominator) -> str | None:
         """Handle a nomination.
-        
+
         Args:
             nominee: The player being nominated
             nominator: The player making the nomination

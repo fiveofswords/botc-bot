@@ -77,7 +77,7 @@ class TestIntegratedHelp:
     async def test_help_command_storyteller_basic(self, setup_mock_environment):
         """Test basic storyteller help command."""
         mock_env = setup_mock_environment
-        
+
         # Storyteller
         mock_env['member'].roles = [global_vars.gamemaster_role]
 

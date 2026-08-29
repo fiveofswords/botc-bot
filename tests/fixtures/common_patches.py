@@ -102,7 +102,7 @@ def base_bot_patches():
 def command_execution_patches(mock_discord_setup=None):
     """Return patches commonly needed for command execution tests."""
     patches = base_bot_patches().copy()
-    
+
     if mock_discord_setup:
         patches['bot_client.client'] = mock_discord_setup['client']
 

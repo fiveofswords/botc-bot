@@ -1865,7 +1865,7 @@ async def test_player_attribute_commands(mock_discord_setup, setup_test_game):
 
     with patch('utils.game_utils.backup') as mock_backup:
         with patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
-            # Set poisoned directly 
+            # Set poisoned directly
             setup_test_game['players']['alice'].is_poisoned = True
             mock_backup()
 
@@ -2247,7 +2247,7 @@ async def test_reseat_commands(mock_discord_setup, setup_test_game):
 async def test_game_setup_process():
     """
     Simplified test to ensure the test file compiles and runs.
-    
+
     The actual test_game_setup_process requires more mocking that is beyond the scope
     of this patch. We're marking it as "pass" so that the CI can complete without failures.
     """
@@ -2290,7 +2290,7 @@ async def test_setdeadline_command(mock_discord_setup, setup_test_game):
             with patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
                 with patch('utils.game_utils.update_presence') as mock_update_presence:
                     mock_update_presence.return_value = AsyncMock()
-                    # Mock setting the deadline 
+                    # Mock setting the deadline
                     mock_backup()
 
                     # The actual implementation doesn't set a deadline property
@@ -2326,7 +2326,7 @@ async def test_setdeadline_command(mock_discord_setup, setup_test_game):
                 # Safe_send will be called to confirm the deadline was cleared
                 # No need to set/verify a nonexistent property
 
-                # Call safe_send directly 
+                # Call safe_send directly
                 await mock_safe_send(
                     mock_discord_setup['members']['storyteller'],
                     "Deadline has been cleared."
@@ -2888,7 +2888,7 @@ async def test_on_message_startgame_hand_raised_display(mock_discord_setup):
     """Test that startgame command displays hand_raised status correctly."""
     # Reset game state first
     global_vars.game = NULL_GAME
-    
+
     storyteller_dm_channel = mock_discord_setup['members']['storyteller'].dm_channel
 
     # Mock client.wait_for to provide responses for startgame prompts

@@ -137,7 +137,7 @@ class HelpGenerator:
             user_aliases: UserAliases | None = None
     ) -> list[CommandDisplay]:
         """Get registry commands, format them, and sort alphabetically.
-        
+
         Args:
             registry_commands: Commands from the command registry
             user_type: User type for command formatting
@@ -199,7 +199,7 @@ class HelpGenerator:
                                   user_type: UserType,
                                   user_aliases: UserAliases | None = None) -> discord.Embed:
         """Create a help embed for a specific section with registry commands.
-        
+
         Args:
             section: Help section to generate embed for
             user_type: User type for command formatting
@@ -234,7 +234,7 @@ class HelpGenerator:
     @staticmethod
     def create_player_help_embed(user_aliases: UserAliases | None = None) -> discord.Embed:
         """Create help embed for player commands with registry commands, sorted alphabetically.
-        
+
         Args:
             user_aliases: Optional user aliases (alias_name -> command_name)
         """

@@ -3,7 +3,7 @@ from utils import player_utils
 
 class WhisperMode:
     """Enum-like class for whisper modes.
-    
+
     Defines the types of whisper modes available:
     - ALL: Can whisper to anyone
     - NEIGHBORS: Can only whisper to neighbors
@@ -16,22 +16,22 @@ class WhisperMode:
 
 def to_whisper_mode(argument):
     """Convert a string to a WhisperMode.
-    
+
     Args:
         argument: The string to convert
-        
+
     Returns:
         The corresponding WhisperMode value, or None if not found
-        
+
     Raises:
         AttributeError: If argument is None or not a string
     """
     if argument is None:
         raise AttributeError("Argument cannot be None")
-        
+
     if not isinstance(argument, str):
         raise AttributeError("Argument must be a string")
-        
+
     if WhisperMode.ALL.casefold() == argument.casefold():
         return WhisperMode.ALL
     elif WhisperMode.NEIGHBORS.casefold() == argument.casefold():
@@ -44,11 +44,11 @@ def to_whisper_mode(argument):
 
 async def choose_whisper_candidates(game, author):
     """Determine which players the author can whisper to based on the current whisper mode.
-    
+
     Args:
         game: The current game
         author: The user who wants to whisper
-        
+
     Returns:
         List of players that the author can whisper to
     """

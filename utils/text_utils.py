@@ -8,11 +8,11 @@ from typing import Generator
 def str_cleanup(text: str, chars: list[str]) -> str:
     """
     Cleanup a string by splitting on specified characters and capitalizing each part.
-    
+
     Args:
         text: The text to clean up
         chars: List of characters to split on
-        
+
     Returns:
         The cleaned up string with each part capitalized
     """
@@ -29,11 +29,11 @@ def str_cleanup(text: str, chars: list[str]) -> str:
 def find_all(pattern: str, text: str) -> Generator[int, None, None]:
     """
     Find all occurrences of a pattern in text.
-    
+
     Args:
         pattern: The pattern to search for
         text: The text to search in
-        
+
     Yields:
         The index of each occurrence
     """

@@ -466,7 +466,7 @@ async def test_handup_prevote_yes(mock_discord_setup, setup_test_game):
 async def test_handup_no_active_vote(mock_discord_setup, setup_test_game):
     """Test @handup command when there is no active vote."""
     from tests.fixtures.discord_mocks import MockMessage
-    
+
     game = setup_test_game['game']
     alice = setup_test_game['players']['alice']
 
@@ -1055,7 +1055,7 @@ class TestPlayerCommands: # Consolidating into a class if not already structured
                                            "Your hand is currently locked by your vote and cannot be changed for this nomination.")
             assert player_obj.hand_raised, "Hand should have REMAINED raised if locked."
             mock_update_seating_message.assert_not_called()
-            # For handdown, backup should be called again from on_message start, but no additional 
+            # For handdown, backup should be called again from on_message start, but no additional
             # backup should be called from hand changes since it's locked
             # So we expect: initial_backup_call_count (1) + 1 (from second on_message call) = 2
             expected_final_count = initial_backup_call_count + 1  # +1 from second on_message call

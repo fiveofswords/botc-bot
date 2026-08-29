@@ -11,11 +11,11 @@ import bot_client
 def _split_text(text: str, max_length: int = 2000) -> list[str]:
     """
     Split text into chunks of maximum length.
-    
+
     Args:
         text: The text to split
         max_length: Maximum length of each chunk
-        
+
     Returns:
         List of text chunks
     """
@@ -29,12 +29,12 @@ async def safe_send(
 ) -> discord.Message | None:
     """
     Safely send a message to a channel, handling errors and long messages.
-    
+
     Args:
         channel: The channel or user to send to
         content: The content of the message
         **kwargs: Additional message parameters
-        
+
     Returns:
         The sent message or None if failed
     """
@@ -46,7 +46,7 @@ async def safe_send(
         # Handle empty content
         if not content and not any(k in kwargs for k in ['embed', 'embeds', 'file', 'files']):
             content = "\u200b"  # Zero-width space
-        
+
         # Split long messages
         if content and len(content) > 2000:
             chunks = _split_text(content)
@@ -59,7 +59,7 @@ async def safe_send(
                 else:
                     await channel.send(chunk)
             return first_message
-        
+
         # Regular send
         return await channel.send(content, **kwargs)
     except discord.HTTPException as e:
@@ -77,12 +77,12 @@ async def safe_send_dm(
 ) -> discord.Message | None:
     """
     Safely send a DM to a user, handling errors.
-    
+
     Args:
         user: The user to send to
         content: The content of the message
         **kwargs: Additional message parameters
-        
+
     Returns:
         The sent message or None if failed
     """
@@ -91,7 +91,7 @@ async def safe_send_dm(
         dm_channel = user.dm_channel
         if dm_channel is None:
             dm_channel = await user.create_dm()
-        
+
         # Send the message
         return await safe_send(dm_channel, content, **kwargs)
     except discord.HTTPException as e:
@@ -105,11 +105,11 @@ async def safe_send_dm(
 async def notify_storytellers(message: str, **kwargs) -> None:
     """
     Send a message to all storytellers in the current game.
-    
+
     This utility function handles the common pattern of notifying all storytellers
     about game state changes. It will try both global_vars.gamemaster_role.members
     and global_vars.game.storytellers to find storytellers.
-    
+
     Args:
         message: The message to send to storytellers
         **kwargs: Additional message parameters for safe_send
@@ -142,15 +142,15 @@ async def notify_storytellers_about_action(author: discord.Member | discord.User
                                            **kwargs) -> None:
     """
     Send a notification to all storytellers about an action taken by someone.
-    
+
     This is a convenience wrapper around notify_storytellers for the common pattern
     of notifying storytellers that someone performed an action.
-    
+
     Args:
         author: The Discord user/member who performed the action
         action_description: Description of what happened (e.g., "whisper mode set to neighbors")
         **kwargs: Additional message parameters for safe_send
-    
+
     Example (sends "<author> set whisper mode to neighbors" to storytellers):
         await notify_storytellers_about_action(
             message.author,

@@ -226,7 +226,7 @@ async def test_registry_prevents_legacy_command_processing(mock_discord_setup, s
             message.channel, "Pong!"
         )
 
-        # Verify that GlobalSettings.load was called for alias checking 
+        # Verify that GlobalSettings.load was called for alias checking
         # (this happens before registry handling)
         mock_global_settings.assert_called_once()
 

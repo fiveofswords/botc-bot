@@ -83,7 +83,7 @@ class TestUserAliasesInHelp:
             HelpSection.MISC, UserType.STORYTELLER, user_aliases
         )
 
-        # Find the test command field  
+        # Find the test command field
         test_field = None
         for field in misc_embed.fields:
             if field.name.startswith("test"):
@@ -131,7 +131,7 @@ class TestUserAliasesInHelp:
         if ping_fields:
             # Should have the valid alias
             assert any("p" in name for name in ping_fields)
-            # Should not have the invalid alias 
+            # Should not have the invalid alias
             assert not any("xyz" in name for name in ping_fields)
 
     def test_duplicate_aliases(self):

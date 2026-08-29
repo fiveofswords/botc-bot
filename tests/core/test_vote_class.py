@@ -74,7 +74,7 @@ async def test_vote_call_next():
     # Create mock channel
     mock_channel = MagicMock()
 
-    # Create mock user 
+    # Create mock user
     mock_user = MagicMock()
     mock_user.id = 123456
     mock_user.mention = "@bob"
@@ -313,7 +313,7 @@ async def test_end_vote_not_enough_votes(mock_discord_setup, setup_test_game):
         original_end_vote = vote.end_vote
 
         async def set_vote_done_manually():
-            # Just set done and call open methods 
+            # Just set done and call open methods
             vote.done = True
             # Execute the message
             await mock_safe_send(
@@ -337,7 +337,7 @@ async def test_end_vote_not_enough_votes(mock_discord_setup, setup_test_game):
         ]
         assert len(vote_summary_calls) > 0, "No vote summary message found"
 
-        # Verify vote is done 
+        # Verify vote is done
         assert vote.done
 
         # Verify nominations and PMs were reopened
@@ -612,7 +612,7 @@ async def test_call_next(mock_discord_setup, setup_test_game):
         # Verify test setup worked
         assert mock_message.id in vote.announcements
 
-        # Check vote position remains as expected 
+        # Check vote position remains as expected
         assert vote.position == 0
 
     # Verify the method exists
@@ -788,7 +788,7 @@ async def test_vote_with_banshee(mock_discord_setup, setup_test_game):
             # Call the mock end vote method
             await vote.end_vote()
 
-            # Check that the vote succeeded despite not having enough votes 
+            # Check that the vote succeeded despite not having enough votes
             assert day.aboutToDie is not None
             assert day.aboutToDie[0] == alice  # Player marked for execution
 
@@ -1242,7 +1242,7 @@ class TestVoteRaceConditions:
     @pytest.mark.asyncio
     async def test_player_and_storyteller_simultaneous_vote(self, mock_discord_setup, setup_test_game):
         """Test race condition when player and storyteller vote simultaneously.
-        
+
         This is a realistic scenario where Bob tries to vote for himself
         at the same time the storyteller places a vote on Bob's behalf.
         """
