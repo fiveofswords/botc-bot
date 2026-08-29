@@ -1881,7 +1881,7 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
             # Send minion update reminder regardless of Riot's state
             # (even if poisoned or ghost, storytellers need to update minions)
             if not notification_state["minion"]:
-                await utils.safe_send(origin, f"Riot is active on day {current_day_number}!\nPlease update all minion characters to Riot at the appropriate time{"." if (current_day_number == 3) else "?"}")
+                await utils.safe_send(origin, f"Riot is active on day {current_day_number}!\nPlease update all minion characters to Riot at the appropriate time{'.' if (current_day_number == 3) else '?'}")
                 notification_state["minion"] = True
 
         # Only if ALL living players with Riot abilities are poisoned should this message be sent.
