@@ -1817,6 +1817,7 @@ async def on_message(message):
                         bot_client.logger.info("riot.nominate_command denied reason=non_player_non_st author=%s", message.author.display_name)
                         return
                     else:
+                        current_day_number = len(global_vars.game.days)
                         living_unpoisoned_riots = len([
                             player for player in global_vars.game.seatingOrder
                             if player.character.role_name == "Riot"
@@ -1824,8 +1825,9 @@ async def on_message(message):
                             if not player.is_ghost
                         ])
                         bot_client.logger.info(
-                            "riot.nominate_command st_override_check author=%s living_unpoisoned_riots=%s",
+                            "riot.nominate_command st_override_check author=%s day=%s living_unpoisoned_riots=%s",
                             message.author.display_name,
+                            current_day_number,
                             living_unpoisoned_riots,
                         )
                         if living_unpoisoned_riots > 0:
@@ -1906,10 +1908,18 @@ async def on_message(message):
                     return
 
                 if global_vars.gamemaster_role in global_vars.server.get_member(message.author.id).roles:
+                    living_unpoisoned_riots = len([
+                        player for player in global_vars.game.seatingOrder
+                        if player.character.role_name == "Riot"
+                        if not player.character.is_poisoned
+                        if not player.is_ghost
+                    ])
                     bot_client.logger.info(
-                        "riot.nominate_command st_nomination nominee=%s st=%s",
+                        "riot.nominate_command st_nomination nominee=%s st=%s day=%s living_unpoisoned_riots=%s delegation=day.nomination",
                         person.display_name if person else "storytellers",
                         message.author.display_name,
+                        len(global_vars.game.days),
+                        living_unpoisoned_riots,
                     )
                     await global_vars.game.days[-1].nomination(person, None)
                     if global_vars.game is not game.NULL_GAME:

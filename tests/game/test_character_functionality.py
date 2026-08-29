@@ -288,13 +288,13 @@ async def test_riot_day_3_reminder_not_sent_without_minion(mock_safe_send, mock_
 
 
 @pytest.mark.asyncio
-@patch('utils.character_utils.has_ability', return_value=False)
 @patch('utils.message_utils.safe_send', new_callable=AsyncMock)
-async def test_riot_nomination_no_longer_sends_day_3_reminder(mock_safe_send, _mock_has_ability):
-    """Riot nomination chain should proceed without sending day-3 reminder text."""
+async def test_riot_nomination_player_day3_with_eligible_riot_intercepts(mock_safe_send):
+    """Day 3+ player nomination should still activate Riot chain when an eligible Riot exists."""
     riot_parent = MagicMock()
     riot_parent.is_ghost = False
     riot = Riot(riot_parent)
+    riot_parent.character = riot
 
     vote = MagicMock()
     vote.announcements = []
@@ -308,7 +308,7 @@ async def test_riot_nomination_no_longer_sends_day_3_reminder(mock_safe_send, _m
     global_vars.game.has_automated_life_and_death = True
     global_vars.game.show_tally = False
     global_vars.game.days = [MagicMock(), MagicMock(), this_day]
-    global_vars.game.seatingOrder = []
+    global_vars.game.seatingOrder = [riot_parent]
 
     global_vars.player_role = MagicMock()
     global_vars.player_role.mention = "@players"
@@ -335,18 +335,13 @@ async def test_riot_nomination_no_longer_sends_day_3_reminder(mock_safe_send, _m
 
     nominator = MagicMock()
     nominator.display_name = "Nominator"
-    nominator.character.is_poisoned = False
-    nominator.is_ghost = False
     nominator.riot_nominee = True
 
     result = await riot.on_nomination(nominee, nominator, True)
 
-    reminder = "Riot is active on day 3! Please manually update all Minion characters to Riot."
     sent_texts = [call.args[1] for call in mock_safe_send.await_args_list if len(call.args) > 1]
 
     assert result is False
-    assert riot.day_3_notification_sent is False
-    assert reminder not in sent_texts
     assert sent_texts == [
         "@players, @nominee has been nominated by Nominator.",
         "Riot is in play. @nominee to nominate",
@@ -360,4 +355,155 @@ async def test_riot_nomination_no_longer_sends_day_3_reminder(mock_safe_send, _m
     assert nominee.riot_nominee is True
     assert nominee.can_nominate is True
     this_day.open_noms.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@patch('utils.message_utils.safe_send', new_callable=AsyncMock)
+async def test_riot_nomination_storyteller_day3_with_eligible_riot_intercepts(mock_safe_send):
+    """Day 3+ storyteller-initiated nomination should enter Riot chain when an eligible Riot exists."""
+    riot_parent = MagicMock()
+    riot_parent.is_ghost = False
+    riot = Riot(riot_parent)
+    riot_parent.character = riot
+
+    vote = MagicMock()
+    vote.announcements = []
+    this_day = MagicMock()
+    this_day.votes = [vote]
+    this_day.riot_active = False
+    this_day.st_riot_kill_override = True
+    this_day.open_noms = AsyncMock()
+
+    global_vars.game = MagicMock()
+    global_vars.game.has_automated_life_and_death = True
+    global_vars.game.show_tally = False
+    global_vars.game.days = [MagicMock(), MagicMock(), this_day]
+    global_vars.game.seatingOrder = [riot_parent]
+
+    global_vars.player_role = MagicMock()
+    global_vars.player_role.mention = "@players"
+    global_vars.channel = MagicMock()
+
+    announcement_message = MagicMock()
+    announcement_message.id = 100
+    announcement_message.pin = AsyncMock()
+    riot_message = MagicMock()
+    riot_message.id = 101
+    mock_safe_send.side_effect = [announcement_message, riot_message]
+
+    nominee = MagicMock()
+    nominee.display_name = "Nominee"
+    nominee.user.mention = "@nominee"
+    nominee.kill = AsyncMock()
+    nominee.riot_nominee = False
+    nominee.can_nominate = False
+
+    result = await riot.on_nomination(nominee, None, True)
+
+    assert result is False
+    assert this_day.riot_active is True
+    nominee.kill.assert_awaited_once()
+    assert vote.announcements == [100]
+    this_day.open_noms.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@patch('utils.message_utils.safe_send', new_callable=AsyncMock)
+async def test_riot_nomination_storyteller_day3_with_no_eligible_riot_passes_through(mock_safe_send):
+    """Day 3+ storyteller-initiated nomination should pass through when no living unpoisoned Riot exists."""
+    riot_parent = MagicMock()
+    riot_parent.is_ghost = False
+    riot = Riot(riot_parent)
+    riot.poison()
+    riot_parent.character = riot
+
+    this_day = MagicMock()
+    this_day.votes = [MagicMock(announcements=[])]
+    this_day.riot_active = False
+    this_day.st_riot_kill_override = False
+    this_day.open_noms = AsyncMock()
+
+    global_vars.game = MagicMock()
+    global_vars.game.has_automated_life_and_death = True
+    global_vars.game.show_tally = False
+    global_vars.game.days = [MagicMock(), MagicMock(), this_day]
+    global_vars.game.seatingOrder = [riot_parent]
+
+    nominee = MagicMock()
+    nominee.display_name = "Nominee"
+    nominee.kill = AsyncMock()
+
+    result = await riot.on_nomination(nominee, None, True)
+
+    assert result is True
+    assert this_day.riot_active is False
+    nominee.kill.assert_not_called()
+    mock_safe_send.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@patch('utils.message_utils.safe_send', new_callable=AsyncMock)
+async def test_riot_nomination_day2_passes_through(mock_safe_send):
+    """Day 1/2 nominations should remain pass-through even with an eligible Riot."""
+    riot_parent = MagicMock()
+    riot_parent.is_ghost = False
+    riot = Riot(riot_parent)
+    riot_parent.character = riot
+
+    this_day = MagicMock()
+    this_day.votes = [MagicMock(announcements=[])]
+    this_day.riot_active = False
+    this_day.st_riot_kill_override = False
+    this_day.open_noms = AsyncMock()
+
+    global_vars.game = MagicMock()
+    global_vars.game.has_automated_life_and_death = True
+    global_vars.game.show_tally = False
+    global_vars.game.days = [MagicMock(), this_day]
+    global_vars.game.seatingOrder = [riot_parent]
+
+    nominee = MagicMock()
+    nominee.display_name = "Nominee"
+    nominee.kill = AsyncMock()
+    nominator = MagicMock()
+    nominator.display_name = "Nominator"
+
+    result = await riot.on_nomination(nominee, nominator, True)
+
+    assert result is True
+    assert this_day.riot_active is False
+    nominee.kill.assert_not_called()
+    mock_safe_send.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@patch('utils.message_utils.safe_send', new_callable=AsyncMock)
+async def test_riot_nomination_storyteller_nominee_passes_through(mock_safe_send):
+    """Storyteller nominee path (Atheist handling entrypoint) should remain pass-through."""
+    riot_parent = MagicMock()
+    riot_parent.is_ghost = False
+    riot = Riot(riot_parent)
+    riot_parent.character = riot
+
+    this_day = MagicMock()
+    this_day.votes = [MagicMock(announcements=[])]
+    this_day.riot_active = False
+    this_day.st_riot_kill_override = False
+    this_day.open_noms = AsyncMock()
+
+    global_vars.game = MagicMock()
+    global_vars.game.has_automated_life_and_death = True
+    global_vars.game.show_tally = False
+    global_vars.game.days = [MagicMock(), MagicMock(), this_day]
+    global_vars.game.seatingOrder = [riot_parent]
+
+    nominator = MagicMock()
+    nominator.display_name = "Nominator"
+
+    result = await riot.on_nomination(None, nominator, True)
+
+    assert result is True
+    assert this_day.riot_active is False
+    mock_safe_send.assert_not_awaited()
+
 

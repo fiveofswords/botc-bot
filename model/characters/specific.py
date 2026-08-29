@@ -1871,6 +1871,15 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
         assert global_vars.game is not None
         nominee_name = nominee.display_name if nominee else "storytellers"
         nominator_name = nominator.display_name if nominator else "storytellers"
+        nomination_source = "storyteller" if nominator is None else "player"
+        current_day_number = len(global_vars.game.days)
+        eligible_riots = [
+            player for player in global_vars.game.seatingOrder
+            if player.character.role_name == "Riot"
+            if not player.character.is_poisoned
+            if not player.is_ghost
+        ]
+        eligible_riot_count = len(eligible_riots)
         bot_client.logger.info(
             "riot.nomination start proceed=%s nominee=%s nominator=%s automated=%s poisoned=%s riot_ghost=%s",
             proceed,
@@ -1880,37 +1889,51 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
             self.is_poisoned,
             self.parent.is_ghost,
         )
+        bot_client.logger.info(
+            "riot.nomination eligibility source=%s day=%s eligible_riot_count=%s",
+            nomination_source,
+            current_day_number,
+            eligible_riot_count,
+        )
         if not global_vars.game.has_automated_life_and_death:
             bot_client.logger.info("riot.nomination decision=pass_through reason=automation_disabled")
             return proceed
 
-        # todo: is not nominee indicative of the storytellers being nominated?
-        
-        # Don't chain if Riot is poisoned or a ghost
-        if self.is_poisoned or self.parent.is_ghost or not nominee:
-            reasons = []
-            if self.is_poisoned:
-                reasons.append("riot_poisoned")
-            if self.parent.is_ghost:
-                reasons.append("riot_dead")
-            if not nominee:
-                reasons.append("storyteller_nomination")
+        if not nominee:
             bot_client.logger.info(
-                "riot.nomination decision=pass_through reason=%s",
-                ",".join(reasons),
+                "riot.nomination decision=pass_through reason=storyteller_nominee source=%s day=%s eligible_riot_count=%s",
+                nomination_source,
+                current_day_number,
+                eligible_riot_count,
             )
             return proceed
-        
+
         this_day = global_vars.game.days[-1]
-        current_day_number = len(global_vars.game.days)
-        
+
         # Days 1-2: Regular nominations, no riot behavior
         if current_day_number < 3:
             bot_client.logger.info(
-                "riot.nomination decision=pass_through reason=pre_day3 day=%s",
+                "riot.nomination decision=pass_through reason=pre_day3 day=%s source=%s eligible_riot_count=%s",
                 current_day_number,
+                nomination_source,
+                eligible_riot_count,
             )
             return proceed
+
+        if eligible_riot_count < 1:
+            bot_client.logger.info(
+                "riot.nomination decision=pass_through reason=no_eligible_riot day=%s source=%s",
+                current_day_number,
+                nomination_source,
+            )
+            return proceed
+
+        bot_client.logger.info(
+            "riot.nomination decision=chain reason=eligible_riot_present day=%s source=%s eligible_riot_count=%s",
+            current_day_number,
+            nomination_source,
+            eligible_riot_count,
+        )
         
         # Day 3: Riot chaining behavior
         nominee_nick = nominator.display_name if nominator else "the storytellers"
@@ -1960,7 +1983,12 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
             await utils.message_utils.safe_send(global_vars.channel, messageText)
             
         this_day.riot_active = True
-        bot_client.logger.info("riot.nomination riot_chain_activated day=%s", current_day_number)
+        bot_client.logger.info(
+            "riot.nomination riot_chain_activated day=%s source=%s eligible_riot_count=%s",
+            current_day_number,
+            nomination_source,
+            eligible_riot_count,
+        )
         
         # REMOVED: Old soldier_jinx and golem_jinx logic
         # Soldier jinx is handled by storyteller intervention (they stop the game and announce good wins)
@@ -2004,7 +2032,10 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
         bot_client.logger.info("riot.nomination prompt_sent message_id=%s", msg.id if msg else None)
         
         await this_day.open_noms()
-        bot_client.logger.info("riot.nomination decision=intercept proceed=False")
+        bot_client.logger.info(
+            "riot.nomination decision=intercept proceed=False source=%s",
+            nomination_source,
+        )
         return False
 
 

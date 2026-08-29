@@ -481,6 +481,70 @@ async def test_command_parser_handles_nominate(mock_discord_setup):
 
 
 @pytest.mark.asyncio
+async def test_nominate_command_riot_active_blocks_non_current_riot_nominee(mock_discord_setup, setup_test_game):
+    """When Riot is active, only the current riot nominee may nominate."""
+    global_vars.game = setup_test_game['game']
+    global_vars.channel = mock_discord_setup['channels']['town_square']
+
+    setup_test_game['game'].isDay = True
+    setup_test_game['game'].days[-1].isNoms = True
+    setup_test_game['game'].days[-1].riot_active = True
+    setup_test_game['players']['alice'].riot_nominee = False
+
+    alice_dm_channel = MockChannel(451, "dm-alice")
+    alice_dm_channel.guild = None
+    alice_message = MockMessage(
+        id=451,
+        content="@nominate charlie",
+        channel=alice_dm_channel,
+        author=mock_discord_setup['members']['alice'],
+        guild=None,
+    )
+
+    with patch('utils.game_utils.backup', return_value=None), \
+         patch('utils.player_utils.select_player', return_value=setup_test_game['players']['charlie']), \
+         patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send:
+        await on_message(alice_message)
+
+    mock_safe_send.assert_called_with(
+        mock_discord_setup['members']['alice'],
+        "Riot is active, you may not nominate.",
+    )
+    setup_test_game['game'].days[-1].nomination.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_nominate_command_atheist_storyteller_nominee_unchanged(mock_discord_setup, setup_test_game):
+    """Atheist storyteller-nominee nomination path should still call Day.nomination(None, nominator)."""
+    global_vars.game = setup_test_game['game']
+    global_vars.channel = mock_discord_setup['channels']['town_square']
+
+    setup_test_game['game'].isDay = True
+    setup_test_game['game'].is_atheist = True
+    setup_test_game['game'].days[-1].isNoms = True
+    setup_test_game['game'].days[-1].votes = []
+
+    alice_dm_channel = MockChannel(452, "dm-alice")
+    alice_dm_channel.guild = None
+    alice_message = MockMessage(
+        id=452,
+        content="@nominate storytellers",
+        channel=alice_dm_channel,
+        author=mock_discord_setup['members']['alice'],
+        guild=None,
+    )
+
+    with patch('utils.game_utils.backup', return_value=None), \
+         patch('utils.message_utils.safe_send', new_callable=AsyncMock):
+        await on_message(alice_message)
+
+    setup_test_game['game'].days[-1].nomination.assert_awaited_once_with(
+        None,
+        setup_test_game['players']['alice'],
+    )
+
+
+@pytest.mark.asyncio
 async def test_openpms_command_from_storyteller(mock_discord_setup, setup_test_game):
     """Test openpms command from a storyteller."""
     # Set up global variables for this test
