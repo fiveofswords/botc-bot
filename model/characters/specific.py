@@ -1818,6 +1818,7 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
         "automate": False,
         "minion": False,
         "poisoned": False,
+        "activation_warning": False,
     }
 
     def __init__(self, parent):
@@ -1831,6 +1832,7 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
             "automate": False,
             "minion": False,
             "poisoned": False,
+            "activation_warning": False,
         }
         for key, value in defaults.items():
             cls.__notification_sent.setdefault(key, value)
@@ -1841,12 +1843,31 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
                 "automate": False,
                 "minion": False,
                 "poisoned": False,
+                "activation_warning": False,
             }
         return cls.__notification_sent
 
     async def on_day_start(self, origin, kills):
         current_day_number = len(global_vars.game.days) + 1
         notification_state = Riot._get_notification_state(current_day_number)
+        living_unpoisoned_riots = [
+            player for player in global_vars.game.seatingOrder
+            if has_ability(player.character, Riot)
+               and not player.character.is_poisoned
+               and not player.is_ghost
+        ]
+
+        if (
+            origin
+            and current_day_number > 3
+            and living_unpoisoned_riots
+            and not notification_state["activation_warning"]
+        ):
+            await utils.message_utils.safe_send(
+                origin,
+                "An unpoisoned Riot is alive after day 3. If you do not want Riot to activate, use the `poison player` command before nominations.",
+            )
+            notification_state["activation_warning"] = True
 
         bot_client.logger.debug(
             "riot.day_start automated=%s day=%s poisoned=%s riot_ghost=%s",
@@ -1880,8 +1901,8 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
 
             # Send minion update reminder regardless of Riot's state
             # (even if poisoned or ghost, storytellers need to update minions)
-            if not notification_state["minion"]:
-                await utils.safe_send(origin, f"Riot is active on day {current_day_number}!\nPlease update all minion characters to Riot at the appropriate time{'.' if (current_day_number == 3) else '?'}")
+            if not notification_state["minion"] and not notification_state["activation_warning"]:
+                await utils.safe_send(origin, f"Riot is alive on day {current_day_number}!\nPlease update all minion characters to Riot at the appropriate time{'.' if (current_day_number == 3) else '?'}")
                 notification_state["minion"] = True
 
         # Only if ALL living players with Riot abilities are poisoned should this message be sent.
@@ -1914,7 +1935,7 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
         current_day_number = len(global_vars.game.days)
         eligible_riots = [
             player for player in global_vars.game.seatingOrder
-            if player.character.role_name == "Riot"
+            if has_ability(player.character, Riot)
             if not player.character.is_poisoned
             if not player.is_ghost
         ]
@@ -1959,7 +1980,8 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
             )
             return proceed
 
-        if eligible_riot_count < 1:
+        # no riots are living and unpoisoned, shortcircuit first riot
+        if eligible_riot_count < 1 and not this_day.riot_active:
             bot_client.logger.debug(
                 "riot.nomination decision=pass_through reason=no_eligible_riot day=%s source=%s",
                 current_day_number,

@@ -812,7 +812,7 @@ async def test_skip_command(mock_discord_setup, setup_test_game):
             with patch('utils.message_utils.safe_send', return_value=AsyncMock()) as mock_safe_send:
                 await on_message(alice_message)
 
-                # We are only testing the basic message processing here, 
+                # We are only testing the basic message processing here,
                 # on_message_edit handles the actual pin action
                 assert mock_backup.called
 

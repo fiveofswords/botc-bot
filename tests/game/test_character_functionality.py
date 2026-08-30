@@ -297,6 +297,56 @@ async def test_riot_day_3_reminder_not_sent_without_minion(mock_safe_send, mock_
 
 
 @pytest.mark.asyncio
+@patch('model.characters.specific.utils.message_utils.safe_send', new_callable=AsyncMock)
+async def test_riot_day_start_activation_warning_sent_day4_for_unpoisoned_riot(mock_safe_send):
+    """Day 4+ should warn the day starter when a living unpoisoned Riot can activate."""
+    riot_parent = MagicMock()
+    riot_parent.is_ghost = False
+    riot = Riot(riot_parent)
+    riot_parent.character = riot
+    Riot._get_notification_state(0)
+
+    global_vars.game = MagicMock()
+    global_vars.game.has_automated_life_and_death = True
+    global_vars.game.days = [MagicMock(), MagicMock(), MagicMock()]  # about to start day 4
+    global_vars.game.seatingOrder = [riot_parent]
+
+    origin = MagicMock()
+
+    await riot.on_day_start(origin=origin, kills=[])
+
+    sent_texts = [call.args[1] for call in mock_safe_send.await_args_list if len(call.args) > 1]
+    assert any("An unpoisoned Riot is alive after day 3. If you do not want Riot to activate, use the `poison player` command before nominations." in text for text in sent_texts)
+
+
+@pytest.mark.asyncio
+@patch('model.characters.specific.utils.message_utils.safe_send', new_callable=AsyncMock)
+async def test_riot_day_start_activation_warning_not_sent_when_conditions_fail(mock_safe_send):
+    """Warning should not send before day 4 or when Riot is poisoned."""
+    riot_parent = MagicMock()
+    riot_parent.is_ghost = False
+    riot = Riot(riot_parent)
+    riot_parent.character = riot
+
+    global_vars.game = MagicMock()
+    global_vars.game.has_automated_life_and_death = True
+    global_vars.game.seatingOrder = [riot_parent]
+    origin = MagicMock()
+
+    Riot._get_notification_state(0)
+    global_vars.game.days = [MagicMock(), MagicMock()]  # about to start day 3
+    await riot.on_day_start(origin=origin, kills=[])
+
+    Riot._get_notification_state(0)
+    global_vars.game.days = [MagicMock(), MagicMock(), MagicMock()]  # about to start day 4
+    riot.poison()
+    await riot.on_day_start(origin=origin, kills=[])
+
+    sent_texts = [call.args[1] for call in mock_safe_send.await_args_list if len(call.args) > 1]
+    assert all("An unpoisoned Riot is alive after day 3. If you do not want Riot to activate, use the `poison player` command before nominations." not in text for text in sent_texts)
+
+
+@pytest.mark.asyncio
 @patch('utils.message_utils.safe_send', new_callable=AsyncMock)
 async def test_riot_nomination_player_day3_with_eligible_riot_intercepts(mock_safe_send):
     """Day 3+ player nomination should still activate Riot chain when an eligible Riot exists."""
