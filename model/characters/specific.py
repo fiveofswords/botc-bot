@@ -2068,7 +2068,12 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
         else:
             # Riots always kill their nominees
             bot_client.logger.debug("riot.nomination kill decision=execute nominee=%s", nominee_name)
-            did_kill = await nominee.kill()
+            # Avoid attempting to kill a nominee who is already dead
+            if not nominee.is_ghost:
+                did_kill = await nominee.kill()
+            else:
+                bot_client.logger.debug("riot.nomination nominee already dead nominee=%s", nominee_name)
+                did_kill = False
 
         if did_kill:
             living_players = [player for player in global_vars.game.seatingOrder if not player.is_ghost]

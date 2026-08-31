@@ -390,6 +390,7 @@ async def test_riot_nomination_player_day3_with_eligible_riot_intercepts(mock_sa
     nominee = MagicMock()
     nominee.display_name = "Nominee"
     nominee.user.mention = "@nominee"
+    nominee.is_ghost = False
     nominee.character.is_poisoned = False
     nominee.kill = AsyncMock()
     nominee.riot_nominee = False
@@ -766,5 +767,60 @@ async def test_riot_storyteller_turn_prompt_sent_once_per_transition(mock_safe_s
     await this_day.latch_riot_storyteller_turn(source="test.second")
 
     assert mock_safe_send.await_count == 2
+
+
+@pytest.mark.asyncio
+@patch('model.characters.specific.bot_client.logger.debug')
+@patch('utils.message_utils.safe_send', new_callable=AsyncMock)
+async def test_riot_nomination_dead_nominee_not_killed_again(mock_safe_send, mock_logger_debug):
+    """Riot should not attempt to kill a nominee who is already dead."""
+    riot_parent = MagicMock()
+    riot_parent.is_ghost = False
+    riot = Riot(riot_parent)
+    riot_parent.character = riot
+
+    this_day = MagicMock()
+    this_day.votes = [MagicMock(announcements=[])]
+    this_day.riot_active = False
+    this_day.st_riot_kill_override = False
+    this_day.open_noms = AsyncMock()
+
+    global_vars.game = MagicMock()
+    global_vars.game.has_automated_life_and_death = True
+    global_vars.game.show_tally = False
+    global_vars.game.days = [MagicMock(), MagicMock(), this_day]
+    global_vars.game.seatingOrder = [riot_parent, MagicMock(is_ghost=False), MagicMock(is_ghost=False)]
+
+    global_vars.player_role = MagicMock()
+    global_vars.player_role.mention = "@players"
+    global_vars.channel = MagicMock()
+
+    announcement_message = MagicMock()
+    announcement_message.id = 400
+    announcement_message.pin = AsyncMock()
+    riot_message = MagicMock()
+    riot_message.id = 401
+    mock_safe_send.side_effect = [announcement_message, riot_message]
+
+    nominee = MagicMock()
+    nominee.display_name = "DeadNominee"
+    nominee.user.mention = "@deadnominee"
+    nominee.is_ghost = True  # Already dead
+    nominee.kill = AsyncMock()
+    nominee.riot_nominee = False
+    nominee.can_nominate = False
+
+    nominator = MagicMock()
+    nominator.display_name = "Nominator"
+    nominator.riot_nominee = True
+
+    result = await riot.on_nomination(nominee, nominator, True)
+
+    assert result is False
+    nominee.kill.assert_not_awaited()
+    assert any(
+        "riot.nomination nominee already dead" in call.args[0]
+        for call in mock_logger_debug.call_args_list
+    )
 
 
