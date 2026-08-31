@@ -31,7 +31,6 @@ async def test_day_initialization():
     assert day.skipMessages == []
     assert day.aboutToDie is None
     assert day.riot_active is False
-    assert day.st_riot_kill_override is False
 
 
 @pytest.mark.asyncio

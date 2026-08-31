@@ -360,7 +360,6 @@ async def test_riot_nomination_player_day3_with_eligible_riot_intercepts(mock_sa
     this_day = MagicMock()
     this_day.votes = [vote]
     this_day.riot_active = False
-    this_day.st_riot_kill_override = False
     this_day.open_noms = AsyncMock()
 
     global_vars.game = MagicMock()
@@ -420,70 +419,6 @@ async def test_riot_nomination_player_day3_with_eligible_riot_intercepts(mock_sa
     this_day.open_noms.assert_awaited_once()
 
 
-@pytest.mark.asyncio
-@patch('utils.message_utils.safe_send', new_callable=AsyncMock)
-async def test_riot_nomination_player_day3_stops_when_living_players_le_two(mock_safe_send):
-    """Riot should end the chain when a storyteller override kill leaves two or fewer living players."""
-    riot_parent = MagicMock()
-    riot_parent.is_ghost = False
-    riot = Riot(riot_parent)
-    riot_parent.character = riot
-
-    this_day = MagicMock()
-    this_day.votes = [MagicMock(announcements=[])]
-    this_day.riot_active = False
-    this_day.st_riot_kill_override = True
-    this_day.open_noms = AsyncMock()
-
-    global_vars.game = MagicMock()
-    global_vars.game.has_automated_life_and_death = True
-    global_vars.game.show_tally = False
-    global_vars.game.days = [MagicMock(), MagicMock(), this_day]
-
-    class Nominee:
-        def __init__(self):
-            self.display_name = "Nominee"
-            self.user = MagicMock()
-            self.user.mention = "@nominee"
-            self.is_ghost = False
-            self.character = MagicMock()
-            self.character.role_name = "Townsfolk"
-            self.character.is_poisoned = False
-            self.riot_nominee = False
-            self.can_nominate = False
-
-        async def kill(self):
-            self.is_ghost = True
-            return True
-
-    nominee = Nominee()
-
-    other_player = MagicMock()
-    other_player.is_ghost = False
-    other_player.character.role_name = "Townsfolk"
-
-    global_vars.game.seatingOrder = [riot_parent, other_player, nominee]
-
-    global_vars.player_role = MagicMock()
-    global_vars.player_role.mention = "@players"
-    global_vars.channel = MagicMock()
-
-    announcement_message = MagicMock()
-    announcement_message.id = 200
-    announcement_message.pin = AsyncMock()
-    mock_safe_send.side_effect = [announcement_message, MagicMock()]
-
-    result = await riot.on_nomination(nominee, None, True)
-
-    assert result is False
-    assert [call.args[1] for call in mock_safe_send.await_args_list if len(call.args) > 1] == [
-        "@players, @nominee has been nominated by the storytellers.",
-        "The game is over! Please wait for the storytellers to conclude the game.",
-    ]
-    this_day.open_noms.assert_not_awaited()
-    assert nominee.is_ghost is True
-    assert nominee.riot_nominee is False
-    assert nominee.can_nominate is False
 
 
 @pytest.mark.asyncio
@@ -498,7 +433,6 @@ async def test_riot_nomination_player_day3_continues_when_living_players_gt_two(
     this_day = MagicMock()
     this_day.votes = [MagicMock(announcements=[])]
     this_day.riot_active = False
-    this_day.st_riot_kill_override = False
     this_day.open_noms = AsyncMock()
 
     global_vars.game = MagicMock()
@@ -565,7 +499,6 @@ async def test_riot_nomination_storyteller_day3_with_eligible_riot_intercepts(mo
     this_day = MagicMock()
     this_day.votes = [vote]
     this_day.riot_active = False
-    this_day.st_riot_kill_override = True
     this_day.open_noms = AsyncMock()
 
     global_vars.game = MagicMock()
@@ -620,7 +553,6 @@ async def test_riot_nomination_storyteller_day3_with_no_eligible_riot_passes_thr
     this_day = MagicMock()
     this_day.votes = [MagicMock(announcements=[])]
     this_day.riot_active = False
-    this_day.st_riot_kill_override = False
     this_day.open_noms = AsyncMock()
 
     global_vars.game = MagicMock()
@@ -653,7 +585,6 @@ async def test_riot_nomination_day2_passes_through(mock_safe_send):
     this_day = MagicMock()
     this_day.votes = [MagicMock(announcements=[])]
     this_day.riot_active = False
-    this_day.st_riot_kill_override = False
     this_day.open_noms = AsyncMock()
 
     global_vars.game = MagicMock()
@@ -688,7 +619,6 @@ async def test_riot_nomination_storyteller_nominee_passes_through(mock_safe_send
     this_day = MagicMock()
     this_day.votes = [MagicMock(announcements=[])]
     this_day.riot_active = False
-    this_day.st_riot_kill_override = False
     this_day.open_noms = AsyncMock()
 
     global_vars.game = MagicMock()
@@ -782,7 +712,6 @@ async def test_riot_nomination_dead_nominee_not_killed_again(mock_safe_send, moc
     this_day = MagicMock()
     this_day.votes = [MagicMock(announcements=[])]
     this_day.riot_active = False
-    this_day.st_riot_kill_override = False
     this_day.open_noms = AsyncMock()
 
     global_vars.game = MagicMock()

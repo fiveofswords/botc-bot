@@ -31,7 +31,6 @@ class Day:
         skipMessages: List of skip messages
         aboutToDie: The player about to die, as well as the vote object that is about to kill them
         riot_active: Whether riot is active
-        st_riot_kill_override: Whether the ST has overridden the riot kill
     """
 
     isExecutionToday: bool
@@ -43,7 +42,6 @@ class Day:
     skipMessages: list[int]
     aboutToDie: tuple['model.player.Player | None', 'model.game.base_vote.BaseVote'] | None
     riot_active: bool
-    st_riot_kill_override: bool
     riot_storyteller_turn_active: bool
 
     def __init__(self):
@@ -57,7 +55,6 @@ class Day:
         self.skipMessages = []
         self.aboutToDie = None
         self.riot_active = False
-        self.st_riot_kill_override = False
         self.riot_storyteller_turn_active = False
 
     def is_eligible_riot_day(self) -> bool:

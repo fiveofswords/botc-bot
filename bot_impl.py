@@ -1846,55 +1846,6 @@ async def on_message(message):
                         await message_utils.safe_send(message.author, "You aren't in the game, and so cannot nominate.")
                         bot_client.logger.debug("riot.nominate_command denied reason=non_player_non_st author=%s", message.author.display_name)
                         return
-                    else:
-                        current_day_number = len(global_vars.game.days)
-                        living_unpoisoned_riots = len([
-                            player for player in global_vars.game.seatingOrder
-                            if player.character.role_name == "Riot"
-                            if not player.character.is_poisoned
-                            if not player.is_ghost
-                        ])
-                        bot_client.logger.debug(
-                            "riot.nominate_command st_override_check author=%s day=%s living_unpoisoned_riots=%s",
-                            message.author.display_name,
-                            current_day_number,
-                            living_unpoisoned_riots,
-                        )
-                        if living_unpoisoned_riots > 0:
-                            # todo: ask if the nominee dies
-                            st_user = message.author
-                            msg = await message_utils.safe_send(st_user, "Do they die? yes or no")
-                            try:
-                                choice = await bot_client.client.wait_for(
-                                    "message",
-                                    check=(lambda x: x.author == st_user and x.channel == msg.channel),
-                                    timeout=200,
-                                )
-                            except asyncio.TimeoutError:
-                                await message_utils.safe_send(st_user, "Message timed out!")
-                                return
-                            # Cancel
-                            if choice.content.lower() == "cancel":
-                                await message_utils.safe_send(st_user, "Action cancelled!")
-                                return
-                            player_dies = False
-                            # Yes
-                            if choice.content.lower() == "yes" or choice.content.lower() == "y":
-                                player_dies = True
-                            # No
-                            elif choice.content.lower() == "no" or choice.content.lower() == "n":
-                                player_dies = False
-                            else:
-                                await message_utils.safe_send(
-                                    st_user, "Your answer must be 'yes,' 'y,' 'no,' or 'n' exactly."
-                                )
-                                return
-                            global_vars.game.days[-1].st_riot_kill_override = player_dies
-                            bot_client.logger.debug(
-                                "riot.nominate_command st_override_set nominee=%s player_dies=%s",
-                                person.display_name if person else "storytellers",
-                                player_dies,
-                            )
                 else:
                     if await _send_nomination_denial_if_needed(
                         global_vars.game.days[-1],

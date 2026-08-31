@@ -2058,22 +2058,13 @@ class Riot(base.Demon, base.NominationModifier, base.DayStartModifier):
 
         # Kill the nominee (all nominees die during Riot chaining)
         did_kill = False
-        if not nominator:
-            if this_day.st_riot_kill_override:
-                this_day.st_riot_kill_override = False
-                bot_client.logger.debug("riot.nomination kill decision=execute_by_st_override nominee=%s", nominee_name)
-                did_kill = await nominee.kill()
-            else:
-                bot_client.logger.debug("riot.nomination kill decision=spare_by_st_override nominee=%s", nominee_name)
-        else:
-            # Riots always kill their nominees
+        # Avoid attempting to kill a nominee who is already dead
+        if not nominee.is_ghost:
             bot_client.logger.debug("riot.nomination kill decision=execute nominee=%s", nominee_name)
-            # Avoid attempting to kill a nominee who is already dead
-            if not nominee.is_ghost:
-                did_kill = await nominee.kill()
-            else:
-                bot_client.logger.debug("riot.nomination nominee already dead nominee=%s", nominee_name)
-                did_kill = False
+            did_kill = await nominee.kill()
+        else:
+            bot_client.logger.debug("riot.nomination nominee already dead nominee=%s", nominee_name)
+            did_kill = False
 
         if did_kill:
             living_players = [player for player in global_vars.game.seatingOrder if not player.is_ghost]
