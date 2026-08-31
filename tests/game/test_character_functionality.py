@@ -527,6 +527,7 @@ async def test_riot_nomination_storyteller_day3_with_eligible_riot_intercepts(mo
     nominee = MagicMock()
     nominee.display_name = "Nominee"
     nominee.user.mention = "@nominee"
+    nominee.is_ghost = False
     nominee.kill = AsyncMock()
     nominee.riot_nominee = False
     nominee.can_nominate = False
