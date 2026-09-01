@@ -624,13 +624,11 @@ async def on_message(message):
                     minions = int(math.floor((num_full_players - 1) / 3) - 1)
                     distribution = (num_full_players - (outsiders + minions + 1), outsiders, minions, 1)
 
-                msg = await message_utils.safe_send(
-                    global_vars.channel,
-                    f"There are {num_full_players} non-Traveler players. The default distribution is {distribution[0]} Townsfolk, {distribution[1]} Outsider{'s' if distribution[1] != 1 else ''}, {distribution[2]} Minion{'s' if distribution[2] != 1 else ''}, and {distribution[3]} Demon."
-                )
+                player_count_text = f"There are {num_full_players} non-Traveler players. The default distribution is {distribution[0]} Townsfolk, {distribution[1]} Outsider{'s' if distribution[1] != 1 else ''}, {distribution[2]} Minion{'s' if distribution[2] != 1 else ''}, and {distribution[3]} Demon."
+                msg = await message_utils.safe_send(global_vars.channel, player_count_text)
                 await msg.pin()
 
-                # Create info channel seating order message if info channel exists
+                # Create info channel seating order and player count messages if info channel exists
                 info_channel_message = None
                 if global_vars.info_channel:
                     try:
@@ -639,6 +637,15 @@ async def on_message(message):
                             await info_channel_message.pin()
                     except Exception as e:
                         print(f"Error creating info channel seating order message: {e}")
+
+                    try:
+                        info_channel_player_count_message = await message_utils.safe_send(
+                            global_vars.info_channel, player_count_text
+                        )
+                        if info_channel_player_count_message:
+                            await info_channel_player_count_message.pin()
+                    except Exception as e:
+                        print(f"Error creating info channel player count message: {e}")
 
                 global_vars.game = game.Game(seating_order, seating_order_message, info_channel_message)
 

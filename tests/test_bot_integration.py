@@ -2968,3 +2968,62 @@ async def test_on_message_startgame_hand_raised_display(mock_discord_setup):
         # Clean up the patch if it's not a context manager based patch
         # For direct patching of Player.__init__, it's good practice to restore.
         Player.__init__ = original_player_init
+
+
+@pytest.mark.asyncio
+async def test_on_message_startgame_posts_player_count_to_info_channel(mock_discord_setup):
+    """Test that startgame copies the player count message to the info channel."""
+    # Reset game state first
+    global_vars.game = NULL_GAME
+
+    storyteller_dm_channel = mock_discord_setup['members']['storyteller'].dm_channel
+
+    mock_order_message = MockMessage(id=3101, content="Alice\nBob\nCharlie",
+                                     author=mock_discord_setup['members']['storyteller'],
+                                     channel=storyteller_dm_channel)
+    mock_roles_message = MockMessage(id=3102, content="Washerwoman\nInvestigator\nSpy",
+                                     author=mock_discord_setup['members']['storyteller'],
+                                     channel=storyteller_dm_channel)
+
+    st_channels = {
+        mock_discord_setup['members']['alice'].id: mock_discord_setup['channels']['st_alice'].id,
+        mock_discord_setup['members']['bob'].id: mock_discord_setup['channels']['st_bob'].id,
+        mock_discord_setup['members']['charlie'].id: mock_discord_setup['channels']['st_charlie'].id,
+    }
+    mock_game_settings = MagicMock()
+    mock_game_settings.get_st_channel.side_effect = st_channels.get
+
+    with patch('bot_client.client', mock_discord_setup['client']), \
+            patch('bot_client.client.wait_for', new_callable=AsyncMock) as mock_wait_for, \
+            patch('model.settings.game_settings.GameSettings.load', return_value=mock_game_settings), \
+            patch('utils.message_utils.safe_send', new_callable=AsyncMock) as mock_safe_send, \
+            patch('utils.game_utils.backup'), \
+            patch('utils.game_utils.update_presence'), \
+            patch('model.channels.channel_utils.reorder_channels'), \
+            patch('model.channels.ChannelManager.remove_ghost'):
+
+        mock_wait_for.side_effect = [
+            mock_order_message,
+            mock_roles_message
+        ]
+
+        startgame_msg = MockMessage(
+            id=3104,
+            content="@startgame",
+            author=mock_discord_setup['members']['storyteller'],
+            channel=storyteller_dm_channel,
+            guild=None
+        )
+        await on_message(startgame_msg)
+
+        player_count_calls = [
+            call for call in mock_safe_send.call_args_list
+            if len(call.args) > 1 and isinstance(call.args[1], str)
+            and "non-Traveler players" in call.args[1]
+        ]
+
+        assert player_count_calls, "startgame should have sent a player count message"
+
+        target_channels = [call.args[0] for call in player_count_calls]
+        assert global_vars.channel in target_channels, "Player count should be sent to the town square"
+        assert global_vars.info_channel in target_channels, "Player count should be copied to the info channel"
