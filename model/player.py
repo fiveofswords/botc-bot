@@ -440,6 +440,16 @@ class Player:
         self.has_skipped = False
         self.has_checked_in = False
 
+    def __hash__(self) -> int:
+        """Make Player hashable by user ID for use as dictionary keys."""
+        return hash(self.user.id)
+
+    def __eq__(self, other: object) -> bool:
+        """Compare Player objects by user ID."""
+        if not isinstance(other, Player):
+            return False
+        return self.user.id == other.user.id
+
     def update_last_active(self) -> None:
         """Update the timestamp of the player's last activity."""
         self.last_active = datetime.now().timestamp()
