@@ -339,11 +339,18 @@ class BaseVote(ABC):
         nominee_name = player_utils.get_player_display_name(self.nominee)
         nominator_name = player_utils.get_player_display_name(self.nominator)
 
+        # Check if the nominator is The Sheriff (vote count started at 1)
+        sheriff_note = ""
+        if (self.nominator is not None
+                and global_vars.game.sheriff is not None
+                and self.nominator is global_vars.game.sheriff):
+            sheriff_note = " (The Sheriff nominated; vote count started at 1)"
+
         message_suffix = f". {outcome_message}" if outcome_message else "."
 
         announcement = await message_utils.safe_send(
             global_vars.channel,
-            f"{self.votes} votes on {nominee_name} (nominated by {nominator_name}): {voters_text}{message_suffix}"
+            f"{self.votes} votes on {nominee_name} (nominated by {nominator_name}): {voters_text}{sheriff_note}{message_suffix}"
         )
 
         await announcement.pin()

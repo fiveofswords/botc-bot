@@ -9,7 +9,7 @@ import model.game.whisper_mode
 import utils.game_utils
 from commands.command_enums import HelpSection, UserType, GamePhase
 from commands.registry import registry, CommandArgument
-from utils import message_utils
+from utils import message_utils, player_utils
 
 
 @registry.command(
@@ -199,3 +199,57 @@ async def automatekills_command(message: discord.Message, argument: str):
 async def setdeadline_command(message: discord.Message, argument: str):
     """Set a deadline for nominations."""
     raise NotImplementedError("Registry implementation not ready - using bot_impl")
+
+#       "The Sheriff: Each day before nominations, any player may propose any other living player to be The Sheriff. They require half or more votes of all players to be elected. Once someone is elected sheriff, no one else can be proposed that day. The same player cannot be sheriff two days in a row.\n\nIf the Sheriff nominates a player for execution, the vote count starts at 1."
+
+@registry.command(
+    name="sheriff",
+    description="sets the sheriff for the day. The sheriff can nominate a player for execution, and their vote counts as 1.",
+    help_sections=[HelpSection.COMMON, HelpSection.DAY],
+    user_types=[UserType.STORYTELLER],
+    arguments=[CommandArgument("player", optional=True)],
+    required_phases=[GamePhase.DAY],  # Day only
+    implemented=True
+)
+async def set_sheriff(message: discord.Message, argument: str):
+    # No argument: display current sheriff status
+    if not argument:
+        if global_vars.game.sheriff is not None:
+            await message_utils.safe_send(message.author, f"The Sheriff for today is {global_vars.game.sheriff.display_name}.")
+        else:
+            await message_utils.safe_send(message.author, "A Sheriff has not been elected yet today.")
+        return
+
+    if global_vars.game.sheriff is not None:
+        await message_utils.safe_send(
+            message.author,
+            f"The sheriff for today is already set to {global_vars.game.sheriff.display_name}."
+        )
+        return
+
+    player = player_utils.who(argument)
+    if player is None:
+        await message_utils.safe_send(message.author, f"Could not find a living player named '{argument}'.")
+        return
+
+    if player.is_ghost:
+        await message_utils.safe_send(message.author, f"{player.display_name} is dead and cannot be The Sheriff.")
+        return
+
+    if global_vars.game.previous_sheriff is not None and player is global_vars.game.previous_sheriff:
+        await message_utils.safe_send(
+            message.author,
+            f"{player.display_name} was The Sheriff yesterday and cannot be The Sheriff two days in a row."
+        )
+        return
+
+    global_vars.game.sheriff = player
+    await message_utils.safe_send(
+        global_vars.channel,
+        f"{player.display_name} has been elected as The Sheriff for today. "
+        f"If they nominate a player for execution, the vote count starts at 1."
+    )
+    await message_utils.notify_storytellers_about_action(
+        message.author,
+        f"has set {player.display_name} as The Sheriff for today"
+    )

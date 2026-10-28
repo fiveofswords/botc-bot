@@ -99,6 +99,10 @@ class Vote(BaseVote):
                     self.order, self.values, self.majority
                 )
 
+        # Sheriff rule: if the nominator is The Sheriff, the vote count starts at 1
+        if nominator is not None and nominator is global_vars.game.sheriff:
+            self.votes = 1
+
     # Abstract method implementations
     def _get_voting_order(self) -> list['model.player.Player']:
         """Get the order of players for voting."""
