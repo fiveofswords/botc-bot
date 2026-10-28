@@ -35,6 +35,7 @@ class Game:
     has_automated_life_and_death: bool
     sheriff: 'model.player.Player | None'
     previous_sheriff: 'model.player.Player | None'
+    sheriff_announcement_message_id: int | None
 
     def __init__(self, seating_order, seating_order_message, info_channel_seating_order_message,
                  skip_storytellers=False):
@@ -63,6 +64,7 @@ class Game:
         self.has_automated_life_and_death = False
         self.sheriff = None
         self.previous_sheriff = None
+        self.sheriff_announcement_message_id = None
 
     async def update_seating_order_message(self):
         """Updates the pinned seating order message with current hand status."""
@@ -239,6 +241,7 @@ class Game:
         # Reset sheriff for the new day (preserve previous_sheriff for two-days-in-a-row rule)
         self.previous_sheriff = self.sheriff
         self.sheriff = None
+        self.sheriff_announcement_message_id = None
 
         if global_vars.whisper_channel:
             message = await message_utils.safe_send(global_vars.whisper_channel, f"Start of day {len(self.days)}")

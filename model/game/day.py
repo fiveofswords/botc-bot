@@ -431,6 +431,16 @@ class Day:
             except discord.errors.DiscordServerError:
                 print("Discord server error: ", str(msg))
 
+        if global_vars.game.sheriff_announcement_message_id is not None:
+            try:
+                msg = await global_vars.channel.fetch_message(global_vars.game.sheriff_announcement_message_id)
+                await msg.unpin()
+            except discord.errors.NotFound:
+                print("Missing message: ", str(global_vars.game.sheriff_announcement_message_id))
+            except discord.errors.DiscordServerError:
+                print("Discord server error: ", str(global_vars.game.sheriff_announcement_message_id))
+            global_vars.game.sheriff_announcement_message_id = None
+
         for msg in self.deadlineMessages:
             try:
                 await (await global_vars.channel.fetch_message(msg)).unpin()

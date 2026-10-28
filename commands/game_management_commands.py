@@ -204,7 +204,7 @@ async def setdeadline_command(message: discord.Message, argument: str):
 
 @registry.command(
     name="sheriff",
-    description="sets the sheriff for the day. The sheriff can nominate a player for execution, and their vote counts as 1.",
+    description="sets the sheriff for the day. The sheriff can nominate a player for execution, and their vote counts as 1. will show the current sheriff if no argument is supplied",
     help_sections=[HelpSection.COMMON, HelpSection.DAY],
     user_types=[UserType.STORYTELLER],
     arguments=[CommandArgument("player", optional=True)],
@@ -244,11 +244,14 @@ async def set_sheriff(message: discord.Message, argument: str):
         return
 
     global_vars.game.sheriff = player
-    await message_utils.safe_send(
+    announcement = await message_utils.safe_send(
         global_vars.channel,
         f"{player.display_name} has been elected as The Sheriff for today. "
         f"If they nominate a player for execution, the vote count starts at 1."
     )
+    if announcement:
+        await announcement.pin()
+        global_vars.game.sheriff_announcement_message_id = announcement.id
     await message_utils.notify_storytellers_about_action(
         message.author,
         f"has set {player.display_name} as The Sheriff for today"
