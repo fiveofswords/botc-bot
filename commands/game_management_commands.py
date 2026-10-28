@@ -269,14 +269,24 @@ async def set_sheriff(message: discord.Message, argument: str):
             await old_announcement.unpin()
         except discord.errors.NotFound:
             pass
+        except discord.errors.Forbidden:
+            pass
         except discord.errors.DiscordServerError:
             pass
 
     global_vars.game.sheriff = player
-    announcement = await message_utils.safe_send(
-        global_vars.channel,
+    base_announcement_text = (
         f"{player.display_name} has been elected as The Sheriff for today. "
         f"If they nominate a player for execution, the vote count starts at 1."
+    )
+    announcement_text = (
+        f"A mistake at the ballots has been corrected. {base_announcement_text}"
+        if force_override
+        else base_announcement_text
+    )
+    announcement = await message_utils.safe_send(
+        global_vars.channel,
+        announcement_text
     )
     if announcement:
         await announcement.pin()
