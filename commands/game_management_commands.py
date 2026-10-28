@@ -204,14 +204,16 @@ async def setdeadline_command(message: discord.Message, argument: str):
 
 @registry.command(
     name="sheriff",
-    description="sets the sheriff for the day. The sheriff can nominate a player for execution, and their vote counts as 1. will show the current sheriff if no argument is supplied",
+    description="sets the sheriff for the day. Use `-f`/`--force` before player to override an already-set sheriff. The sheriff can nominate a player for execution, and their vote counts as 1. will show the current sheriff if no argument is supplied",
     help_sections=[HelpSection.COMMON, HelpSection.DAY],
     user_types=[UserType.STORYTELLER],
-    arguments=[CommandArgument("player", optional=True)],
+    arguments=[CommandArgument(("-f", "--force"), optional=True), CommandArgument("player", optional=True)],
     required_phases=[GamePhase.DAY],  # Day only
     implemented=True
 )
 async def set_sheriff(message: discord.Message, argument: str):
+    argument = (argument or "").strip()
+
     # No argument: display current sheriff status
     if not argument:
         if global_vars.game.sheriff is not None:
@@ -220,16 +222,34 @@ async def set_sheriff(message: discord.Message, argument: str):
             await message_utils.safe_send(message.author, "A Sheriff has not been elected yet today.")
         return
 
-    if global_vars.game.sheriff is not None:
+    force_override = False
+    player_argument = argument
+
+    if argument.startswith("-"):
+        split_argument = argument.split(maxsplit=1)
+        flag = split_argument[0].lower()
+
+        if flag in ("-f", "--force"):
+            force_override = True
+            if len(split_argument) < 2 or not split_argument[1].strip():
+                await message_utils.safe_send(
+                    message.author,
+                    "Usage: `@sheriff [--force|-f] [player]`\n"
+                    "Use `@sheriff` to view current status, or `@sheriff -f <player>` to override."
+                )
+                return
+            player_argument = split_argument[1].strip()
+
+    if global_vars.game.sheriff is not None and not force_override:
         await message_utils.safe_send(
             message.author,
             f"The sheriff for today is already set to {global_vars.game.sheriff.display_name}."
         )
         return
 
-    player = player_utils.who(argument)
+    player = player_utils.who(player_argument)
     if player is None:
-        await message_utils.safe_send(message.author, f"Could not find a living player named '{argument}'.")
+        await message_utils.safe_send(message.author, f"Could not find a living player named '{player_argument}'.")
         return
 
     if player.is_ghost:
@@ -242,6 +262,15 @@ async def set_sheriff(message: discord.Message, argument: str):
             f"{player.display_name} was The Sheriff yesterday and cannot be The Sheriff two days in a row."
         )
         return
+
+    if force_override and global_vars.game.sheriff_announcement_message_id is not None:
+        try:
+            old_announcement = await global_vars.channel.fetch_message(global_vars.game.sheriff_announcement_message_id)
+            await old_announcement.unpin()
+        except discord.errors.NotFound:
+            pass
+        except discord.errors.DiscordServerError:
+            pass
 
     global_vars.game.sheriff = player
     announcement = await message_utils.safe_send(
